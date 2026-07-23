@@ -36,9 +36,11 @@ class ScriptGenerator:
         self.openrouter_key = openrouter_key
         self.gemini_key = gemini_key
         self.groq_key = groq_key
-        # Ultra economical & smart Chinese models on OpenRouter (DeepSeek V3 & Qwen 2.5)
+        # Premium & Elite LLM models on OpenRouter (Claude 3.5 Sonnet #1 for viral writing)
         self.openrouter_models = [
-            "deepseek/deepseek-chat",       # DeepSeek V3 (Ultra cheap & insanely smart)
+            "anthropic/claude-3.5-sonnet", # Claude 3.5 Sonnet (World's #1 storytelling & viral scriptwriter)
+            "openai/gpt-4o",               # GPT-4o
+            "deepseek/deepseek-chat",       # DeepSeek V3
             "qwen/qwen-2.5-72b-instruct",   # Alibaba Qwen 2.5 72B
             "google/gemini-2.0-flash-001"
         ]
@@ -73,6 +75,7 @@ RULES:
    - "ticker": Primary stock symbol (e.g. "NVDA")
    - "change_pct": Numeric percent change string (e.g. "+6.85")
    - "tags": Array of 6 relevant tags
+   - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["stock market trading", "nvidia microchip", "wall street traders"])
 """
         return self._call_llm(prompt, default_title=topic)
 
@@ -109,6 +112,7 @@ RULES:
    - "change_pct": Percent change string
    - "tags": Array of tags
    - "thumbnail_hook": 3-5 word thumbnail text (e.g. "CONGRESS IS BUYING THIS")
+   - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["wall street trading floor", "stock market rally", "financial news"])
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap")
 

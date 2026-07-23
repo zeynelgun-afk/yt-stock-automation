@@ -139,6 +139,12 @@ def run_pipeline(video_type: str = "shorts"):
         abort_pipeline(f"Animated chart rendering failed: {e}")
         return
 
+    # 7.5 Fetch stock background video from Pexels if available
+    visual_keywords = script_data.get("visual_keywords", [])
+    if not visual_keywords:
+        visual_keywords = [f"{ticker} stock", "wall street trading", "stock market chart", "finance money"]
+    bg_video_path = ve.fetch_pexels_video(visual_keywords, is_shorts=is_shorts)
+
     thumbnail_path = ""
     if not is_shorts:
         thumbnail_path = str(TEMP_DIR / f"thumb_{timestamp}.png")
@@ -153,7 +159,7 @@ def run_pipeline(video_type: str = "shorts"):
     rendered_video_path = ve.render_video(
         audio_path, ass_path, f"render_{video_type}_{timestamp}.mp4",
         card_img_path=card_img_path, chart_video_path=chart_video_path,
-        is_shorts=is_shorts,
+        is_shorts=is_shorts, bg_video_path=bg_video_path,
     )
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")

@@ -2,6 +2,7 @@ import math
 import subprocess
 import logging
 import textwrap
+import requests
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -10,7 +11,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 
-from config import PEXELS_API_KEY, TEMP_DIR, OUTPUT_DIR, SHORTS_RES, LONG_RES
+from config import PEXELS_API_KEY, TEMP_DIR, OUTPUT_DIR, SHORTS_RES, LONG_RES, BASE_DIR
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,20 +68,87 @@ class VideoEngine:
     def __init__(self, pexels_key: str = PEXELS_API_KEY):
         self.pexels_key = pexels_key
 
+    # ------------------------------------------------------------------ pexels
+
+    def fetch_pexels_video(self, keywords: List[str], is_shorts: bool = True) -> Optional[str]:
+        """Fetches a relevant stock video background from Pexels API matching the keywords."""
+        if not self.pexels_key:
+            logger.info("PEXELS_API_KEY is not configured; using default background.")
+            return None
+        
+        orientation = "portrait" if is_shorts else "landscape"
+        for query in keywords:
+            try:
+                url = f"https://api.pexels.com/videos/search?query={query}&per_page=5&orientation={orientation}"
+                headers = {"Authorization": self.pexels_key}
+                resp = requests.get(url, headers=headers, timeout=10)
+                if resp.status_code != 200:
+                    logger.warning(f"Pexels API error {resp.status_code} for query: {query}")
+                    continue
+                data = resp.json()
+                videos = data.get("videos", [])
+                if not videos:
+                    continue
+                
+                # Pick the first video with HD quality
+                selected_url = None
+                for vf in videos[0].get("video_files", []):
+                    if vf.get("quality") == "hd":
+                        selected_url = vf.get("link")
+                        break
+                if not selected_url and videos[0].get("video_files"):
+                    selected_url = videos[0]["video_files"][0].get("link")
+
+                if not selected_url:
+                    continue
+
+                safe_name = "".join([c if c.isalnum() else "_" for c in query])
+                out_path = str(TEMP_DIR / f"pexels_{safe_name}_{'shorts' if is_shorts else 'long'}.mp4")
+                
+                logger.info(f"Downloading Pexels stock video for '{query}'...")
+                r = requests.get(selected_url, stream=True, timeout=30)
+                if r.status_code == 200:
+                    with open(out_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=16384):
+                            f.write(chunk)
+                    logger.info(f"Downloaded Pexels video clip: {out_path}")
+                    return out_path
+            except Exception as e:
+                logger.warning(f"Failed fetching Pexels video for '{query}': {e}")
+        return None
+
+    # ------------------------------------------------------------------ logo
+
+    def fetch_company_logo(self, symbol: str) -> Optional[str]:
+        """Fetches HD company logo PNG from Parqet API for the given stock symbol."""
+        symbol_clean = symbol.strip("^").upper()
+        out_path = str(TEMP_DIR / f"logo_{symbol_clean}.png")
+        if Path(out_path).exists():
+            return out_path
+        try:
+            url = f"https://assets.parqet.com/logos/symbol/{symbol_clean}"
+            r = requests.get(url, timeout=5)
+            if r.status_code == 200 and len(r.content) > 500:
+                with open(out_path, "wb") as f:
+                    f.write(r.content)
+                logger.info(f"Downloaded company logo for {symbol_clean}")
+                return out_path
+        except Exception as e:
+            logger.warning(f"Could not fetch logo for {symbol_clean}: {e}")
+        return None
+
     # ------------------------------------------------------------------ card
 
     def create_dashboard_overlay(self, title: str, ticker: str, change_pct: str,
                                  output_path: str, is_shorts: bool = True,
-                                 franchise_name: str = "") -> str:
-        """First-frame engineered stock card: the shock number IS the opening frame.
-
-        Huge ticker + huge colored change% readable before any speech starts —
-        no logo, no intro. The chart area is left empty; the animated chart
-        video is overlaid there by render_video().
+                                 franchise_name: str = "", logo_path: Optional[str] = None) -> str:
+        """Glassmorphism first-frame engineered stock card:
+        Translucent backdrop + glowing neon accents + high-contrast text overlay + HD Company Logo.
         """
         layout = _card_layout(is_shorts)
         width, height = layout["card_size"]
-        img = Image.new("RGBA", (width, height), (15, 23, 42, 242))
+        # Translucent RGBA dark slate background (80% opacity for glassmorphism overlay)
+        img = Image.new("RGBA", (width, height), (15, 23, 42, 205))
         draw = ImageDraw.Draw(img)
 
         pct = str(change_pct).lstrip("+")
@@ -88,14 +156,41 @@ class VideoEngine:
         change_color = (34, 197, 94, 255) if is_positive else (239, 68, 68, 255)
         change_text = f"{'+' if is_positive else ''}{pct}%"
 
-        draw.rectangle([0, 0, width - 1, height - 1], outline=(56, 189, 248, 255), width=6)
+        # Glass shine highlight line near top edge
+        draw.rectangle([10, 10, width - 10, 24], fill=(255, 255, 255, 20))
 
+        # Double glowing border frame
+        draw.rectangle([0, 0, width - 1, height - 1], outline=(56, 189, 248, 230), width=5)
+        draw.rectangle([5, 5, width - 6, height - 6], outline=(30, 41, 59, 200), width=3)
+
+        # Header Badge
         badge = "US STOCK MARKET DAILY" + (f"  •  {franchise_name.upper()}" if franchise_name else "")
-        draw.rectangle([36, 36, width - 36, 116], fill=(30, 41, 59, 255))
+        draw.rectangle([36, 36, width - 36, 116], fill=(30, 41, 59, 220), outline=(56, 189, 248, 120), width=2)
         badge_size = 30
         while badge_size > 16 and draw.textlength(badge, font=_font(badge_size)) > width - 112:
             badge_size -= 2
         draw.text((56, 76 - badge_size // 2), badge, font=_font(badge_size), fill=(56, 189, 248, 255))
+
+        # Paste company logo if available
+        if not logo_path:
+            logo_path = self.fetch_company_logo(ticker)
+        
+        if logo_path and Path(logo_path).exists():
+            try:
+                logo_img = Image.open(logo_path).convert("RGBA")
+                logo_size = (150, 150) if is_shorts else (120, 120)
+                logo_img = logo_img.resize(logo_size, Image.Resampling.LANCZOS)
+                
+                # Draw rounded white background badge for logo
+                lx = width - logo_size[0] - 56
+                ly = 150
+                badge_bg = Image.new("RGBA", logo_size, (255, 255, 255, 240))
+                img.paste(badge_bg, (lx, ly))
+                img.paste(logo_img, (lx, ly), logo_img)
+                draw.rectangle([lx - 2, ly - 2, lx + logo_size[0] + 2, ly + logo_size[1] + 2],
+                               outline=(56, 189, 248, 255), width=3)
+            except Exception as e:
+                logger.warning(f"Could not render logo image: {e}")
 
         if is_shorts:
             draw.text((48, 160), ticker, font=_font(190), fill=(248, 250, 252, 255))
@@ -115,7 +210,7 @@ class VideoEngine:
         # Subtle frame marking where the animated chart lands
         cx, cy, cw, ch = layout["chart_box"]
         draw.rectangle([cx - 2, cy - 2, cx + cw + 2, cy + ch + 2],
-                       outline=(51, 65, 85, 255), width=2)
+                       outline=(56, 189, 248, 180), width=2)
 
         img.save(output_path)
         return output_path
@@ -266,10 +361,10 @@ class VideoEngine:
 
     def render_video(self, audio_path: str, ass_sub_path: str, output_filename: str,
                      card_img_path: str, chart_video_path: Optional[str] = None,
-                     is_shorts: bool = True) -> str:
-        """Final MP4: animated dark gradient + stock card + left-to-right chart
-        animation + subtitles. Card and chart must be pre-rendered with the
-        video's actual ticker/change/candles."""
+                     is_shorts: bool = True, bg_video_path: Optional[str] = None) -> str:
+        """Final MP4: HD background (Pexels stock video or animated gradient) +
+        glassmorphism stock card + left-to-right chart animation + subtitles.
+        """
         out_video = str(OUTPUT_DIR / output_filename)
         width, height = SHORTS_RES if is_shorts else LONG_RES
 
@@ -287,48 +382,74 @@ class VideoEngine:
         chart_w = round(cw * scale) // 2 * 2   # libx264 needs even dims
         chart_h = round(ch * scale) // 2 * 2
 
-        gradient_src = (
-            f"gradients=s={width}x{height}:c0=0x0f172a:c1=0x1e3a5f:"
-            f"speed=0.08:rate=30"
-        )
-        solid_src = f"color=c=0x0f172a:s={width}x{height}:r=30"
-
-        # Inputs after the background: card [1], optional chart [2], audio [last]
+        # Track FFmpeg input indices precisely
+        cur_idx = 1  # 0 is reserved for background video/gradient
+        card_idx = cur_idx
         tail_inputs = ["-i", card_img_path]
+        cur_idx += 1
+
         if chart_video_path:
             tail_inputs += ["-i", chart_video_path]
-            audio_idx = 3
+            chart_idx = cur_idx
+            cur_idx += 1
             chart_chain = (
-                f"[2:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
+                f"[{chart_idx}:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
                 f"[v1][chart]overlay={chart_x}:{chart_y}[v2]; "
             )
         else:
-            audio_idx = 2
             chart_chain = "[v1]null[v2]; "
-        tail_inputs += ["-i", audio_path]
 
-        # Continuous slow push-in (Ken Burns) on everything except subtitles —
-        # a perfectly static frame reads as a still image and kills retention
+        tail_inputs += ["-i", audio_path]
+        audio_idx = cur_idx
+        cur_idx += 1
+
+        # Check for background music and SFX audio assets
+        bg_music_file = BASE_DIR / "assets" / "music" / "bg_music.wav"
+        whoosh_file = BASE_DIR / "assets" / "sfx" / "whoosh.wav"
+
+        audio_mix_filter = ""
+        audio_map = f"{audio_idx}:a"
+
+        if bg_music_file.exists():
+            tail_inputs += ["-stream_loop", "-1", "-i", str(bg_music_file)]
+            music_idx = cur_idx
+            cur_idx += 1
+            if whoosh_file.exists():
+                tail_inputs += ["-i", str(whoosh_file)]
+                whoosh_idx = cur_idx
+                cur_idx += 1
+                audio_mix_filter = (
+                    f"; [{music_idx}:a]volume=0.08[bgm]; "
+                    f"[{whoosh_idx}:a]adelay=4000|4000[sfx1]; "
+                    f"[{audio_idx}:a][bgm][sfx1]amix=inputs=3:duration=first[outa]"
+                )
+            else:
+                audio_mix_filter = (
+                    f"; [{music_idx}:a]volume=0.08[bgm]; "
+                    f"[{audio_idx}:a][bgm]amix=inputs=2:duration=first[outa]"
+                )
+            audio_map = "[outa]"
+
         zoom = (
             f"zoompan=z='min(1+0.00008*on,1.10)':d=1:"
             f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps=30"
         )
         filter_complex = (
-            f"[0:v]scale={width}:{height},fps=30[bg]; "
-            f"[1:v]scale={scaled_w}:-1[card]; "
+            f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30[bg]; "
+            f"[{card_idx}:v]scale={scaled_w}:-1[card]; "
             f"[bg][card]overlay={card_x}:{card_y}[v1]; "
             f"{chart_chain}"
             f"[v2]{zoom}[v3]; "
             f"[v3]ass={ass_sub_path}[outv]"
         )
 
-        def build_cmd(bg_src: str) -> List[str]:
+        def build_cmd(bg_inputs: List[str], custom_filter: str) -> List[str]:
             return [
                 "ffmpeg", "-y",
-                "-f", "lavfi", "-i", bg_src,
+                *bg_inputs,
                 *tail_inputs,
-                "-filter_complex", filter_complex,
-                "-map", "[outv]", "-map", f"{audio_idx}:a",
+                "-filter_complex", custom_filter + audio_mix_filter,
+                "-map", "[outv]", "-map", audio_map,
                 "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "192k",
                 "-shortest", "-t", "900",
@@ -336,14 +457,50 @@ class VideoEngine:
             ]
 
         logger.info(f"Rendering video to: {out_video}")
-        result = subprocess.run(build_cmd(gradient_src), capture_output=True, text=True)
+
+        # Try Pexels background video first if available
+        if bg_video_path and Path(bg_video_path).exists():
+            logger.info(f"Using Pexels background video: {bg_video_path}")
+            bg_inputs = ["-stream_loop", "-1", "-i", bg_video_path]
+            # Multi-Scene Timeline Cut:
+            # - 0.0s to 4.0s: Shock Opening Card + Logo + Background Video
+            # - 4.0s to 15.0s: Pure Cinematic Full-Screen B-Roll Stock Footage (Card & chart hidden for dynamic scene change)
+            # - 15.0s+: Card + Animated Matplotlib Live Chart + Summary
+            if chart_video_path:
+                chart_chain = (
+                    f"[{chart_idx}:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
+                    f"[v1][chart]overlay={chart_x}:{chart_y}:enable='between(t,0,4)+between(t,15,999)'[v2]; "
+                )
+            video_filter = (
+                f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30,"
+                f"boxblur=5:2,eq=brightness=-0.25:contrast=1.1:saturation=1.2[bg]; "
+                f"[{card_idx}:v]scale={scaled_w}:-1[card]; "
+                f"[bg][card]overlay={card_x}:{card_y}:enable='between(t,0,4)+between(t,15,999)'[v1]; "
+                f"{chart_chain}"
+                f"[v2]{zoom}[v3]; "
+                f"[v3]ass={ass_sub_path}[outv]"
+            )
+            result = subprocess.run(build_cmd(bg_inputs, video_filter), capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info("Video render with Pexels background & Multi-Scene Cuts completed successfully!")
+                return out_video
+            logger.warning(f"Pexels background render failed, falling back to gradient: {result.stderr[-400:]}")
+
+        # Gradient fallback
+        gradient_src = (
+            f"gradients=s={width}x{height}:c0=0x0f172a:c1=0x1e3a5f:"
+            f"speed=0.08:rate=30"
+        )
+        bg_inputs = ["-f", "lavfi", "-i", gradient_src]
+        result = subprocess.run(build_cmd(bg_inputs, filter_complex), capture_output=True, text=True)
         if result.returncode == 0:
-            logger.info("Video render completed successfully!")
+            logger.info("Video render with gradient completed successfully!")
             return out_video
 
-        logger.error(f"FFmpeg render error: {result.stderr[-800:]}")
-        # Fallback: solid dark background if the gradients filter is unavailable
-        fb = subprocess.run(build_cmd(solid_src), capture_output=True, text=True)
+        # Solid fallback
+        solid_src = f"color=c=0x0f172a:s={width}x{height}:r=30"
+        bg_inputs = ["-f", "lavfi", "-i", solid_src]
+        fb = subprocess.run(build_cmd(bg_inputs, filter_complex), capture_output=True, text=True)
         if fb.returncode != 0:
             logger.error(f"Fallback render also failed: {fb.stderr[-800:]}")
             return ""
@@ -353,3 +510,4 @@ class VideoEngine:
 if __name__ == "__main__":
     ve = VideoEngine()
     print("Video Engine initialized.")
+

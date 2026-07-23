@@ -15,10 +15,11 @@ class SubtitleGenerator:
             logger.error(f"SRT file not found: {srt_file_path}")
             return ""
 
-        # ASS Header with Custom Fonts & Colors (Yellow highlight on dark shadow)
-        # Alignment=2 (bottom-center) for long, Alignment=5 (middle-center) for Shorts
-        alignment = 5 if is_shorts else 2
-        font_size = 48 if is_shorts else 32
+        # ASS Header with Custom Fonts & Colors (Vibrant Yellow text on dark shadow)
+        # Alignment=2 (bottom-center) for all, MarginV=240 for Shorts to avoid YT overlay UI
+        alignment = 2
+        font_size = 56 if is_shorts else 36
+        margin_v = 240 if is_shorts else 60
         
         ass_header = f"""[Script Info]
 Title: US Stock Market Daily Subtitles
@@ -29,7 +30,7 @@ YCbCr Matrix: None
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial Black,{font_size},&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,2,{alignment},20,20,100,1
+Style: Default,DejaVu Sans,{font_size},&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,{alignment},20,20,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -44,23 +45,37 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             dialogues = []
             for m in matches:
-                start_time = m[1].replace(',', '.')[:10]  # Format: 00:00:00.00
-                end_time = m[2].replace(',', '.')[:10]
+                start_raw = m[1]
+                end_raw = m[2]
                 text = m[3].replace('\n', ' ').strip().upper()
-                
-                # Format ASS timestamp (H:MM:SS.cs)
-                start_ass = f"{start_time[1:8]}.{start_time[8:10]}"
-                end_ass = f"{end_time[1:8]}.{end_time[8:10]}"
-                
-                # Highlight active text in vibrant yellow &H0000FFFF
-                styled_text = f"{{\\c&H0000FFFF&}}{text}{{\\r}}"
+
+                # Parse timestamps
+                def to_sec(ts: str) -> float:
+                    parts = ts.replace(',', '.').split(':')
+                    return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+
+                st_sec = to_sec(start_raw)
+                et_sec = to_sec(end_raw)
+                dur_sec = max(0.2, et_sec - st_sec)
+
+                start_ass = f"{m[1].replace(',', '.')[:7]}.{m[1].replace(',', '.')[8:10]}"
+                end_ass = f"{m[2].replace(',', '.')[:7]}.{m[2].replace(',', '.')[8:10]}"
+
+                words = text.split()
+                if words:
+                    w_cs = max(6, int((dur_sec * 100) / len(words)))
+                    k_words = [f"{{\\k{w_cs}}}{w}" for w in words]
+                    styled_text = " ".join(k_words)
+                else:
+                    styled_text = f"{{\\c&H0000FFFF&}}{text}{{\\r}}"
+
                 line = f"Dialogue: 0,{start_ass},{end_ass},Default,,0,0,0,,{styled_text}"
                 dialogues.append(line)
 
             with open(ass_output_path, "w", encoding="utf-8") as f:
                 f.write(ass_header + "\n".join(dialogues))
 
-            logger.info(f"ASS subtitles created: {ass_output_path}")
+            logger.info(f"Hormozi animated ASS subtitles created: {ass_output_path}")
             return ass_output_path
         except Exception as e:
             logger.error(f"Error converting SRT to ASS: {e}")
