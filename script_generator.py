@@ -2,7 +2,7 @@ import requests
 import json
 import logging
 from typing import Dict, Any
-from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
+from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, PATTERNS_FILE
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -11,6 +11,24 @@ logger = logging.getLogger(__name__)
 class ScriptGenerationError(Exception):
     """Raised when no LLM could produce a script. The pipeline must stop —
     publishing a canned template script would be fake content."""
+
+
+def _packaging_patterns_block() -> str:
+    """This week's proven packaging patterns from the outlier scanner (Faz 2.5).
+    Structure-only guidance — empty string if no scan has run yet."""
+    try:
+        if PATTERNS_FILE.exists():
+            p = json.loads(PATTERNS_FILE.read_text())
+            titles = p.get("title_patterns", [])[:5]
+            hooks = p.get("hook_patterns", [])[:3]
+            if titles or hooks:
+                lines = ["PROVEN PACKAGING THIS WEEK (structural patterns only — NEVER copy a real title):"]
+                lines += [f"- Title shape: {t}" for t in titles]
+                lines += [f"- Hook shape: {h}" for h in hooks]
+                return "\n" + "\n".join(lines) + "\n"
+    except Exception as e:
+        logger.warning(f"Could not load packaging patterns: {e}")
+    return ""
 
 
 class ScriptGenerator:
@@ -41,7 +59,7 @@ HOOK — the first sentence decides whether the viewer swipes away. Use one of t
 - Curiosity gap: "This chart predicted the last 3 crashes — it just flashed again."
 - Direct question: "Why is a US senator suddenly buying this stock?"
 - Specific shock number up front: "$4.7 million. That's what one insider just bet."
-
+{_packaging_patterns_block()}
 RULES:
 1. Word count: MUST BE BETWEEN 110 AND 130 WORDS (approx 45 seconds of natural speech).
 2. Use specific, unrounded numbers from the data ("$4.7M", "23%") — never vague words like "millions" or "a lot".
@@ -77,7 +95,7 @@ STRUCTURE (follow in order):
 5. EARNINGS: today's surprises (estimate vs actual) and what's on deck this week.
 6. WHAT TO WATCH TOMORROW: economic events and earnings from the data, each with why it can move the market.
 7. OUTRO: one-sentence recap of the day's theme + short subscribe CTA (max 10 words).
-
+{_packaging_patterns_block()}
 RULES:
 - Word count: 1100 to 1300 words (8+ minutes of natural speech). This is a HARD requirement.
 - Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.

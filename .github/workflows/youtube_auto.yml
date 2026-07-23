@@ -70,12 +70,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
           case "$MODE" in
             analytics)
               python -c "from youtube_publisher import YouTubePublisher; YouTubePublisher()"  # materialize token.json from env
               python -c "from analytics_reporter import send_weekly_report; send_weekly_report()"
+              python -c "from outlier_scanner import run_weekly_scan; run_weekly_scan()"
               ;;
             event-shorts)
               if python main_scheduler.py event-check; then

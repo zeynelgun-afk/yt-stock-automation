@@ -17,6 +17,12 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 YOUTUBE_CLIENT_SECRET_FILE = os.getenv("YOUTUBE_CLIENT_SECRET_FILE", "client_secret.json")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")  # Data API key (outlier scanner)
+
+# Persistent data (learned packaging patterns, etc.)
+DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+PATTERNS_FILE = DATA_DIR / "packaging_patterns.json"
 
 # Directory Paths
 OUTPUT_DIR = BASE_DIR / "output"
