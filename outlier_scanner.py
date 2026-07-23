@@ -64,7 +64,8 @@ def _build_client():
 
 def scan_outliers() -> List[Dict[str, Any]]:
     yt = _build_client()
-    published_after = (datetime.utcnow() - timedelta(days=LOOKBACK_DAYS)) \
+    from datetime import timezone
+    published_after = (datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)) \
         .strftime("%Y-%m-%dT%H:%M:%SZ")
 
     video_ids: List[str] = []
@@ -72,7 +73,8 @@ def scan_outliers() -> List[Dict[str, Any]]:
         try:
             res = yt.search().list(
                 q=q, part="id", type="video", maxResults=25,
-                publishedAfter=published_after, relevanceLanguage="en", order="viewCount",
+                publishedAfter=published_after, relevanceLanguage="en",
+                regionCode="US", order="viewCount",
             ).execute()
             video_ids += [it["id"]["videoId"] for it in res.get("items", [])]
         except Exception as e:
@@ -84,7 +86,8 @@ def scan_outliers() -> List[Dict[str, Any]]:
     videos: List[Dict[str, Any]] = []
     for i in range(0, len(video_ids), 50):
         res = yt.videos().list(
-            part="statistics,snippet,contentDetails", id=",".join(video_ids[i:i + 50])
+            part="statistics,snippet,contentDetails,liveStreamingDetails",
+            id=",".join(video_ids[i:i + 50]),
         ).execute()
         videos += res.get("items", [])
 
@@ -98,11 +101,26 @@ def scan_outliers() -> List[Dict[str, Any]]:
             channel_avg[ch["id"]] = (int(st.get("viewCount") or 0) / n) if n else 0.0
 
     outliers = []
+    per_channel: Dict[str, int] = {}
     for v in videos:
         views = int(v.get("statistics", {}).get("viewCount") or 0)
         avg = channel_avg.get(v["snippet"]["channelId"], 0.0)
         if views < MIN_VIEWS or not avg or views < OUTLIER_RATIO * avg:
             continue
+        # Live-stream VODs (Zee Business "First Trade" etc.) rack up views as
+        # recurring broadcasts, not packaging — nothing transferable to model
+        if "liveStreamingDetails" in v:
+            continue
+        title = v["snippet"]["title"]
+        # Model the US/English niche only
+        if sum(ord(c) > 127 for c in title) > len(title) * 0.2:
+            continue
+        # A channel with many simultaneous "outliers" is just a big channel
+        # burying the signal — cap so patterns stay diverse
+        ch = v["snippet"]["channelId"]
+        if per_channel.get(ch, 0) >= 3:
+            continue
+        per_channel[ch] = per_channel.get(ch, 0) + 1
         outliers.append({
             "title": v["snippet"]["title"],
             "views": views,
