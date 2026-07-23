@@ -14,6 +14,22 @@ class TelegramApprovalBot:
         self.chat_id = chat_id
         self.api_url = f"https://api.telegram.org/bot{self.token}"
 
+    def send_text(self, message: str) -> bool:
+        """Sends a plain text notification (e.g. pipeline failure alerts)."""
+        if not self.token or not self.chat_id:
+            logger.warning("Telegram not configured; cannot send text notification.")
+            return False
+        try:
+            res = requests.post(
+                f"{self.api_url}/sendMessage",
+                json={"chat_id": self.chat_id, "text": message},
+                timeout=15,
+            )
+            return res.status_code == 200
+        except Exception as e:
+            logger.error(f"Telegram sendMessage error: {e}")
+            return False
+
     def send_video_and_wait_for_approval(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, timeout_seconds: int = 300) -> bool:
         """Sends the rendered video file to Telegram and waits for user's inline button response."""
         if not self.token or not self.chat_id:

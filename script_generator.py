@@ -7,6 +7,12 @@ from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+class ScriptGenerationError(Exception):
+    """Raised when no LLM could produce a script. The pipeline must stop —
+    publishing a canned template script would be fake content."""
+
+
 class ScriptGenerator:
     def __init__(self, openrouter_key: str = OPENROUTER_API_KEY, gemini_key: str = GEMINI_API_KEY, groq_key: str = GROQ_API_KEY):
         self.openrouter_key = openrouter_key
@@ -105,23 +111,10 @@ RULES:
                 except Exception as e:
                     logger.error(f"OpenRouter model {model_name} error: {e}")
 
-        # Fallback template if APIs are unavailable
-        logger.warning("Using fallback script generator template.")
-        return {
-            "title": f"US Stock Market Alert: {default_title}",
-            "description": "Daily US Stock Market updates, top gainers, and Wall Street analysis.",
-            "hook": "Wall Street just delivered a massive shock to investors today!",
-            "full_script": (
-                "Wall Street just delivered a massive shock to investors today! "
-                "Tech stocks like Nvidia and Tesla saw huge volume spikes, while market sentiment shifted rapidly. "
-                "The Fear and Greed Index is currently signaling high activity as traders digest the latest economic data. "
-                "Are you holding these top movers or taking profits before tomorrow's opening bell? "
-                "Subscribe to US Stock Market Daily for real-time market updates every single day!"
-            ),
-            "ticker": "NVDA",
-            "change_pct": "+6.85",
-            "tags": ["stocks", "investing", "nvidia", "tesla", "finance", "wallstreet"]
-        }
+        raise ScriptGenerationError(
+            f"All OpenRouter models failed to generate a script for '{default_title}'. "
+            "Aborting instead of publishing a canned template."
+        )
 
 if __name__ == "__main__":
     sg = ScriptGenerator()

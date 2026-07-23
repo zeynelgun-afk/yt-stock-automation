@@ -10,3 +10,4 @@ __pycache__/
 *.ass
 client_secret.json
 token.json
+.claude/
