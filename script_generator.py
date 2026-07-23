@@ -59,29 +59,38 @@ RULES:
         return self._call_llm(prompt, default_title=topic)
 
     def generate_long_script(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generates a 3-minute (450-550 words) detailed English Daily Market Recap script."""
-        prompt = f"""You are the lead financial anchor of "US Stock Market Daily". Write a comprehensive 3-minute Daily Market Recap script.
+        """Generates an 8+ minute (1100-1300 words) Daily Market Recap script.
+
+        8+ minutes unlocks mid-roll ads — the long recap is the channel's
+        revenue engine, the Shorts are the reach funnel."""
+        prompt = f"""You are the lead financial anchor of "US Stock Market Daily". Write a comprehensive Daily Market Recap script for an 8-10 minute video.
+Positioning: data-first, zero hype — real numbers, real reasons, original analysis (never a news-summary rehash).
 
 Data Provided:
-{json.dumps(market_data, indent=2)}
+{json.dumps(market_data, indent=2, default=str)}
 
-STRUCTURE:
-1. HOOK & MARKET SUMMARY (S&P 500, Nasdaq, Market Sentiment / Fear & Greed)
-2. TOP GAINERS & LOSERS BREAKDOWN
-3. HOT NEWS & INSIDER MOVES
-4. WHAT TO WATCH TOMORROW & OUTRO
+STRUCTURE (follow in order):
+1. COLD-OPEN HOOK: the single most shocking number of the day, then a one-line promise of what's coming.
+2. MARKET SUMMARY: S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
+3. THE 3 BIG STORIES OF THE DAY: pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors.
+4. CONGRESS & INSIDER CORNER: notable congressional trades and insider buys/sells from the data — names, amounts, dates.
+5. EARNINGS: today's surprises (estimate vs actual) and what's on deck this week.
+6. WHAT TO WATCH TOMORROW: economic events and earnings from the data, each with why it can move the market.
+7. OUTRO: one-sentence recap of the day's theme + short subscribe CTA (max 10 words).
 
 RULES:
-- Word count: 450 to 550 words.
-- ONLY output spoken script text. No stage directions or visual cues.
-- Tone: Professional, fast-paced, insightful Wall-Street level analysis.
+- Word count: 1100 to 1300 words (8+ minutes of natural speech). This is a HARD requirement.
+- Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.
+- ONLY output spoken script text. No stage directions, section headers, or visual cues in full_script.
+- Tone: Professional, fast-paced, insightful Wall-Street level analysis with original interpretation.
 - Return strictly valid JSON format with keys:
-   - "title": Video title
-   - "description": Comprehensive YouTube description with hashtags
+   - "title": Video title (40-60 chars, keyword first, specific numbers)
+   - "description": Comprehensive YouTube description with hashtags and a data-source transparency line ("Data: Financial Modeling Prep, CNN Fear & Greed")
    - "full_script": Spoken text only
    - "ticker": Main ticker discussed
    - "change_pct": Percent change string
    - "tags": Array of tags
+   - "thumbnail_hook": 3-5 word thumbnail text (e.g. "CONGRESS IS BUYING THIS")
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap")
 

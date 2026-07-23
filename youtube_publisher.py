@@ -35,7 +35,7 @@ class YouTubePublisher:
                 except Exception as e:
                     logger.error(f"Failed to write token.json: {e}")
 
-    def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public") -> str:
+    def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public", thumbnail_path: str = "") -> str:
         """Uploads video to YouTube channel using YouTube Data API v3 and OAuth 2.0."""
         if not self.client_secret_path.exists():
             logger.warning(f"YouTube client_secret.json missing at {self.client_secret_path}. Skipping live YouTube upload.")
@@ -92,6 +92,18 @@ class YouTubePublisher:
             response = request.execute()
             video_id = response.get("id")
             logger.info(f"Successfully uploaded! Video URL: https://youtu.be/{video_id}")
+
+            if thumbnail_path and Path(thumbnail_path).exists():
+                try:
+                    youtube.thumbnails().set(
+                        videoId=video_id,
+                        media_body=MediaFileUpload(thumbnail_path)
+                    ).execute()
+                    logger.info("Custom thumbnail set.")
+                except Exception as e:
+                    # Non-fatal: video is live, YouTube just keeps an auto-frame
+                    logger.warning(f"Thumbnail upload failed: {e}")
+
             return video_id
         except Exception as e:
             logger.error(f"YouTube Upload Failed: {e}")

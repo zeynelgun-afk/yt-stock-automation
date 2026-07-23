@@ -99,21 +99,41 @@ def run_pipeline(video_type: str = "shorts"):
         srt_path, srt_path.replace('.srt', '.ass'), is_shorts=is_shorts
     ))
 
-    # 7. Render video with the real ticker card + real chart
+    # 7. Render video: first-frame card + animated real chart + subtitles
     ve = VideoEngine()
     card_img_path = str(TEMP_DIR / f"card_{timestamp}.png")
     ve.create_dashboard_overlay(
         title=script_data["title"],
         ticker=ticker,
         change_pct=change_pct,
-        intraday=intraday,
         output_path=card_img_path,
         is_shorts=is_shorts,
+        franchise_name=story["franchise_name"],
     )
+
+    try:
+        chart_video_path = ve.create_animated_chart(
+            ticker, intraday, str(TEMP_DIR / f"chart_{timestamp}.mp4")
+        )
+    except RuntimeError as e:
+        abort_pipeline(f"Animated chart rendering failed: {e}")
+        return
+
+    thumbnail_path = ""
+    if not is_shorts:
+        thumbnail_path = str(TEMP_DIR / f"thumb_{timestamp}.png")
+        ve.create_thumbnail(
+            ticker=ticker,
+            change_pct=change_pct,
+            hook_words=script_data.get("thumbnail_hook", script_data["title"]),
+            intraday=intraday,
+            output_path=thumbnail_path,
+        )
 
     rendered_video_path = ve.render_video(
         audio_path, ass_path, f"render_{video_type}_{timestamp}.mp4",
-        card_img_path=card_img_path, is_shorts=is_shorts,
+        card_img_path=card_img_path, chart_video_path=chart_video_path,
+        is_shorts=is_shorts,
     )
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")
@@ -139,6 +159,7 @@ def run_pipeline(video_type: str = "shorts"):
             description=script_data.get("description", script_data["full_script"]),
             tags=script_data.get("tags", ["stocks", "finance"]),
             is_shorts=is_shorts,
+            thumbnail_path=thumbnail_path,
         )
         logger.info(f"Published to YouTube! Video ID: {video_id}")
     else:
