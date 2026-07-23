@@ -31,21 +31,24 @@ def run_pipeline(video_type: str = "shorts"):
     market_summary = f"Top Gainer: {top_gainer_symbol} (+{top_gainer_change:.2f}%). Fear/Greed Score: {fear_greed['score']} ({fear_greed['rating']}). News: {news_title}"
     logger.info(f"Market Summary Data: {market_summary}")
 
-    # 2. Generate LLM Script
+    # 2. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
     sg = ScriptGenerator()
     if is_shorts:
         script_data = sg.generate_shorts_script(topic="US Stock Market Daily Movement", data_summary=market_summary)
     else:
         script_data = sg.generate_long_script(market_data={"gainers": gainers, "fear_greed": fear_greed, "news": news})
 
+    ticker = script_data.get("ticker", top_gainer_symbol)
+    change_pct = str(script_data.get("change_pct", f"+{top_gainer_change:.2f}"))
+
     logger.info(f"Generated Title: {script_data['title']}")
+    logger.info(f"DeepSeek Script Text: {script_data['full_script'][:100]}...")
 
     # 3. Generate Audio Voiceover (Edge-TTS)
     vg = VoiceGenerator()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     audio_file = f"voice_{timestamp}.mp3"
     srt_file = f"sub_{timestamp}.srt"
-    ass_file = f"sub_{timestamp}.ass"
     
     audio_path, srt_path = vg.generate_audio(script_data["full_script"], audio_file, srt_file)
     if not audio_path:
@@ -55,8 +58,16 @@ def run_pipeline(video_type: str = "shorts"):
     # 4. Generate Subtitles
     ass_path = str(SubtitleGenerator.srt_to_ass(srt_path, srt_path.replace('.srt', '.ass'), is_shorts=is_shorts))
 
-    # 5. Render Video
+    # 5. Render Video with Dynamic DeepSeek Ticker Card Overlay
     ve = VideoEngine()
+    card_img_path = str(ve.create_dashboard_overlay(
+        title=script_data["title"],
+        ticker=ticker,
+        change_pct=change_pct,
+        output_path=str(ve.create_stock_chart_image(ticker)),
+        is_shorts=is_shorts
+    ))
+
     video_name = f"render_{video_type}_{timestamp}.mp4"
     rendered_video_path = ve.render_video(audio_path, ass_path, video_name, is_shorts=is_shorts)
 
