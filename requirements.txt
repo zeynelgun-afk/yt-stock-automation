@@ -2,6 +2,8 @@ python-dotenv
 requests
 edge-tts
 pillow
+numpy
+matplotlib
 google-generativeai
 python-telegram-bot
 google-api-python-client
