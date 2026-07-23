@@ -48,19 +48,25 @@ class YouTubePublisher:
             from google.oauth2.credentials import Credentials
             from google.auth.transport.requests import Request
 
+            UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
             # readonly + analytics ride along so one OAuth consent also covers
-            # the analytics feedback loop (analytics_reporter.py)
+            # the analytics feedback loop (analytics_reporter.py). Only used for
+            # NEW consent flows — an existing token keeps its granted scopes,
+            # forcing the new list onto it would make refresh fail (invalid_scope).
             SCOPES = [
-                "https://www.googleapis.com/auth/youtube.upload",
+                UPLOAD_SCOPE,
                 "https://www.googleapis.com/auth/youtube.readonly",
                 "https://www.googleapis.com/auth/yt-analytics.readonly",
             ]
             creds = None
 
-            # Load saved OAuth token if available
+            # Load saved OAuth token with the scopes it was actually granted
             if self.token_path.exists():
                 try:
-                    creds = Credentials.from_authorized_user_file(str(self.token_path), SCOPES)
+                    creds = Credentials.from_authorized_user_file(str(self.token_path))
+                    if UPLOAD_SCOPE not in (creds.scopes or []):
+                        logger.warning("token.json lacks the upload scope; re-consent needed.")
+                        creds = None
                 except Exception as e:
                     logger.warning(f"Failed to load token.json: {e}")
 

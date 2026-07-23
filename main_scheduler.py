@@ -161,7 +161,15 @@ def run_pipeline(video_type: str = "shorts"):
             is_shorts=is_shorts,
             thumbnail_path=thumbnail_path,
         )
-        logger.info(f"Published to YouTube! Video ID: {video_id}")
+        if video_id:
+            logger.info(f"Published to YouTube! Video ID: {video_id}")
+            bot.send_text(f"✅ Yayında: https://youtu.be/{video_id}")
+        else:
+            logger.error("YouTube upload failed after approval.")
+            bot.send_text(
+                "🚨 Video ONAYLANDI ama YouTube yüklemesi BAŞARISIZ oldu. "
+                f"Dosya: {rendered_video_path}"
+            )
     else:
         logger.warning("Video was not approved or approval timed out.")
 
