@@ -7,6 +7,7 @@ from voice_generator import VoiceGenerator
 from subtitle_generator import SubtitleGenerator
 from video_engine import VideoEngine
 from telegram_bot import TelegramApprovalBot
+from youtube_publisher import YouTubePublisher
 from config import SCHEDULE_TIMES_TSI
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -63,11 +64,32 @@ def run_pipeline(video_type: str = "shorts"):
         logger.error("Video rendering failed.")
         return
 
-    # 6. Telegram Approval
+    # 6. Telegram Approval & Live Listener
     bot = TelegramApprovalBot()
-    sent = bot.send_video_for_approval(rendered_video_path, script_data["title"], script_data.get("description", script_data["full_script"]), is_shorts=is_shorts)
+    approved = bot.send_video_and_wait_for_approval(
+        video_path=rendered_video_path,
+        title=script_data["title"],
+        description=script_data.get("description", script_data["full_script"]),
+        tags=script_data.get("tags", ["stocks", "finance"]),
+        is_shorts=is_shorts,
+        timeout_seconds=300
+    )
 
-    logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Telegram Notification Sent: {sent} ===")
+    if approved:
+        logger.info("Video approved by user! Publishing to YouTube...")
+        yp = YouTubePublisher()
+        video_id = yp.upload_video(
+            video_path=rendered_video_path,
+            title=script_data["title"],
+            description=script_data.get("description", script_data["full_script"]),
+            tags=script_data.get("tags", ["stocks", "finance"]),
+            is_shorts=is_shorts
+        )
+        logger.info(f"Published to YouTube! Video ID: {video_id}")
+    else:
+        logger.warning("Video was not approved or approval timed out.")
+
+    logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Approved: {approved} ===")
 
 if __name__ == "__main__":
     logger.info("Starting Youtube Stock Automation Engine...")
