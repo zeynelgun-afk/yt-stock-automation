@@ -30,6 +30,34 @@ class TelegramApprovalBot:
             logger.error(f"Telegram sendMessage error: {e}")
             return False
 
+    def send_video_notification(self, video_path: str, title: str, is_shorts: bool = True) -> bool:
+        """Sends the rendered video to Telegram as an FYI — no buttons, no waiting.
+
+        The pipeline publishes regardless of the outcome; a Telegram failure
+        must never block a YouTube upload.
+        """
+        if not self.token or not self.chat_id:
+            logger.warning("Telegram BOT Token or Chat ID not configured. Skipping notification.")
+            return False
+
+        caption = f"🎬 **{'SHORTS' if is_shorts else 'LONG RECAP'} — YouTube'a yükleniyor**\n\n" \
+                  f"📌 **Title:** {title}"
+        try:
+            with open(video_path, "rb") as video_file:
+                res = requests.post(
+                    f"{self.api_url}/sendVideo",
+                    data={"chat_id": self.chat_id, "caption": caption, "parse_mode": "Markdown"},
+                    files={"video": video_file},
+                    timeout=120,
+                )
+            if res.status_code != 200:
+                logger.error(f"Failed to send video to Telegram: {res.text}")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Telegram send error: {e}")
+            return False
+
     def send_video_and_wait_for_approval(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, timeout_seconds: int = 300) -> bool:
         """Sends the rendered video file to Telegram and waits for user's inline button response."""
         if not self.token or not self.chat_id:

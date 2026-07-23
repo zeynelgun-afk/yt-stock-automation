@@ -139,41 +139,31 @@ def run_pipeline(video_type: str = "shorts"):
         abort_pipeline("Video rendering failed.")
         return
 
-    # 8. Telegram Approval & Live Listener
+    # 8. Telegram notification (FYI only) + direct YouTube upload
     bot = TelegramApprovalBot()
-    approved = bot.send_video_and_wait_for_approval(
+    bot.send_video_notification(
+        video_path=rendered_video_path,
+        title=script_data["title"],
+        is_shorts=is_shorts,
+    )
+
+    yp = YouTubePublisher()
+    video_id = yp.upload_video(
         video_path=rendered_video_path,
         title=script_data["title"],
         description=script_data.get("description", script_data["full_script"]),
         tags=script_data.get("tags", ["stocks", "finance"]),
         is_shorts=is_shorts,
-        timeout_seconds=300,
+        thumbnail_path=thumbnail_path,
     )
-
-    if approved:
-        logger.info("Video approved by user! Publishing to YouTube...")
-        yp = YouTubePublisher()
-        video_id = yp.upload_video(
-            video_path=rendered_video_path,
-            title=script_data["title"],
-            description=script_data.get("description", script_data["full_script"]),
-            tags=script_data.get("tags", ["stocks", "finance"]),
-            is_shorts=is_shorts,
-            thumbnail_path=thumbnail_path,
-        )
-        if video_id:
-            logger.info(f"Published to YouTube! Video ID: {video_id}")
-            bot.send_text(f"✅ Yayında: https://youtu.be/{video_id}")
-        else:
-            logger.error("YouTube upload failed after approval.")
-            bot.send_text(
-                "🚨 Video ONAYLANDI ama YouTube yüklemesi BAŞARISIZ oldu. "
-                f"Dosya: {rendered_video_path}"
-            )
+    if video_id:
+        logger.info(f"Published to YouTube! Video ID: {video_id}")
+        bot.send_text(f"✅ Yayında: https://youtu.be/{video_id}")
     else:
-        logger.warning("Video was not approved or approval timed out.")
+        logger.error("YouTube upload failed.")
+        bot.send_text(f"🚨 YouTube yüklemesi BAŞARISIZ oldu. Dosya: {rendered_video_path}")
 
-    logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Approved: {approved} ===")
+    logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Uploaded: {bool(video_id)} ===")
 
 
 def is_event_day() -> tuple[bool, str]:
