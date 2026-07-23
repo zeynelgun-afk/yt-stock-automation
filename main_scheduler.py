@@ -1,7 +1,10 @@
+import json
 import logging
 from datetime import datetime
 
 from data_fetcher import FMPDataFetcher, FMPDataError
+from story_pool import StoryPoolCollector, summarize_pool, compact_pool
+from story_selector import StorySelector
 from script_generator import ScriptGenerator, ScriptGenerationError
 from voice_generator import VoiceGenerator
 from subtitle_generator import SubtitleGenerator
@@ -25,71 +28,63 @@ def run_pipeline(video_type: str = "shorts"):
     is_shorts = (video_type == "shorts")
     logger.info(f"=== STARTING AUTOMATED PIPELINE: {video_type.upper()} ===")
 
-    # 1. Fetch LIVE market data — abort on any failure, no fake fallbacks
+    # 1. Collect the day's story pool — backbone failures abort, no fake fallbacks
     try:
         fetcher = FMPDataFetcher()
-        gainers = fetcher.get_top_gainers()
-        losers = fetcher.get_top_losers()
-        indexes = fetcher.get_index_quotes()
-        news = fetcher.get_market_news()
+        pool = StoryPoolCollector(fetcher).collect()
     except FMPDataError as e:
         abort_pipeline(str(e))
         return
+    logger.info("Story pool collected:\n" + summarize_pool(pool))
 
-    fear_greed = fetcher.get_fear_greed_index()  # optional; None if unavailable
-
-    top_gainer = gainers[0]
-    top_gainer_symbol = top_gainer["symbol"]
-    top_gainer_change = float(top_gainer.get("changesPercentage", 0.0))
-
-    index_summary = ", ".join(
-        f"{q['symbol']}: {q.get('price')} ({q.get('changePercentage', 0):+.2f}%)"
-        for q in indexes
-    )
-    fg_summary = (
-        f"Fear/Greed Score: {fear_greed['score']} ({fear_greed['rating']})"
-        if fear_greed else "Fear/Greed unavailable"
-    )
-    market_summary = (
-        f"Indexes: {index_summary}. "
-        f"Top Gainer: {top_gainer_symbol} ({top_gainer_change:+.2f}%). "
-        f"{fg_summary}. News: {news[0]['title']}"
-    )
-    logger.info(f"Market Summary Data: {market_summary}")
-
-    # 2. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
+    # 2. Story selection engine: score candidates, LLM picks the day's angle
     sg = ScriptGenerator()
+    story = StorySelector(sg).select(pool)
+
+    # 3. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
+    digest = compact_pool(pool)
     try:
         if is_shorts:
+            data_summary = (
+                f"SELECTED STORY ({story['franchise_name']}): {story['headline']}\n"
+                f"Why it matters: {story['why_it_matters']}\n"
+                f"Story facts: {json.dumps(story['facts'], default=str)}\n"
+                f"Market context: {json.dumps(digest['market'], default=str)}"
+            )
             script_data = sg.generate_shorts_script(
-                topic="US Stock Market Daily Movement", data_summary=market_summary
+                topic=story["headline"],
+                data_summary=data_summary,
+                franchise_style=story["franchise_style"],
+                angle=story["angle"],
             )
         else:
             script_data = sg.generate_long_script(market_data={
-                "indexes": indexes,
-                "gainers": gainers,
-                "losers": losers,
-                "fear_greed": fear_greed,
-                "news": news,
+                **digest,
+                "selected_story": {k: story[k] for k in ("franchise_name", "headline", "angle", "facts")},
             })
     except ScriptGenerationError as e:
         abort_pipeline(str(e))
         return
 
-    ticker = script_data.get("ticker", top_gainer_symbol)
-    change_pct = str(script_data.get("change_pct", f"{top_gainer_change:+.2f}"))
+    # The chart must match the story — the selector's ticker wins over the LLM's
+    ticker = story["ticker"] or script_data.get("ticker") or pool["movers"]["gainers"][0]["symbol"]
 
     logger.info(f"Generated Title: {script_data['title']}")
     logger.info(f"Script Text: {script_data['full_script'][:100]}...")
 
-    # 3. Fetch REAL intraday chart data for the ticker the script actually covers
+    # 4. Fetch REAL intraday chart data for the ticker the script actually covers
     try:
         intraday = fetcher.get_intraday_chart(ticker)
     except FMPDataError as e:
         abort_pipeline(f"Intraday chart data unavailable for {ticker}: {e}")
         return
 
-    # 4. Generate Audio Voiceover (Edge-TTS)
+    # Card change % is computed from the same candles as the chart — never from
+    # the LLM, which can echo an index move instead of the ticker's own
+    session_open = intraday[0]["open"] or intraday[0]["close"]
+    change_pct = f"{(intraday[-1]['close'] - session_open) / session_open * 100:+.2f}"
+
+    # 5. Generate Audio Voiceover (Edge-TTS)
     vg = VoiceGenerator()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     audio_path, srt_path = vg.generate_audio(
@@ -99,12 +94,12 @@ def run_pipeline(video_type: str = "shorts"):
         abort_pipeline("Audio generation failed.")
         return
 
-    # 5. Generate Subtitles
+    # 6. Generate Subtitles
     ass_path = str(SubtitleGenerator.srt_to_ass(
         srt_path, srt_path.replace('.srt', '.ass'), is_shorts=is_shorts
     ))
 
-    # 6. Render video with the real ticker card + real chart
+    # 7. Render video with the real ticker card + real chart
     ve = VideoEngine()
     card_img_path = str(TEMP_DIR / f"card_{timestamp}.png")
     ve.create_dashboard_overlay(
@@ -124,7 +119,7 @@ def run_pipeline(video_type: str = "shorts"):
         abort_pipeline("Video rendering failed.")
         return
 
-    # 7. Telegram Approval & Live Listener
+    # 8. Telegram Approval & Live Listener
     bot = TelegramApprovalBot()
     approved = bot.send_video_and_wait_for_approval(
         video_path=rendered_video_path,

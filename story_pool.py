@@ -126,30 +126,42 @@ class StoryPoolCollector:
         return trades[:15]
 
     def _insider_trades(self) -> Dict[str, Any]:
-        """$1M+ insider buys/sells plus cluster-buy signals (3+ buyers in one stock)."""
+        """$1M+ insider buys/sells plus cluster-buy signals (3+ distinct buyers).
+
+        Multi-leg Form 4 filings (same insider, same stock, same direction)
+        are aggregated into one total — one story, not five near-duplicates.
+        """
         rows = self.fetcher.get_insider_trades()
-        big, buys_per_symbol = [], {}
+        agg: Dict[tuple, Dict[str, Any]] = {}
+        buyers_per_symbol: Dict[str, set] = {}
         for row in rows:
             ttype = row.get("transactionType", "")
             if not (ttype.startswith("P-") or ttype.startswith("S-")):
                 continue
             value = (row.get("securitiesTransacted") or 0) * (row.get("price") or 0)
             if ttype.startswith("P-"):
-                buys_per_symbol[row["symbol"]] = buys_per_symbol.get(row["symbol"], 0) + 1
-            if value < INSIDER_MIN_VALUE_USD:
+                buyers_per_symbol.setdefault(row["symbol"], set()).add(row.get("reportingName"))
+            if not value:
                 continue
-            big.append({
+            key = (row.get("reportingName"), row.get("symbol"), ttype[0])
+            entry = agg.setdefault(key, {
                 "symbol": row.get("symbol", ""),
                 "insider": row.get("reportingName", ""),
                 "role": row.get("typeOfOwner", ""),
                 "type": "BUY" if ttype.startswith("P-") else "SELL",
-                "value_usd": round(value),
-                "shares": row.get("securitiesTransacted"),
-                "price": row.get("price"),
+                "value_usd": 0,
+                "shares": 0,
+                "transactions": 0,
                 "transactionDate": row.get("transactionDate", ""),
             })
+            entry["value_usd"] += round(value)
+            entry["shares"] += row.get("securitiesTransacted") or 0
+            entry["transactions"] += 1
+            entry["transactionDate"] = max(entry["transactionDate"], row.get("transactionDate", ""))
+
+        big = [t for t in agg.values() if t["value_usd"] >= INSIDER_MIN_VALUE_USD]
         big.sort(key=lambda t: t["value_usd"], reverse=True)
-        cluster_buys = [s for s, n in buys_per_symbol.items() if n >= 3]
+        cluster_buys = [s for s, names in buyers_per_symbol.items() if len(names) >= 3]
         return {"big_trades": big[:15], "cluster_buys": cluster_buys}
 
     def _analyst_moves(self) -> Dict[str, Any]:
@@ -245,6 +257,40 @@ class StoryPoolCollector:
                 "mentions_change_pct": round((mentions - prev) / prev * 100, 1) if prev else None,
             })
         return trending
+
+
+def compact_pool(pool: Dict[str, Any]) -> Dict[str, Any]:
+    """Trimmed, prompt-sized view of the pool for LLM consumption."""
+    return {
+        "market": {
+            "indexes": [
+                {"symbol": q["symbol"], "price": q.get("price"),
+                 "changePercentage": q.get("changePercentage")}
+                for q in pool["core"]["indexes"]
+            ],
+            "sectors": pool["core"]["sectors"][:5],
+            "fear_greed": pool["core"]["fear_greed"],
+        },
+        "gainers": [
+            {"symbol": g["symbol"], "name": g.get("name"), "price": g.get("price"),
+             "changesPercentage": g.get("changesPercentage")}
+            for g in pool["movers"]["gainers"][:5]
+        ],
+        "losers": [
+            {"symbol": l["symbol"], "name": l.get("name"), "price": l.get("price"),
+             "changesPercentage": l.get("changesPercentage")}
+            for l in pool["movers"]["losers"][:5]
+        ],
+        "mover_news": pool.get("mover_news") or {},
+        "congress": pool["congress"][:5],
+        "insider": pool["insider"]["big_trades"][:5],
+        "cluster_buys": pool["insider"]["cluster_buys"],
+        "analyst_shocks": [t for t in pool["analyst"]["price_targets"] if t["is_shock"]][:5],
+        "earnings_today": pool["earnings"]["reported_today"][:5],
+        "earnings_upcoming": pool["earnings"]["upcoming"][:5],
+        "economic": pool["economic"][:5],
+        "reddit": pool["reddit"][:5],
+    }
 
 
 def summarize_pool(pool: Dict[str, Any]) -> str:

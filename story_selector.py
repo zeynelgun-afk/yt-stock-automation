@@ -1,0 +1,412 @@
+"""Story Selection Engine — ROADMAP Faz 2.
+
+Turns the day's story pool into ONE chosen story with a franchise format:
+1. Rule-based virality scoring of every candidate in the pool.
+2. LLM picks the day's angle from the top candidates ("why it matters",
+   not just "what happened").
+3. The chosen franchise drives the script prompt and visual variation,
+   so videos differ structurally day to day (YouTube "inauthentic
+   content" policy protection).
+
+If the LLM selection fails, the top-scored candidate is used with its
+rule-based headline — deterministic, built purely from real data.
+"""
+import json
+import logging
+from typing import Dict, Any, List, Optional
+
+from script_generator import ScriptGenerator, ScriptGenerationError
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Recurring Shorts series. Each entry: display name + prompt style guidance
+# injected into the script prompt so structure/tone varies per franchise.
+FRANCHISES: Dict[str, Dict[str, str]] = {
+    "congress_trade": {
+        "name": "Congress Trade Alert",
+        "style": (
+            "Franchise: CONGRESS TRADE ALERT. Lead with the politician's name, chamber "
+            "and the dollar range in the first sentence. Core question: why is a sitting "
+            "member of Congress trading this stock right now? Mention the disclosure lag "
+            "(trade date vs disclosure date). Neutral, factual, slightly raised eyebrow — "
+            "no accusations, just the filing facts."
+        ),
+    },
+    "insider_watch": {
+        "name": "Insider Watch",
+        "style": (
+            "Franchise: INSIDER WATCH. Lead with the insider's role and the dollar value. "
+            "A CEO/CFO trading their own stock is the story: what do they know that the "
+            "market doesn't? For cluster buys, stress that multiple insiders bought the "
+            "same week. Facts from SEC Form 4 filings only."
+        ),
+    },
+    "earnings_shock": {
+        "name": "Earnings Shock",
+        "style": (
+            "Franchise: EARNINGS SHOCK. Lead with expectation vs reality: the EPS estimate, "
+            "the actual, the surprise percent. If the stock moved opposite to the beat/miss "
+            "(beat but crashed / missed but rallied), make that paradox the entire angle."
+        ),
+    },
+    "fear_gauge": {
+        "name": "Fear Gauge",
+        "style": (
+            "Franchise: FEAR GAUGE. Lead with the extreme sentiment number (Fear & Greed "
+            "score or VIX spike). Explain what the gauge measures in one sentence, then "
+            "what happened historically at similar extremes — without promising outcomes."
+        ),
+    },
+    "reddit_radar": {
+        "name": "Reddit Radar",
+        "style": (
+            "Franchise: REDDIT RADAR. Lead with the mention explosion: this ticker's chatter "
+            "is up X% in 24 hours on r/wallstreetbets. Cover WHY retail is piling in, and "
+            "close with the risk note that crowd hype cuts both ways."
+        ),
+    },
+    "analyst_shock": {
+        "name": "Analyst Alert",
+        "style": (
+            "Franchise: ANALYST ALERT. Lead with the bank name and the shocking number — "
+            "a price target far above/below the current price, or a hard rating flip. "
+            "Angle: what does this desk see that the market price doesn't?"
+        ),
+    },
+    "market_close": {
+        "name": "Market Close in 60 Seconds",
+        "style": (
+            "Franchise: MARKET CLOSE IN 60 SECONDS. Fixed structure: indexes first (S&P, "
+            "Nasdaq, Dow, VIX), then the single biggest driver of the day with its reason, "
+            "then one thing to watch tomorrow. Dense, data-first, zero filler."
+        ),
+    },
+}
+
+
+def _is_us_ticker(symbol: str) -> bool:
+    """Channel covers US stocks — skip foreign listings like TECK-A.TO / 4012.SR."""
+    return bool(symbol) and "." not in symbol
+
+
+class StorySelector:
+    def __init__(self, script_generator: Optional[ScriptGenerator] = None):
+        self.sg = script_generator or ScriptGenerator()
+
+    # ---------- Rule-based scoring ----------
+
+    def build_candidates(self, pool: Dict[str, Any]) -> List[Dict[str, Any]]:
+        candidates: List[Dict[str, Any]] = []
+        reddit_tickers = {r["ticker"] for r in pool["reddit"]}
+        gainer_pct = {g["symbol"]: g.get("changesPercentage", 0) for g in pool["movers"]["gainers"]}
+        loser_pct = {l["symbol"]: l.get("changesPercentage", 0) for l in pool["movers"]["losers"]}
+        mover_tickers = set(gainer_pct) | set(loser_pct)
+
+        candidates += self._congress_candidates(pool, reddit_tickers, mover_tickers)
+        candidates += self._insider_candidates(pool)
+        candidates += self._earnings_candidates(pool, gainer_pct, loser_pct)
+        candidates += self._analyst_candidates(pool)
+        candidates += self._reddit_candidates(pool, mover_tickers)
+        candidates += self._mover_candidates(pool, reddit_tickers)
+        fear = self._fear_gauge_candidate(pool)
+        if fear:
+            candidates.append(fear)
+        candidates.append(self._market_close_candidate(pool))
+
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        return candidates
+
+    def _congress_candidates(self, pool, reddit_tickers, mover_tickers) -> List[Dict]:
+        out = []
+        for t in pool["congress"][:8]:
+            score, reasons = 50.0, []
+            amt = t["amount_min_usd"]
+            if amt >= 1_000_000:
+                score += 30; reasons.append("$1M+ trade")
+            elif amt >= 100_000:
+                score += 20; reasons.append("$100k+ trade")
+            elif amt >= 50_000:
+                score += 15; reasons.append("$50k+ trade")
+            elif amt >= 15_000:
+                score += 8
+            if t["type"] == "Purchase":
+                score += 15; reasons.append("a BUY (rarer signal)")
+            elif t["type"].startswith("Sale"):
+                score += 5
+            if t["symbol"] in reddit_tickers or t["symbol"] in mover_tickers:
+                score += 10; reasons.append("ticker already in the news flow")
+            if not _is_us_ticker(t["symbol"]):
+                score -= 15  # no chartable ticker weakens the video
+            out.append({
+                "franchise": "congress_trade",
+                "score": min(score, 100),
+                "ticker": t["symbol"] if _is_us_ticker(t["symbol"]) else "",
+                "headline": (
+                    f"{t['politician']} ({t['chamber']}) {t['type']} "
+                    f"{t['symbol'] or t['asset']} {t['amount']}"
+                ),
+                "facts": t,
+                "reasons": reasons,
+            })
+        return out
+
+    def _insider_candidates(self, pool) -> List[Dict]:
+        out = []
+        cluster = set(pool["insider"]["cluster_buys"])
+        for t in pool["insider"]["big_trades"][:8]:
+            score, reasons = 40.0, []
+            v = t["value_usd"]
+            if v >= 50_000_000:
+                score += 40; reasons.append("$50M+ transaction")
+            elif v >= 10_000_000:
+                score += 30; reasons.append("$10M+ transaction")
+            elif v >= 5_000_000:
+                score += 20
+            else:
+                score += 10
+            if t["type"] == "BUY":
+                score += 10; reasons.append("insider BUYING own stock")
+            role = (t["role"] or "").lower()
+            if "chief executive" in role or "chief financial" in role or "president" in role:
+                score += 10; reasons.append("C-suite insider")
+            if t["symbol"] in cluster:
+                score += 15; reasons.append("cluster buy (3+ insiders)")
+            if not _is_us_ticker(t["symbol"]):
+                continue
+            out.append({
+                "franchise": "insider_watch",
+                "score": min(score, 100),
+                "ticker": t["symbol"],
+                "headline": f"{t['insider']} ({t['role']}) {t['type']} ${t['value_usd']:,} of {t['symbol']}",
+                "facts": {**t, "cluster_buys": sorted(cluster)},
+                "reasons": reasons,
+            })
+        return out
+
+    def _earnings_candidates(self, pool, gainer_pct, loser_pct) -> List[Dict]:
+        out = []
+        for r in pool["earnings"]["reported_today"]:
+            if not _is_us_ticker(r["symbol"]) or r["surprise_pct"] is None:
+                continue
+            score, reasons = 45.0, []
+            s = abs(r["surprise_pct"])
+            if s >= 50:
+                score += 30; reasons.append(f"{r['surprise_pct']:+.0f}% EPS surprise")
+            elif s >= 20:
+                score += 20; reasons.append(f"{r['surprise_pct']:+.0f}% EPS surprise")
+            elif s >= 10:
+                score += 10
+            beat = r["surprise_pct"] > 0
+            paradox = (beat and r["symbol"] in loser_pct) or (not beat and r["symbol"] in gainer_pct)
+            if paradox:
+                score += 25; reasons.append("PARADOX: price moved against the result")
+            elif r["symbol"] in gainer_pct or r["symbol"] in loser_pct:
+                score += 10; reasons.append("stock among today's big movers")
+            out.append({
+                "franchise": "earnings_shock",
+                "score": min(score, 100),
+                "ticker": r["symbol"],
+                "headline": (
+                    f"{r['symbol']} EPS {r['epsActual']} vs {r['epsEstimated']} est "
+                    f"({r['surprise_pct']:+.1f}% surprise)"
+                ),
+                "facts": {**r, "paradox": paradox,
+                          "price_move_pct": gainer_pct.get(r["symbol"]) or loser_pct.get(r["symbol"])},
+                "reasons": reasons,
+            })
+        return out
+
+    def _analyst_candidates(self, pool) -> List[Dict]:
+        out = []
+        for t in pool["analyst"]["price_targets"]:
+            if not t["is_shock"] or not _is_us_ticker(t["symbol"]):
+                continue
+            score = 40 + min(30.0, abs(t["upside_pct"]) - 20)
+            out.append({
+                "franchise": "analyst_shock",
+                "score": min(score, 100),
+                "ticker": t["symbol"],
+                "headline": (
+                    f"{t['analyst'] or 'Analyst'}: {t['symbol']} PT ${t['priceTarget']} "
+                    f"({t['upside_pct']:+.0f}% vs price)"
+                ),
+                "facts": t,
+                "reasons": [f"{t['upside_pct']:+.0f}% gap between target and price"],
+            })
+        return out
+
+    def _reddit_candidates(self, pool, mover_tickers) -> List[Dict]:
+        out = []
+        for r in pool["reddit"][:5]:
+            chg = r["mentions_change_pct"]
+            if r["rank"] is None or r["rank"] > 5 or chg is None or chg < 150:
+                continue
+            if not _is_us_ticker(r["ticker"]):
+                continue
+            score, reasons = 50.0 + min(30.0, chg / 20), [f"mentions +{chg:.0f}% in 24h"]
+            if r["ticker"] in mover_tickers:
+                score += 10; reasons.append("also a big price mover")
+            out.append({
+                "franchise": "reddit_radar",
+                "score": min(score, 100),
+                "ticker": r["ticker"],
+                "headline": f"{r['ticker']} #{r['rank']} on WSB, mentions +{chg:.0f}% in 24h",
+                "facts": r,
+                "reasons": reasons,
+            })
+        return out
+
+    def _mover_candidates(self, pool, reddit_tickers) -> List[Dict]:
+        out = []
+        news = pool.get("mover_news") or {}
+        for row in pool["movers"]["gainers"][:3] + pool["movers"]["losers"][:3]:
+            sym = row["symbol"]
+            chg = float(row.get("changesPercentage", 0))
+            price = float(row.get("price", 0))
+            # Penny movers pump/dump daily — story needs size AND a reason
+            if abs(chg) < 15 or price < 2 or not _is_us_ticker(sym):
+                continue
+            headlines = news.get(sym, [])
+            score, reasons = 45.0 + min(25.0, abs(chg)), [f"{chg:+.0f}% move"]
+            if headlines:
+                score += 10; reasons.append("has a concrete news reason")
+            else:
+                score -= 15  # a number without a why is not a story
+            if sym in reddit_tickers:
+                score += 10; reasons.append("trending on Reddit")
+            out.append({
+                "franchise": "market_close",
+                "score": min(score, 100),
+                "ticker": sym,
+                "headline": f"{row.get('name', sym)} ({sym}) {chg:+.1f}% today",
+                "facts": {**row, "news": headlines},
+                "reasons": reasons,
+            })
+        return out
+
+    def _fear_gauge_candidate(self, pool) -> Optional[Dict]:
+        fg = pool["core"]["fear_greed"]
+        vix = next((q for q in pool["core"]["indexes"] if q["symbol"] == "^VIX"), None)
+        vix_chg = float(vix.get("changePercentage", 0)) if vix else 0.0
+        fg_extreme = fg and (fg["score"] <= 25 or fg["score"] >= 75)
+        vix_spike = abs(vix_chg) >= 15
+
+        if not fg_extreme and not vix_spike:
+            return None
+        score, reasons = 0.0, []
+        if fg_extreme:
+            score = 75; reasons.append(f"Fear&Greed at extreme {fg['score']} ({fg['rating']})")
+        if vix_spike:
+            score = max(score, 70); reasons.append(f"VIX {vix_chg:+.0f}% today")
+        if fg_extreme and vix_spike:
+            score = 90
+        return {
+            "franchise": "fear_gauge",
+            "score": score,
+            "ticker": "^VIX",
+            "headline": " & ".join(reasons),
+            "facts": {"fear_greed": fg, "vix": vix},
+            "reasons": reasons,
+        }
+
+    def _market_close_candidate(self, pool) -> Dict:
+        """Baseline candidate — guarantees a video even on a quiet day."""
+        spx = next((q for q in pool["core"]["indexes"] if q["symbol"] == "^GSPC"),
+                   pool["core"]["indexes"][0])
+        chg = float(spx.get("changePercentage", 0))
+        top_g = pool["movers"]["gainers"][0]
+        return {
+            "franchise": "market_close",
+            "score": min(40 + abs(chg) * 10, 70),
+            "ticker": spx["symbol"],
+            "headline": f"S&P 500 {chg:+.2f}% — daily market close recap",
+            "facts": {
+                "indexes": pool["core"]["indexes"],
+                "sectors": pool["core"]["sectors"][:5],
+                "fear_greed": pool["core"]["fear_greed"],
+                "top_gainer": top_g,
+                "top_loser": pool["movers"]["losers"][0],
+            },
+            "reasons": [f"S&P {chg:+.2f}%"],
+        }
+
+    # ---------- LLM angle selection ----------
+
+    def select(self, pool: Dict[str, Any], top_n: int = 3) -> Dict[str, Any]:
+        """Returns the chosen story: candidate fields + 'angle', 'why_it_matters'."""
+        candidates = self.build_candidates(pool)
+        # Diversity: at most one candidate per franchise goes to the LLM,
+        # so the pick is a real editorial choice, not near-duplicates
+        best_per_franchise: Dict[str, Dict[str, Any]] = {}
+        for c in candidates:
+            best_per_franchise.setdefault(c["franchise"], c)
+        top = sorted(best_per_franchise.values(), key=lambda c: c["score"], reverse=True)[:top_n]
+        for c in top:
+            logger.info(f"Candidate [{c['score']:.0f}] {c['franchise']}: {c['headline']}")
+
+        chosen, llm = top[0], None
+        try:
+            llm = self._llm_pick(pool, top)
+        except ScriptGenerationError as e:
+            logger.warning(f"LLM angle selection failed, using top-scored candidate: {e}")
+
+        if llm:
+            idx = llm.get("choice_index")
+            if isinstance(idx, int) and 0 <= idx < len(top):
+                chosen = top[idx]
+            chosen = {
+                **chosen,
+                "angle": llm.get("angle", chosen["headline"]),
+                "why_it_matters": llm.get("why_it_matters", ""),
+            }
+        else:
+            chosen = {**chosen, "angle": chosen["headline"], "why_it_matters": ""}
+
+        chosen["franchise_name"] = FRANCHISES[chosen["franchise"]]["name"]
+        chosen["franchise_style"] = FRANCHISES[chosen["franchise"]]["style"]
+        logger.info(f"SELECTED [{chosen['franchise_name']}]: {chosen['angle']}")
+        return chosen
+
+    def _llm_pick(self, pool: Dict[str, Any], top: List[Dict]) -> Dict[str, Any]:
+        fg = pool["core"]["fear_greed"]
+        idx = ", ".join(
+            f"{q['symbol']} {q.get('changePercentage', 0):+.2f}%"
+            for q in pool["core"]["indexes"]
+        )
+        cands = [
+            {"index": i, "franchise": c["franchise"], "score": c["score"],
+             "headline": c["headline"], "facts": c["facts"], "reasons": c["reasons"]}
+            for i, c in enumerate(top)
+        ]
+        prompt = f"""You are the editor-in-chief of "US Stock Market Daily", a data-first, no-hype finance Shorts channel.
+
+Market context: {idx}. Fear&Greed: {fg['score']} ({fg['rating']}) if available.
+
+Today's top story candidates (pre-scored for virality):
+{json.dumps(cands, indent=1, default=str)}
+
+Pick the ONE candidate that makes the most gripping 45-second video for retail investors TODAY.
+Judge: concreteness of the numbers, emotional pull, and whether the "why" is clear — a number without a reason is not a story.
+
+Return strictly valid JSON:
+- "choice_index": integer index of the winning candidate
+- "angle": one sentence — the specific angle of the video (not just what happened, but why it matters to a viewer's money)
+- "why_it_matters": one sentence of stakes for a retail investor
+"""
+        return self.sg._call_llm(prompt, default_title="story selection")
+
+
+if __name__ == "__main__":
+    from story_pool import StoryPoolCollector
+
+    pool = StoryPoolCollector().collect()
+    selector = StorySelector()
+    candidates = selector.build_candidates(pool)
+    print("--- TOP 8 CANDIDATES ---")
+    for c in candidates[:8]:
+        print(f"[{c['score']:5.1f}] {c['franchise']:15s} {c['headline']}")
+    print("\n--- LLM SELECTION ---")
+    story = selector.select(pool)
+    print(json.dumps({k: story[k] for k in ("franchise_name", "ticker", "headline", "angle", "why_it_matters")},
+                     indent=1, default=str))

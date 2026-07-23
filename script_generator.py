@@ -25,20 +25,31 @@ class ScriptGenerator:
             "google/gemini-2.0-flash-001"
         ]
 
-    def generate_shorts_script(self, topic: str, data_summary: str) -> Dict[str, Any]:
+    def generate_shorts_script(self, topic: str, data_summary: str,
+                               franchise_style: str = "", angle: str = "") -> Dict[str, Any]:
         """Generates a viral ~45-second (110-130 words) English YouTube Shorts script using DeepSeek/Qwen via OpenRouter."""
+        franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
+        angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
         prompt = f"""You are an elite Wall Street financial analyst and viral YouTube creator for the channel "US Stock Market Daily".
-Generate a high-energy, engaging 45-second YouTube Shorts script based on this real-time market data:
+Positioning: data-first, zero hype — real numbers, real reasons, no clickbait fear-mongering.
+Generate an engaging 45-second YouTube Shorts script based on this real-time market data:
 Topic: {topic}
-Market Context: {data_summary}
+{angle_block}Market Context: {data_summary}
+{franchise_block}
+HOOK — the first sentence decides whether the viewer swipes away. Use one of these proven patterns:
+- Bold claim: "NVIDIA just did something no company has ever done."
+- Curiosity gap: "This chart predicted the last 3 crashes — it just flashed again."
+- Direct question: "Why is a US senator suddenly buying this stock?"
+- Specific shock number up front: "$4.7 million. That's what one insider just bet."
 
 RULES:
-1. Start with an insane viral HOOK in the first 3 seconds that catches investor attention immediately.
-2. Word count: MUST BE BETWEEN 110 AND 130 WORDS (approx 45 seconds of natural speech).
+1. Word count: MUST BE BETWEEN 110 AND 130 WORDS (approx 45 seconds of natural speech).
+2. Use specific, unrounded numbers from the data ("$4.7M", "23%") — never vague words like "millions" or "a lot".
 3. Do NOT use sound effect cues or stage directions (e.g. [Music playing] or (Visual: Chart)). ONLY write spoken text!
-4. End with a crisp Call-To-Action to subscribe to "US Stock Market Daily".
-5. Return strictly valid JSON format with keys:
-   - "title": Catchy YouTube video title (max 70 chars)
+4. LOOP DESIGN: the final sentence must connect back to the opening hook so the video rewatches seamlessly. NO long outro; at most 5 words of subscribe CTA woven in ("more daily — subscribe."), never a full sentence of it.
+5. Only state facts present in the Market Context. Never invent numbers, names or reasons.
+6. Return strictly valid JSON format with keys:
+   - "title": Catchy YouTube video title (40-60 chars, keyword first, specific numbers)
    - "hook": First 3-second hook
    - "full_script": Spoken text only
    - "ticker": Primary stock symbol (e.g. "NVDA")
