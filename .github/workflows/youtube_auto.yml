@@ -1,0 +1,46 @@
+name: US Stock Market Daily YouTube Automation
+
+on:
+  schedule:
+    # 1. Shorts #1 (Pre-market): 12:30 UTC = 15:30 TSI
+    - cron: '30 12 * * *'
+    # 2. Shorts #2 (Mid-day): 17:00 UTC = 20:00 TSI
+    - cron: '0 17 * * *'
+    # 3. Long Video (Post-market Recap): 20:30 UTC = 23:30 TSI
+    - cron: '30 20 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI anytime!
+
+jobs:
+  build-and-generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-liberation
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-dotenv requests edge-tts pillow google-generativeai python-telegram-bot google-api-python-client google-auth-oauthlib
+
+      - name: Run Video Generation Pipeline
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python main_scheduler.py

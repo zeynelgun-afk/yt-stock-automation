@@ -1,0 +1,11 @@
+.env
+venv/
+temp/
+output/
+__pycache__/
+*.pyc
+*.mp3
+*.mp4
+*.srt
+*.ass
+client_secret.json
