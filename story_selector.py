@@ -13,6 +13,8 @@ rule-based headline — deterministic, built purely from real data.
 """
 import json
 import logging
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
 from script_generator import ScriptGenerator, ScriptGenerationError
@@ -333,9 +335,68 @@ class StorySelector:
 
     # ---------- LLM angle selection ----------
 
+    def _recent_upload_titles(self, days: int = 5) -> List[str]:
+        """Titles of the channel's uploads from the last N days.
+
+        Stateless dedup source: CI runners are ephemeral, so the channel
+        itself is the only durable record of which stories already ran.
+        Any failure returns [] — dedup is a filter, never a blocker.
+        """
+        try:
+            from youtube_publisher import YouTubePublisher
+            YouTubePublisher()  # materializes token.json from env on CI
+            from config import BASE_DIR
+            token_path = BASE_DIR / "token.json"
+            if not token_path.exists():
+                return []
+            from google.oauth2.credentials import Credentials
+            from google.auth.transport.requests import Request
+            from googleapiclient.discovery import build
+            creds = Credentials.from_authorized_user_file(str(token_path))
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            yt = build("youtube", "v3", credentials=creds)
+            ch = yt.channels().list(part="contentDetails", mine=True).execute()
+            items = ch.get("items", [])
+            if not items:
+                return []
+            uploads = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+            res = yt.playlistItems().list(
+                part="snippet", playlistId=uploads, maxResults=20
+            ).execute()
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            titles = []
+            for it in res.get("items", []):
+                sn = it["snippet"]
+                pub = sn.get("publishedAt", "")
+                if pub and datetime.fromisoformat(pub.replace("Z", "+00:00")) >= cutoff:
+                    titles.append(sn["title"])
+            return titles
+        except Exception as e:
+            logger.warning(f"Could not fetch recent uploads for dedup: {e}")
+            return []
+
+    @staticmethod
+    def _drop_recently_covered(candidates: List[Dict], recent_titles: List[str]) -> List[Dict]:
+        """Drops candidates whose ticker already appeared in a recent upload title."""
+        if not recent_titles:
+            return candidates
+        kept = []
+        for c in candidates:
+            ticker = c.get("ticker", "")
+            if len(ticker) >= 2 and any(
+                re.search(rf"\b{re.escape(ticker)}\b", t) for t in recent_titles
+            ):
+                logger.info(f"Skipping {c['franchise']}/{ticker}: already covered in a recent upload")
+                continue
+            kept.append(c)
+        # Never return an empty slate — a repeat beats no video at all
+        return kept or candidates
+
     def select(self, pool: Dict[str, Any], top_n: int = 3) -> Dict[str, Any]:
         """Returns the chosen story: candidate fields + 'angle', 'why_it_matters'."""
         candidates = self.build_candidates(pool)
+        candidates = self._drop_recently_covered(candidates, self._recent_upload_titles())
         # Diversity: at most one candidate per franchise goes to the LLM,
         # so the pick is a real editorial choice, not near-duplicates
         best_per_franchise: Dict[str, Dict[str, Any]] = {}
