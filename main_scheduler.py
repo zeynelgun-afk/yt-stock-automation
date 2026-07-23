@@ -1,5 +1,6 @@
 import json
 import logging
+import subprocess
 from datetime import datetime
 
 from data_fetcher import FMPDataFetcher, FMPDataError
@@ -15,6 +16,20 @@ from config import TEMP_DIR
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("YT_AUTO")
+
+
+def get_audio_duration(audio_path: str) -> float:
+    """Duration in seconds via ffprobe; 0.0 if it can't be determined."""
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+             "-of", "csv=p=0", audio_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        return float(res.stdout.strip())
+    except Exception as e:
+        logger.warning(f"Could not probe audio duration: {e}")
+        return 0.0
 
 
 def abort_pipeline(reason: str):
@@ -111,9 +126,14 @@ def run_pipeline(video_type: str = "shorts"):
         franchise_name=story["franchise_name"],
     )
 
+    # Stretch the chart reveal over ~80% of the narration so the frame keeps
+    # moving for the whole video (user feedback: static frames aren't engaging)
+    audio_dur = get_audio_duration(audio_path)
+    chart_draw = max(3.0, min(audio_dur * 0.8, 60.0)) if audio_dur else 3.0
     try:
         chart_video_path = ve.create_animated_chart(
-            ticker, intraday, str(TEMP_DIR / f"chart_{timestamp}.mp4")
+            ticker, intraday, str(TEMP_DIR / f"chart_{timestamp}.mp4"),
+            draw_seconds=chart_draw,
         )
     except RuntimeError as e:
         abort_pipeline(f"Animated chart rendering failed: {e}")

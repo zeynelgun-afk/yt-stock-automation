@@ -1,3 +1,4 @@
+import math
 import subprocess
 import logging
 import textwrap
@@ -122,11 +123,13 @@ class VideoEngine:
     # ----------------------------------------------------------------- chart
 
     def create_animated_chart(self, symbol: str, intraday: List[Dict[str, Any]],
-                              output_path: str) -> str:
+                              output_path: str, draw_seconds: float = CHART_DRAW_SECONDS) -> str:
         """Real intraday line drawn left-to-right (matplotlib frames -> ffmpeg).
 
         `intraday` must be actual candles from FMPDataFetcher.get_intraday_chart()
         (oldest first). Fabricated chart data is never acceptable on this channel.
+        `draw_seconds` stretches the reveal — pass ~80% of the audio length so
+        the chart keeps moving for the whole video instead of freezing early.
         Raises RuntimeError if the chart video cannot be produced.
         """
         if not intraday:
@@ -142,7 +145,10 @@ class VideoEngine:
         for old in frames_dir.glob("*.png"):
             old.unlink()
 
-        total_frames = int(CHART_FPS * CHART_DRAW_SECONDS)
+        # Cap matplotlib frames (CI time); ffmpeg framerate compensates so the
+        # clip still lasts exactly draw_seconds
+        total_frames = min(int(CHART_FPS * draw_seconds), 600)
+        framerate = total_frames / draw_seconds
         y_min, y_max = min(closes), max(closes)
         pad = (y_max - y_min) * 0.08 or abs(y_max) * 0.01 or 1.0
 
@@ -174,6 +180,8 @@ class VideoEngine:
             xs = list(range(upto))
             ys = closes[:upto]
             line.set_data(xs, ys)
+            # Pulsing endpoint dot keeps the frame alive even late in the reveal
+            dot.set_markersize(9 + 2.5 * math.sin(f * 0.35))
             dot.set_data([xs[-1]], [ys[-1]])
             if fill is not None:
                 fill.remove()
@@ -183,7 +191,7 @@ class VideoEngine:
 
         cmd = [
             "ffmpeg", "-y",
-            "-framerate", str(CHART_FPS),
+            "-framerate", f"{framerate:.3f}",
             "-i", str(frames_dir / "f_%04d.png"),
             "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p",
             output_path,
@@ -281,7 +289,7 @@ class VideoEngine:
 
         gradient_src = (
             f"gradients=s={width}x{height}:c0=0x0f172a:c1=0x1e3a5f:"
-            f"speed=0.02:rate=30"
+            f"speed=0.08:rate=30"
         )
         solid_src = f"color=c=0x0f172a:s={width}x{height}:r=30"
 
@@ -299,12 +307,19 @@ class VideoEngine:
             chart_chain = "[v1]null[v2]; "
         tail_inputs += ["-i", audio_path]
 
+        # Continuous slow push-in (Ken Burns) on everything except subtitles —
+        # a perfectly static frame reads as a still image and kills retention
+        zoom = (
+            f"zoompan=z='min(1+0.00008*on,1.10)':d=1:"
+            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps=30"
+        )
         filter_complex = (
             f"[0:v]scale={width}:{height},fps=30[bg]; "
             f"[1:v]scale={scaled_w}:-1[card]; "
             f"[bg][card]overlay={card_x}:{card_y}[v1]; "
             f"{chart_chain}"
-            f"[v2]ass={ass_sub_path}[outv]"
+            f"[v2]{zoom}[v3]; "
+            f"[v3]ass={ass_sub_path}[outv]"
         )
 
         def build_cmd(bg_src: str) -> List[str]:
