@@ -48,7 +48,13 @@ class YouTubePublisher:
             from google.oauth2.credentials import Credentials
             from google.auth.transport.requests import Request
 
-            SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+            # readonly + analytics ride along so one OAuth consent also covers
+            # the analytics feedback loop (analytics_reporter.py)
+            SCOPES = [
+                "https://www.googleapis.com/auth/youtube.upload",
+                "https://www.googleapis.com/auth/youtube.readonly",
+                "https://www.googleapis.com/auth/yt-analytics.readonly",
+            ]
             creds = None
 
             # Load saved OAuth token if available

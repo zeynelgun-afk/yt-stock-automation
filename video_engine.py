@@ -18,19 +18,32 @@ NEON_GREEN = '#22c55e'
 NEON_RED = '#ef4444'
 DARK_BG = '#0f172a'
 
-FONT_BOLD = "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"
-FONT_REGULAR = "/usr/share/fonts/TTF/DejaVuSans.ttf"
+# First existing path wins — Arch and Debian/Ubuntu (GitHub Actions) layouts
+FONT_CANDIDATES = {
+    True: [   # bold
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ],
+    False: [  # regular
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ],
+}
 
 CHART_FPS = 25
 CHART_DRAW_SECONDS = 3.0  # how long the line takes to draw left-to-right
 
 
 def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
-    try:
-        return ImageFont.truetype(FONT_BOLD if bold else FONT_REGULAR, size)
-    except OSError:
-        logger.warning("DejaVu font not found, falling back to PIL default")
-        return ImageFont.load_default()
+    for path in FONT_CANDIDATES[bold]:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    logger.warning("No TTF font found, falling back to PIL default")
+    return ImageFont.load_default()
 
 
 def _card_layout(is_shorts: bool) -> Dict[str, Any]:

@@ -168,6 +168,50 @@ def run_pipeline(video_type: str = "shorts"):
     logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Approved: {approved} ===")
 
 
+def is_event_day() -> tuple[bool, str]:
+    """Turbo-mode check (ROADMAP Faz 4.2): is today a CPI/FOMC/NFP or
+    mega-cap earnings day? Cron uses the exit code to trigger extra videos."""
+    fetcher = FMPDataFetcher()
+    reasons = []
+
+    macro = [
+        r["event"] for r in fetcher.get_economic_calendar(days_ahead=0)
+        if r.get("country") == "US" and r.get("impact") == "High"
+    ]
+    reasons += [f"Macro: {e}" for e in macro[:3]]
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    def _us_listed(sym: str) -> bool:
+        # No exchange suffix, and not an OTC ADR/foreign ordinary
+        # (5-letter tickers ending in Y/F by convention: RHHBY, NSRGY, CRERF...)
+        return "." not in sym and not (len(sym) == 5 and sym[-1] in "YF")
+
+    big_earnings = [
+        r["symbol"] for r in fetcher.get_earnings_calendar(days_ahead=0)
+        if r.get("date") == today
+        and (r.get("revenueEstimated") or 0) >= 10_000_000_000
+        and _us_listed(r["symbol"])
+    ]
+    if big_earnings:
+        reasons.append(f"Mega-cap earnings: {', '.join(big_earnings[:5])}")
+
+    return (bool(reasons), " | ".join(reasons) or "No high-impact events today")
+
+
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="US Stock Market Daily pipeline")
+    parser.add_argument("mode", nargs="?", default="shorts",
+                        choices=["shorts", "long", "event-check"],
+                        help="shorts/long: produce a video; "
+                             "event-check: exit 0 on CPI/FOMC/mega-earnings days (for cron turbo mode)")
+    args = parser.parse_args()
+
+    if args.mode == "event-check":
+        hot, reason = is_event_day()
+        print(reason)
+        raise SystemExit(0 if hot else 1)
+
     logger.info("Starting Youtube Stock Automation Engine...")
-    run_pipeline("shorts")
+    run_pipeline(args.mode)

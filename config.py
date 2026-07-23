@@ -36,8 +36,11 @@ DEFAULT_VOICE = "en-US-ChristopherNeural"  # Professional Male American Accent
 ALTERNATIVE_VOICE = "en-US-JennyNeural"    # Professional Female American Accent
 
 # US Target Peak Hours (TSI / Turkey Time equivalents)
+# Consistency beats "optimal" — fixed times win with the algorithm.
 SCHEDULE_TIMES_TSI = {
-    "shorts_1": "15:30",
-    "shorts_2": "20:00",
-    "long_recap": "23:30"
+    "shorts_1": "15:30",       # US pre-market scroll hours
+    "shorts_2": "20:00",       # 4.5h gap (1-2 Shorts/day, 4-6h apart)
+    "long_recap": "23:05",     # NYSE close is 23:00 TSI (16:00 ET) — speed moat:
+                               # the recap must be live within 15 min of the close
+    "shorts_us_evening": "03:30",  # experiment slot: US evening scroll (20:30 ET)
 }

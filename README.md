@@ -34,12 +34,19 @@ GitHub deponuzda: **Settings** -> **Secrets and variables** -> **Actions** -> **
 
 ## ⏰ Otomatik Zamanlayıcı (GitHub Cron)
 
-GitHub sunucuları otomatik olarak şu saatlerde tetiklenir:
-- 🟢 **15:30 TSI** (Pre-Market Shorts)
-- 🟢 **20:00 TSI** (Mid-Day Shorts)
-- 🟢 **23:30 TSI** (Post-Market Long Video)
+GitHub sunucuları hafta içi otomatik olarak şu saatlerde tetiklenir:
+- 🟢 **15:30 TSI** — Pre-Market Shorts
+- 🟢 **20:00 TSI** — Mid-Day Shorts
+- 🟢 **03:30 TSI** — ABD akşam scroll saati Shorts (deneme slotu)
+- ⚡ **16:35 TSI** — Turbo slot: sadece CPI/FOMC/mega-bilanço günlerinde ekstra Shorts üretir (`event-check`)
+- 🎬 **Kapanış + 5 dk** — 8+ dakikalık Long Recap (EDT aylarında 23:05, EST aylarında 00:05 TSI; hız hendeği: kapanıştan ≤15 dk sonra yayında)
+- 📊 **Pazar 18:00 TSI** — Haftalık YouTube Analytics performans raporu Telegram'a gelir
 
-Ayrıca GitHub repository'nizdeki **Actions** sekmesinden istediğiniz zaman **"Run workflow"** butonuna basarak manuel olarak da video ürettirebilirsiniz.
+Ayrıca **Actions** sekmesinden **"Run workflow"** ile istediğiniz an `shorts` / `long` / `analytics` modunda manuel tetikleyebilirsiniz.
+
+Yerel kullanım: `python main_scheduler.py [shorts|long|event-check]`, haftalık rapor: `python analytics_reporter.py`.
+
+> Not: Analytics raporu için `token.json`'ın readonly+analytics scope'larıyla alınmış olması gerekir. Eski token varsa bir kez silin; sonraki upload yeni scope listesiyle yeniden yetkilendirir.
 
 ---
 
