@@ -11,10 +11,10 @@ class YouTubePublisher:
     def __init__(self, client_secret_file: str = YOUTUBE_CLIENT_SECRET_FILE):
         self.client_secret_path = BASE_DIR / client_secret_file
         self.token_path = BASE_DIR / "token.json"
-        self._ensure_client_secret()
+        self._ensure_credentials()
 
-    def _ensure_client_secret(self):
-        """Creates client_secret.json from environment variable if missing on disk."""
+    def _ensure_credentials(self):
+        """Creates client_secret.json and token.json from environment variables if missing on disk."""
         if not self.client_secret_path.exists():
             env_secret = os.getenv("YOUTUBE_CLIENT_SECRET_JSON", "")
             if env_secret:
@@ -24,6 +24,16 @@ class YouTubePublisher:
                     logger.info("Created client_secret.json from environment variable.")
                 except Exception as e:
                     logger.error(f"Failed to write client_secret.json: {e}")
+
+        if not self.token_path.exists():
+            env_token = os.getenv("YOUTUBE_TOKEN_JSON", "")
+            if env_token:
+                try:
+                    with open(self.token_path, "w", encoding="utf-8") as f:
+                        f.write(env_token)
+                    logger.info("Created token.json from environment variable.")
+                except Exception as e:
+                    logger.error(f"Failed to write token.json: {e}")
 
     def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public") -> str:
         """Uploads video to YouTube channel using YouTube Data API v3 and OAuth 2.0."""
