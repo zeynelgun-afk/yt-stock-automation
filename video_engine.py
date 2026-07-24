@@ -359,6 +359,17 @@ class VideoEngine:
 
     # ---------------------------------------------------------------- render
 
+    @staticmethod
+    def _probe_duration(media_path: str) -> float:
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", media_path],
+                capture_output=True, text=True)
+            return float(result.stdout.strip())
+        except (ValueError, OSError):
+            return 0.0
+
     def render_video(self, audio_path: str, ass_sub_path: str, output_filename: str,
                      card_img_path: str, chart_video_path: Optional[str] = None,
                      is_shorts: bool = True, bg_video_path: Optional[str] = None) -> str:
@@ -366,6 +377,12 @@ class VideoEngine:
         glassmorphism stock card + left-to-right chart animation + subtitles.
         """
         out_video = str(OUTPUT_DIR / output_filename)
+
+        # -shortest is unreliable on some ffmpeg builds when the audio graph
+        # contains looped inputs (Ubuntu CI rendered to the 900s cap with the
+        # tail silent) — so the output is explicitly cut at the voiceover end.
+        audio_dur = self._probe_duration(audio_path)
+        max_dur = f"{min(audio_dur + 0.3, 900.0):.2f}" if audio_dur > 0 else "900"
         width, height = SHORTS_RES if is_shorts else LONG_RES
 
         layout = _card_layout(is_shorts)
@@ -452,7 +469,7 @@ class VideoEngine:
                 "-map", "[outv]", "-map", audio_map,
                 "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "192k",
-                "-shortest", "-t", "900",
+                "-shortest", "-t", max_dur,
                 out_video,
             ]
 

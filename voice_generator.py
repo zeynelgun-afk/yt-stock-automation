@@ -93,6 +93,9 @@ class VoiceGenerator:
             return True
         except Exception as e:
             logger.error(f"Edge-TTS failed: {e}")
+            # A partially written file must not survive — generate_audio treats
+            # any existing temp file as a usable voiceover during fallback
+            Path(output_path).unlink(missing_ok=True)
             return False
 
     def generate_audio(self, text: str, output_filename: str = "voiceover.mp3",
