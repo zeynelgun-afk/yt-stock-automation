@@ -36,13 +36,13 @@ class ScriptGenerator:
         self.openrouter_key = openrouter_key
         self.gemini_key = gemini_key
         self.groq_key = groq_key
-        # Premium & Elite LLM models on OpenRouter (Claude 3.5 Sonnet #1 for viral writing)
+        # Verified-live OpenRouter slugs (dead slugs 404 and silently ate the
+        # fallback chain — check https://openrouter.ai/api/v1/models when editing)
         self.openrouter_models = [
-            "anthropic/claude-3.5-sonnet", # Claude 3.5 Sonnet (World's #1 storytelling & viral scriptwriter)
-            "openai/gpt-4o",               # GPT-4o
-            "deepseek/deepseek-chat",       # DeepSeek V3
-            "qwen/qwen-2.5-72b-instruct",   # Alibaba Qwen 2.5 72B
-            "google/gemini-2.0-flash-001"
+            "anthropic/claude-sonnet-5",    # strongest long-form storyteller
+            "google/gemini-3.5-flash",      # fast + cheap, reliable long output
+            "openai/gpt-4o",                # proven on this account
+            "deepseek/deepseek-chat-v3.1",  # cheap last resort
         ]
 
     def generate_shorts_script(self, topic: str, data_summary: str,
@@ -77,7 +77,7 @@ RULES:
    - "tags": Array of 6 relevant tags
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["stock market trading", "nvidia microchip", "wall street traders"])
 """
-        return self._call_llm(prompt, default_title=topic)
+        return self._call_llm(prompt, default_title=topic, min_words=100, max_words=170)
 
     def generate_long_script(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generates an 8+ minute (1100-1300 words) Daily Market Recap script.
@@ -90,14 +90,14 @@ Positioning: data-first, zero hype — real numbers, real reasons, original anal
 Data Provided:
 {json.dumps(market_data, indent=2, default=str)}
 
-STRUCTURE (follow in order):
-1. COLD-OPEN HOOK: the single most shocking number of the day, then a one-line promise of what's coming.
-2. MARKET SUMMARY: S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
-3. THE 3 BIG STORIES OF THE DAY: pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors.
-4. CONGRESS & INSIDER CORNER: notable congressional trades and insider buys/sells from the data — names, amounts, dates.
-5. EARNINGS: today's surprises (estimate vs actual) and what's on deck this week.
-6. WHAT TO WATCH TOMORROW: economic events and earnings from the data, each with why it can move the market.
-7. OUTRO: one-sentence recap of the day's theme + short subscribe CTA (max 10 words).
+STRUCTURE (follow in order — the per-section word budgets are mandatory, they add up to ~1200 words):
+1. COLD-OPEN HOOK (~60 words): the single most shocking number of the day, then a one-line promise of what's coming.
+2. MARKET SUMMARY (~180 words): S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
+3. THE 3 BIG STORIES OF THE DAY (~450 words, ~150 each): pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors.
+4. CONGRESS & INSIDER CORNER (~180 words): notable congressional trades and insider buys/sells from the data — names, amounts, dates.
+5. EARNINGS (~150 words): today's surprises (estimate vs actual) and what's on deck this week.
+6. WHAT TO WATCH TOMORROW (~150 words): economic events and earnings from the data, each with why it can move the market.
+7. OUTRO (~30 words): one-sentence recap of the day's theme + short subscribe CTA (max 10 words).
 {_packaging_patterns_block()}
 RULES:
 - Word count: 1100 to 1300 words (8+ minutes of natural speech). This is a HARD requirement.
@@ -114,10 +114,16 @@ RULES:
    - "thumbnail_hook": 3-5 word thumbnail text (e.g. "CONGRESS IS BUYING THIS")
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["wall street trading floor", "stock market rally", "financial news"])
 """
-        return self._call_llm(prompt, default_title="US Stock Market Daily Recap")
+        return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
+                              min_words=1000, max_words=1600)
 
-    def _call_llm(self, prompt: str, default_title: str) -> Dict[str, Any]:
-        """Calls DeepSeek V3 / Qwen 2.5 via OpenRouter API with fallbacks."""
+    def _call_llm(self, prompt: str, default_title: str,
+                  min_words: int = 0, max_words: int = 0) -> Dict[str, Any]:
+        """Calls DeepSeek V3 / Qwen 2.5 via OpenRouter API with fallbacks.
+
+        min_words/max_words bound the full_script length — a recap that comes
+        back at 600 words would produce a half-length video, so an off-target
+        script gets one corrective retry per model before falling through."""
         if self.openrouter_key:
             headers = {
                 "Authorization": f"Bearer {self.openrouter_key}",
@@ -127,31 +133,56 @@ RULES:
             }
 
             for model_name in self.openrouter_models:
-                try:
-                    logger.info(f"Generating script using OpenRouter model: {model_name}...")
-                    url = "https://openrouter.ai/api/v1/chat/completions"
-                    payload = {
-                        "model": model_name,
-                        "messages": [
-                            {"role": "system", "content": "You are a professional financial AI writer. Always respond with valid JSON only."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "temperature": 0.7
-                    }
-                    res = requests.post(url, headers=headers, json=payload, timeout=25)
-                    if res.status_code == 200:
+                retry_note = ""
+                for attempt in range(3):
+                    try:
+                        logger.info(f"Generating script using OpenRouter model: {model_name}...")
+                        url = "https://openrouter.ai/api/v1/chat/completions"
+                        payload = {
+                            "model": model_name,
+                            "messages": [
+                                {"role": "system", "content": "You are a professional financial AI writer. Always respond with valid JSON only."},
+                                {"role": "user", "content": prompt + retry_note}
+                            ],
+                            "temperature": 0.7
+                        }
+                        res = requests.post(url, headers=headers, json=payload, timeout=60)
+                        if res.status_code != 200:
+                            logger.warning(f"{model_name} returned HTTP {res.status_code}: {res.text[:200]}")
+                            break
                         content = res.json()["choices"][0]["message"]["content"]
                         # Clean markdown wrappers if returned
                         if "```json" in content:
                             content = content.split("```json")[1].split("```")[0].strip()
                         elif "```" in content:
                             content = content.split("```")[1].split("```")[0].strip()
-                        
-                        parsed = json.loads(content)
-                        logger.info(f"Successfully generated script via {model_name}!")
+
+                        # strict=False: models embed literal newlines in JSON strings
+                        parsed = json.loads(content, strict=False)
+                        word_count = len(str(parsed.get("full_script", "")).split())
+                        if min_words and not min_words <= word_count <= (max_words or 10 ** 6):
+                            logger.warning(
+                                f"{model_name} script is {word_count} words "
+                                f"(need {min_words}-{max_words}), retrying...")
+                            if word_count < min_words:
+                                # Models expand an existing draft far more reliably
+                                # than they hit a word count from scratch
+                                retry_note = (
+                                    f"\n\nIMPORTANT: Your previous draft (below) was only {word_count} words — "
+                                    f"the full_script MUST be {min_words}-{max_words} words. Rewrite it, keeping "
+                                    f"every fact, but EXPAND each section to its word budget with deeper analysis "
+                                    f"of the same data. Return the same JSON structure.\n\n"
+                                    f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
+                            else:
+                                retry_note = (
+                                    f"\n\nIMPORTANT: Your previous attempt was {word_count} words — too long. "
+                                    f"The full_script MUST be between {min_words} and {max_words} words.")
+                            continue
+                        logger.info(f"Successfully generated script via {model_name} ({word_count} words)!")
                         return parsed
-                except Exception as e:
-                    logger.error(f"OpenRouter model {model_name} error: {e}")
+                    except Exception as e:
+                        logger.error(f"OpenRouter model {model_name} error: {e}")
+                        break
 
         raise ScriptGenerationError(
             f"All OpenRouter models failed to generate a script for '{default_title}'. "
