@@ -68,6 +68,23 @@ class VideoEngine:
     def __init__(self, pexels_key: str = PEXELS_API_KEY):
         self.pexels_key = pexels_key
 
+    # ------------------------------------------------------------------ background
+
+    def fetch_background_video(self, keywords: List[str], is_shorts: bool = True) -> Optional[str]:
+        """Background clip source chain: Higgsfield AI generation (if API keys
+        are configured) -> Pexels stock footage -> None (animated gradient)."""
+        try:
+            from higgsfield_client import HiggsfieldClient
+            hf = HiggsfieldClient()
+            if hf.enabled:
+                path = hf.generate_background_video(keywords, is_shorts=is_shorts)
+                if path:
+                    return path
+                logger.warning("Higgsfield generation failed; falling back to Pexels.")
+        except Exception as e:
+            logger.warning(f"Higgsfield unavailable ({e}); falling back to Pexels.")
+        return self.fetch_pexels_video(keywords, is_shorts=is_shorts)
+
     # ------------------------------------------------------------------ pexels
 
     def fetch_pexels_video(self, keywords: List[str], is_shorts: bool = True) -> Optional[str]:
