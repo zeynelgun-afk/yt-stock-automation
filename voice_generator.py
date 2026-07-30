@@ -1,7 +1,9 @@
 import asyncio
 import edge_tts
 import logging
+import re
 import requests
+import subprocess
 from pathlib import Path
 from typing import Tuple, Optional
 from config import DEFAULT_VOICE, TEMP_DIR, ELEVENLABS_API_KEY, OPENAI_API_KEY
@@ -23,7 +25,7 @@ class VoiceGenerator:
             return False
         try:
             logger.info("Generating studio-quality voice via ElevenLabs...")
-            voice_id = "pNInz6obpgDQGcFmaJgB"  # Adam - Professional Male Voice
+            voice_id = "21m00Tcm4TlvDq8ikWAM"  # Rachel - Professional Female Voice
             url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
             headers = {
                 "xi-api-key": self.elevenlabs_key,
@@ -32,7 +34,7 @@ class VoiceGenerator:
             payload = {
                 "text": text,
                 "model_id": "eleven_turbo_v2_5",
-                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
+                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "speed": 1.1}
             }
             resp = requests.post(url, headers=headers, json=payload, timeout=30)
             if resp.status_code == 200:
@@ -77,14 +79,14 @@ class VoiceGenerator:
         try:
             communicate = edge_tts.Communicate(text, self.voice)
             submaker = edge_tts.SubMaker()
-            
+
             with open(output_path, "wb") as file:
                 async for chunk in communicate.stream():
                     if chunk["type"] == "audio":
                         file.write(chunk["data"])
                     elif chunk["type"] == "WordBoundary":
                         submaker.feed(chunk)
-            
+
             if subtitle_path:
                 with open(subtitle_path, "w", encoding="utf-8") as sub_file:
                     sub_file.write(submaker.get_srt())
@@ -97,6 +99,36 @@ class VoiceGenerator:
             # any existing temp file as a usable voiceover during fallback
             Path(output_path).unlink(missing_ok=True)
             return False
+
+    @staticmethod
+    def _audio_duration(audio_path: str) -> float:
+        try:
+            out = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
+                capture_output=True, text=True, timeout=30,
+            )
+            return float(out.stdout.strip())
+        except Exception as e:
+            logger.warning(f"Could not probe audio duration: {e}")
+            return 0.0
+
+    @staticmethod
+    def _rescale_srt(srt_path: str, factor: float) -> None:
+        """Stretches every SRT timestamp by `factor`. Word timings come from the
+        Edge-TTS reference audio; the premium voiceover speaks at a different
+        pace, so timings must be scaled to its real duration or subtitles drift."""
+        def scale(match):
+            h, m, s, ms = (int(g) for g in match.groups())
+            total_ms = int(round(((h * 3600 + m * 60 + s) * 1000 + ms) * factor))
+            h2, rem = divmod(total_ms, 3600000)
+            m2, rem = divmod(rem, 60000)
+            s2, ms2 = divmod(rem, 1000)
+            return f"{h2:02d}:{m2:02d}:{s2:02d},{ms2:03d}"
+
+        content = Path(srt_path).read_text(encoding="utf-8")
+        content = re.sub(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", scale, content)
+        Path(srt_path).write_text(content, encoding="utf-8")
 
     def generate_audio(self, text: str, output_filename: str = "voiceover.mp3",
                        srt_filename: str = "subtitles.srt") -> Tuple[str, str]:
@@ -128,6 +160,15 @@ class VoiceGenerator:
                 success = loop.run_until_complete(self._generate_edge_tts_async(text, out_audio, out_srt))
                 loop.close()
         else:
+            # Premium voice pacing differs from the Edge-TTS reference the SRT
+            # was timed against — stretch the SRT to the real voiceover length.
+            if out_srt and Path(temp_edge_audio).exists():
+                edge_dur = self._audio_duration(temp_edge_audio)
+                premium_dur = self._audio_duration(out_audio)
+                if edge_dur > 0 and premium_dur > 0:
+                    factor = premium_dur / edge_dur
+                    self._rescale_srt(out_srt, factor)
+                    logger.info(f"Rescaled SRT timings by {factor:.3f}x to match premium voiceover.")
             # Clean up temp edge audio if premium voice succeeded
             if Path(temp_edge_audio).exists():
                 Path(temp_edge_audio).unlink()
@@ -141,4 +182,3 @@ if __name__ == "__main__":
     audio_path, srt_path = vg.generate_audio("Hello Wall Street investors! Nvidia stock surges six percent today.", "test_voice.mp3", "test_sub.srt")
     print("Audio path:", audio_path)
     print("SRT path:", srt_path)
-
