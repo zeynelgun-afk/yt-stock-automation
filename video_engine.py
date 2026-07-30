@@ -143,7 +143,7 @@ class VideoEngine:
         if Path(out_path).exists():
             return out_path
         try:
-            url = f"https://assets.parqet.com/logos/symbol/{symbol_clean}"
+            url = f"https://assets.parqet.com/logos/symbol/{symbol_clean}?format=png&size=300"
             r = requests.get(url, timeout=5)
             if r.status_code == 200 and len(r.content) > 500:
                 with open(out_path, "wb") as f:
