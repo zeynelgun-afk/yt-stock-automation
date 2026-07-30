@@ -1,9 +1,14 @@
-"""Analytics feedback loop — ROADMAP Faz 4.3.
+"""Analytics feedback loop — ROADMAP Faz 4.3 + Faz 5.1.
 
 Pulls per-video YouTube Analytics for the last N days and sends a weekly
 performance digest to Telegram: views, average view percentage (the Shorts
 swipe-away proxy), watch time and subscriber gains, tagged by franchise
 (parsed from the video title where possible).
+
+Faz 5.1: the same stats feed compute_franchise_weights(), which the story
+selector multiplies into candidate scores — formats that hold viewers get
+picked more often, underperformers less. CI is stateless, so weights are
+recomputed from the channel itself on every run instead of persisted.
 
 Requires token.json with the readonly + yt-analytics scopes. Tokens created
 before those scopes were added to youtube_publisher.SCOPES must be
@@ -14,6 +19,7 @@ Cron: run weekly (see README) — `python analytics_reporter.py`.
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional
 
 from config import BASE_DIR
 from telegram_bot import TelegramApprovalBot
@@ -93,6 +99,53 @@ def fetch_video_stats(days: int = 7):
     } for r in rows]
 
 
+# ---------- Faz 5.1: analytics -> story-selector feedback ----------
+
+# Order matters: first matching franchise wins. Matched case-insensitively
+# against upload titles — the only durable franchise record on stateless CI.
+FRANCHISE_KEYWORDS = [
+    ("insider_watch", ("insider",)),
+    ("congress_trade", ("congress", "senator", "politician", "capitol")),
+    ("earnings_shock", ("earnings", "eps")),
+    ("reddit_radar", ("reddit", "wsb", "wallstreetbets")),
+    ("analyst_shock", ("analyst", "price target")),
+    ("fear_gauge", ("fear", "greed", "vix")),
+    ("market_close", ("market close", "s&p", "nasdaq", "dow", "recap")),
+]
+
+
+def classify_franchise(title: str) -> Optional[str]:
+    t = title.lower()
+    for franchise, keys in FRANCHISE_KEYWORDS:
+        if any(k in t for k in keys):
+            return franchise
+    return None
+
+
+def compute_franchise_weights(days: int = 14, min_videos: int = 2,
+                              lo: float = 0.7, hi: float = 1.3) -> Dict[str, float]:
+    """Score multiplier per franchise from recent per-video performance.
+
+    perf = views x avg_view_pct: a video only counts as much of it as viewers
+    actually watched. Franchises with fewer than `min_videos` classified
+    uploads stay unweighted so new formats keep getting explored, and the
+    clamp keeps one hot streak from monopolizing the channel.
+    """
+    per: Dict[str, List[float]] = {}
+    for s in fetch_video_stats(days):
+        fr = classify_franchise(s["title"])
+        if fr:
+            per.setdefault(fr, []).append(s["views"] * s["avg_view_pct"] / 100.0)
+
+    scored = {f: sum(v) / len(v) for f, v in per.items() if len(v) >= min_videos}
+    if not scored:
+        return {}
+    overall = sum(scored.values()) / len(scored)
+    if overall <= 0:
+        return {}
+    return {f: round(min(hi, max(lo, perf / overall)), 2) for f, perf in scored.items()}
+
+
 def build_report(days: int = 7) -> str:
     stats = fetch_video_stats(days)
     if not stats:
@@ -115,6 +168,21 @@ def build_report(days: int = 7) -> str:
     lines.append("")
     lines.append(f"Hedef: APV ≥ %{TARGET_AVG_VIEW_PCT_SHORTS:.0f} (Shorts). "
                  "⚠️ işaretli formatların hook/loop kurgusunu gözden geçir.")
+
+    try:
+        weights = compute_franchise_weights()
+        if weights:
+            lines.append("")
+            lines.append("⚖️ Otomatik format ağırlıkları (son 14 gün — hikâye seçici bunları uyguluyor):")
+            for f, w in sorted(weights.items(), key=lambda kv: -kv[1]):
+                arrow = "📈" if w > 1 else ("📉" if w < 1 else "➖")
+                lines.append(f"  {arrow} {f}: x{w}")
+        else:
+            lines.append("")
+            lines.append("⚖️ Format ağırlıkları: henüz yeterli veri yok (format başına ≥2 video gerekli).")
+    except Exception as e:
+        logger.warning(f"Could not append franchise weights to report: {e}")
+
     return "\n".join(lines)
 
 

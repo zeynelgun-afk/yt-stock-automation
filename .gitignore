@@ -11,4 +11,5 @@ __pycache__/
 client_secret.json
 token.json
 .claude/
-data/
+data/*
+!data/packaging_patterns.json

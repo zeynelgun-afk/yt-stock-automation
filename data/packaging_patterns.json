@@ -1,0 +1,26 @@
+{
+ "title_patterns": [
+  "[Specific Event] just [Specific Action] — here's why",
+  "[Company/Person] says '[Provocative Quote]' about [Market/Topic]",
+  "Why [Specific Market Event] is a warning to [Broad Audience]",
+  "[Specific Number]% [Market Movement] coming: '[Expert Quote]'",
+  "[Historical Event]: What [Experts] Get Wrong",
+  "[TICKER] Earnings to Be ‘[Strong Adjective] Moment’ for Markets, [Expert] Says",
+  "[Specific Legislation] advances: [Specific Impact]"
+ ],
+ "hook_patterns": [
+  "New data reveals [specific finding] about [market/topic]...",
+  "[Expert Name], known for [credential], warns '[provocative statement]'...",
+  "A little-known rule change could impact [specific market/topic]...",
+  "While most focus on [common narrative], the real story is [counterintuitive insight]...",
+  "Historical patterns suggest [specific outcome] when [current conditions] occur..."
+ ],
+ "packaging_notes": [
+  "Short videos (1-3 mins) perform exceptionally well for breaking news topics",
+  "Mid-length videos (7-15 mins) dominate for expert interviews and analysis",
+  "Specific unrounded percentages (e.g., '40-50%') outperform rounded numbers",
+  "Legislative actions on trading restrictions generate high engagement",
+  "Historical parallels to current markets drive sustained viewer interest"
+ ],
+ "updated_at": "2026-07-23T19:50:23"
+}

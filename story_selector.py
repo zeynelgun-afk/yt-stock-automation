@@ -393,10 +393,32 @@ class StorySelector:
         # Never return an empty slate — a repeat beats no video at all
         return kept or candidates
 
+    @staticmethod
+    def _franchise_weights() -> Dict[str, float]:
+        """Analytics feedback loop (ROADMAP Faz 5.1): franchise score multipliers
+        from the channel's recent per-format performance. Any failure returns
+        {} — weighting is a nudge, never a blocker."""
+        try:
+            from analytics_reporter import compute_franchise_weights
+            return compute_franchise_weights(days=14)
+        except Exception as e:
+            logger.warning(f"Could not compute franchise weights: {e}")
+            return {}
+
     def select(self, pool: Dict[str, Any], top_n: int = 3) -> Dict[str, Any]:
         """Returns the chosen story: candidate fields + 'angle', 'why_it_matters'."""
         candidates = self.build_candidates(pool)
         candidates = self._drop_recently_covered(candidates, self._recent_upload_titles())
+        # Analytics feedback: formats that held viewers recently score higher,
+        # underperformers lower. Neutral (x1.0) when there isn't enough data.
+        weights = self._franchise_weights()
+        if weights:
+            for c in candidates:
+                w = weights.get(c["franchise"], 1.0)
+                if w != 1.0:
+                    c["score"] = round(c["score"] * w, 1)
+            candidates.sort(key=lambda c: c["score"], reverse=True)
+            logger.info(f"Applied analytics franchise weights: {weights}")
         # Diversity: at most one candidate per franchise goes to the LLM,
         # so the pick is a real editorial choice, not near-duplicates
         best_per_franchise: Dict[str, Dict[str, Any]] = {}

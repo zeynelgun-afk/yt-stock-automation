@@ -1,5 +1,11 @@
 name: US Stock Market Daily YouTube Automation
 
+# The analytics job commits data/packaging_patterns.json back to the repo —
+# CI runners are ephemeral, so the repo is the only durable store for the
+# weekly outlier patterns that ScriptGenerator reads on every video run.
+permissions:
+  contents: write
+
 # All times UTC. TSI = UTC+3 (no DST). NYSE close: 20:00 UTC in EDT months,
 # 21:00 UTC in EST months — the long recap must be live within ~15 min of close.
 on:
@@ -81,6 +87,12 @@ jobs:
               python -c "from youtube_publisher import YouTubePublisher; YouTubePublisher()"  # materialize token.json from env
               python -c "from analytics_reporter import send_weekly_report; send_weekly_report()"
               python -c "from outlier_scanner import run_weekly_scan; run_weekly_scan()"
+              # Persist this week's packaging patterns — without this commit the
+              # scan's output dies with the runner and ScriptGenerator never sees it
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add data/packaging_patterns.json
+              git diff --cached --quiet || { git commit -m "chore: weekly packaging patterns refresh"; git push; }
               ;;
             event-shorts)
               if python main_scheduler.py event-check; then
