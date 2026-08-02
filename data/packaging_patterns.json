@@ -1,27 +1,27 @@
 {
  "title_patterns": [
-  "[Public Figure] Presses/Confronts [Official] on [Specific Policy/Trade Topic].",
-  "[Country/Sector]'s [Trend Name] Just [Past-Tense Verb] — Now What?",
-  "We Looked Through [Large Specific Number] of [Data Type]. [Surprising Comparison].",
-  "EARNINGS ALERT: [Ticker], [Ticker], [Ticker], [Ticker]",
-  "[Institution/Body] [Passes/Advances] Bill [Restricting/Ending] [Specific Practice]",
-  "[Person] Reacts to [Company], [Company] Earnings & [Macro Event]",
-  "[Specific Number]% [Neutral Descriptive Verb] — [Direct Question]?",
-  "[Named Investor] Explains Why [Company] Initiated/Did [Specific Action]"
+  "[Event] Just [Past-tense verb] — Now What?",
+  "[Public Figure] Presses [Official] on [Specific Policy/Action]",
+  "We Looked Through [Large Specific Number] [Records/Trades] — Here's What We Found",
+  "[Company] Reports [Specific Outcome] on [Event Type]",
+  "EARNINGS ALERT: [TICKER], [TICKER], [TICKER], [TICKER]",
+  "The True Origin of [Historical Event]: What [Authority Group] Get Wrong",
+  "[Specific %/Number] [Concrete Outcome] | [Context Phrase] | [Analyst Name]",
+  "[Entity] Advances/Passes Bill [Restricting/Enforcing Specific Action]"
  ],
  "hook_patterns": [
-  "Open with a named authority figure's exact quote or action before any commentary",
-  "Lead with one unrounded, specific data point (a %, a dollar figure, a trade count) instead of a general claim",
-  "Frame as direct comparison between two known entities ('X is doing more of this than Y')",
-  "Pose the video as answering one narrow, already-in-progress question rather than predicting doom",
-  "State the structural/legislative mechanism (bill, hearing, disclosure) before the market reaction"
+  "Open with a single hard number before any framing ('$200k loss', '44% wiped out', '20,000 trades')",
+  "Cold-open on a direct quote or exchange between two named figures (Q&A/press format)",
+  "State the structural event flatly in first line, no adjectives ('X just did Y')",
+  "Lead with 'We looked through [dataset]' to signal original research over commentary",
+  "Open earnings/ticker rundowns by naming all covered tickers upfront before analysis"
  ],
  "packaging_notes": [
-  "Duration is bimodal: sub-3-minute clips win on breaking political/regulatory news (congressional trading, hearings), while 15-25 minute videos win on analytical deep-dives (bubble/crash explainers) — very little mid-length (5-10 min) content is breaking out.",
-  "Numbers are used for credibility, not shock — specific unrounded figures (20,000 trades, 44%, $200k) outperform vague superlatives; avoid rounded dramatic claims.",
-  "Recurring institutional/legislative angle (Congress stock-trading bans, insider trading bills) is repeatable across multiple channels and even re-uploads of near-identical titles, suggesting a durable structural news hook rather than a one-off story.",
-  "Multi-ticker 'earnings alert' listicle format performs consistently in short/mid runtime even at lower absolute views, showing niche utility content still outliers relative to channel baseline.",
-  "Same underlying story (e.g., a national market event) is being reframed as both a fast news-bite and a longer explainer by different channels — packaging duration should match how much original analysis vs. pure reporting is being offered."
+  "Duration bifurcation: sub-90-second clips win on breaking political/policy news; 15-25 min videos win on single-topic deep dives (AI bubble, market crash mechanics) — little traction in the 5-10 min middle zone",
+  "Same-story clustering works: multiple channels covering identical event (South Korea AI bubble) each hit outlier status independently — topical timing beats originality",
+  "Specific unrounded numbers outperform rounded ones in both titles and views (20,000 trades, $200k, 44%) — precision signals credibility over hype",
+  "Congressional stock-trading accountability is a recurring high-ratio topic across news outlets and political channels — a policy/transparency angle, not a fear angle",
+  "Multi-ticker list format ('EARNINGS ALERT: TICKER, TICKER...') consistently outperforms baseline even at low absolute views — utility-style packaging works regardless of channel size"
  ],
- "updated_at": "2026-08-02T15:58:45"
+ "updated_at": "2026-08-02T18:57:12"
 }
