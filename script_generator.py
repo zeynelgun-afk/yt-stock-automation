@@ -39,10 +39,10 @@ class ScriptGenerator:
         # Verified-live OpenRouter slugs (dead slugs 404 and silently ate the
         # fallback chain — check https://openrouter.ai/api/v1/models when editing)
         self.openrouter_models = [
-            "anthropic/claude-sonnet-5",    # strongest long-form storyteller
-            "google/gemini-3.5-flash",      # fast + cheap, reliable long output
-            "openai/gpt-4o",                # proven on this account
-            "deepseek/deepseek-chat-v3.1",  # cheap last resort
+            "anthropic/claude-opus-5",      # strongest storyteller — scripts are cheap, quality compounds
+            "anthropic/claude-sonnet-5",    # first fallback, proven on this channel
+            "google/gemini-3.6-flash",      # fast + cheap, reliable long output
+            "deepseek/deepseek-v4-pro",     # cheap last resort
         ]
 
     def generate_shorts_script(self, topic: str, data_summary: str,
@@ -61,6 +61,14 @@ HOOK — the first sentence decides whether the viewer swipes away. Use one of t
 - Curiosity gap: "This chart predicted the last 3 crashes — it just flashed again."
 - Direct question: "Why is a US senator suddenly buying this stock?"
 - Specific shock number up front: "$4.7 million. That's what one insider just bet."
+
+TENSION REQUIREMENT (non-negotiable — this channel's retention data proves it):
+Both the title AND the hook must contain a tension, contradiction, or open question — never a plain
+restatement of the news. "X happened" is a headline, not a hook. "X happened — but the real reason
+is something else" is a hook. Our best-retaining videos all follow this shape
+("+58% in a Day — After a Reverse Split?!", "Real Rally or Ratio Illusion?"); our worst simply
+announce the move ("Company Soars 124.9% on Study Boost"). If the title reads like a news wire
+headline, rewrite it until it poses a question or a twist the viewer needs resolved.
 {_packaging_patterns_block()}
 RULES:
 1. Word count: MUST BE BETWEEN 110 AND 130 WORDS (approx 45 seconds of natural speech).
@@ -84,6 +92,8 @@ RULES:
 
         8+ minutes unlocks mid-roll ads — the long recap is the channel's
         revenue engine, the Shorts are the reach funnel."""
+        from datetime import datetime
+        today_str = datetime.now().strftime("%B %-d")  # e.g. "August 2"
         prompt = f"""You are the lead financial anchor of "US Stock Market Daily". Write a comprehensive Daily Market Recap script for an 8-10 minute video.
 Positioning: data-first, zero hype — real numbers, real reasons, original analysis (never a news-summary rehash).
 
@@ -105,8 +115,8 @@ RULES:
 - ONLY output spoken script text. No stage directions, section headers, or visual cues in full_script.
 - Tone: Professional, fast-paced, insightful Wall-Street level analysis with original interpretation.
 - Return strictly valid JSON format with keys:
-   - "title": Video title (40-60 chars, keyword first, specific numbers)
-   - "description": Comprehensive YouTube description with hashtags and a data-source transparency line ("Data: Financial Modeling Prep, CNN Fear & Greed")
+   - "title": MUST follow this exact search-optimized format: "Stock Market Today: {today_str} — <the day's most shocking specific event with a number>". Search traffic is this format's entire purpose — people search "stock market today", never "Dow jumps as CEO sells".
+   - "description": First line MUST be search bait: "Stock market recap for {today_str}: <one-sentence summary with the key index moves>." Then the comprehensive description with hashtags (#stockmarket #stockmarkettoday #marketrecap among them) and a data-source transparency line ("Data: Financial Modeling Prep, CNN Fear & Greed")
    - "full_script": Spoken text only
    - "ticker": Main ticker discussed
    - "change_pct": Percent change string

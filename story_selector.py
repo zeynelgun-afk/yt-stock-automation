@@ -376,18 +376,51 @@ class StorySelector:
             logger.warning(f"Could not fetch recent uploads for dedup: {e}")
             return []
 
-    @staticmethod
-    def _drop_recently_covered(candidates: List[Dict], recent_titles: List[str]) -> List[Dict]:
-        """Drops candidates whose ticker already appeared in a recent upload title."""
+    # Generic corporate words that don't identify a company in a title
+    _GENERIC_NAME_WORDS = {
+        "inc", "corp", "corporation", "company", "co", "ltd", "plc", "group",
+        "holdings", "the", "and", "international", "global", "stock", "shares",
+    }
+
+    @classmethod
+    def _candidate_match_terms(cls, c: Dict) -> List[str]:
+        """Terms that identify this candidate's company in an upload title:
+        the ticker plus the first distinctive word of the company name.
+        Titles often use the company name, not the ticker ("Nuwellis Surges 131%"
+        carries no NUWE) — ticker-only matching let same-day repeats through."""
+        terms = []
+        ticker = c.get("ticker", "")
+        if len(ticker) >= 2:
+            terms.append(ticker)
+        facts = c.get("facts", {}) or {}
+        name = str(facts.get("name") or facts.get("companyName") or facts.get("company") or "")
+        for w in re.split(r"[^A-Za-z]+", name):
+            if len(w) >= 4 and w.lower() not in cls._GENERIC_NAME_WORDS:
+                terms.append(w)
+                break
+        return terms
+
+    @classmethod
+    def _drop_recently_covered(cls, candidates: List[Dict], recent_titles: List[str]) -> List[Dict]:
+        """Drops candidates whose ticker OR company name already appeared in a
+        recent upload title."""
         if not recent_titles:
             return candidates
         kept = []
         for c in candidates:
-            ticker = c.get("ticker", "")
-            if len(ticker) >= 2 and any(
-                re.search(rf"\b{re.escape(ticker)}\b", t) for t in recent_titles
-            ):
-                logger.info(f"Skipping {c['franchise']}/{ticker}: already covered in a recent upload")
+            terms = cls._candidate_match_terms(c)
+            hit = next(
+                (term for term in terms for t in recent_titles
+                 # tickers are uppercase in titles — case-sensitive to avoid
+                 # e.g. EGG matching the word "egg"; names match case-insensitively
+                 if re.search(rf"\b{re.escape(term)}\b",
+                              t, 0 if term.isupper() else re.IGNORECASE)),
+                None,
+            )
+            if hit:
+                logger.info(
+                    f"Skipping {c['franchise']}/{c.get('ticker', '?')}: "
+                    f"'{hit}' already covered in a recent upload")
                 continue
             kept.append(c)
         # Never return an empty slate — a repeat beats no video at all

@@ -12,7 +12,7 @@ from subtitle_generator import SubtitleGenerator
 from video_engine import VideoEngine
 from telegram_bot import TelegramApprovalBot
 from youtube_publisher import YouTubePublisher
-from config import TEMP_DIR
+from config import TEMP_DIR, MIN_SHORTS_STORY_SCORE
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("YT_AUTO")
@@ -55,6 +55,17 @@ def run_pipeline(video_type: str = "shorts"):
     # 2. Story selection engine: score candidates, LLM picks the day's angle
     sg = ScriptGenerator()
     story = StorySelector(sg).select(pool)
+
+    # Quality gate (Shorts only): a weak story tanks retention and trains the
+    # algorithm that the channel is skippable. Skipping the slot is a decision,
+    # not a failure — informational Telegram note, no alarm.
+    if is_shorts and story.get("score", 100) < MIN_SHORTS_STORY_SCORE:
+        msg = (f"⏭️ Slot atlandı — günün en iyi hikâyesi zayıf "
+               f"(skor {story.get('score', 0):.0f} < {MIN_SHORTS_STORY_SCORE:.0f}): "
+               f"{story['headline']}")
+        logger.info(msg)
+        TelegramApprovalBot().send_text(msg)
+        return
 
     # 3. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
     digest = compact_pool(pool)
