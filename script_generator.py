@@ -72,7 +72,10 @@ headline, rewrite it until it poses a question or a twist the viewer needs resol
 {_packaging_patterns_block()}
 RULES:
 1. Word count: MUST BE BETWEEN 110 AND 130 WORDS (approx 45 seconds of natural speech).
-2. Use specific, unrounded numbers from the data ("$4.7M", "23%") — never vague words like "millions" or "a lot".
+2. Use specific, unrounded numbers from the data — never vague words like "millions" or "a lot".
+   Write them TTS-friendly: "$4.7 million" not "$4.7M", "up 23 percent" or "23%" not "+23%".
+   The script is read aloud by a voice engine — abbreviations like "M", "B", "PT", "EPS" get mispronounced; spell them out ("price target", "earnings per share").
+2b. NEVER open with "Hey guys", "Welcome back", "In today's video" — cold-open directly on the story.
 3. Do NOT use sound effect cues or stage directions (e.g. [Music playing] or (Visual: Chart)). ONLY write spoken text!
 4. LOOP DESIGN: the final sentence must connect back to the opening hook so the video rewatches seamlessly. NO long outro; at most 5 words of subscribe CTA woven in ("more daily — subscribe."), never a full sentence of it.
 5. Only state facts present in the Market Context. Never invent numbers, names or reasons.
@@ -112,6 +115,7 @@ STRUCTURE (follow in order — the per-section word budgets are mandatory, they 
 RULES:
 - Word count: 1100 to 1300 words (8+ minutes of natural speech). This is a HARD requirement.
 - Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.
+- Write numbers TTS-friendly: "$4.7 million" not "$4.7M"; spell out abbreviations ("price target", "earnings per share") — the script is read aloud by a voice engine.
 - ONLY output spoken script text. No stage directions, section headers, or visual cues in full_script.
 - Tone: Professional, fast-paced, insightful Wall-Street level analysis with original interpretation.
 - Return strictly valid JSON format with keys:

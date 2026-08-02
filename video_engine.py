@@ -279,6 +279,12 @@ class VideoEngine:
         ax.set_title(f"{symbol} — {session_date}", color='#f8fafc',
                      fontsize=15, fontweight='bold', pad=10)
 
+        # Neon glow: widening translucent copies under the main line
+        glow_lines = [
+            ax.plot([], [], color=line_color, linewidth=lw, alpha=a,
+                    solid_capstyle='round', zorder=2)[0]
+            for lw, a in ((14, 0.08), (9, 0.16), (6, 0.30))
+        ]
         line, = ax.plot([], [], color=line_color, linewidth=4,
                         solid_capstyle='round', zorder=3)
         dot, = ax.plot([], [], 'o', color=line_color, markersize=9, zorder=4)
@@ -292,6 +298,8 @@ class VideoEngine:
             xs = list(range(upto))
             ys = closes[:upto]
             line.set_data(xs, ys)
+            for gl in glow_lines:
+                gl.set_data(xs, ys)
             # Pulsing endpoint dot keeps the frame alive even late in the reveal
             dot.set_markersize(9 + 2.5 * math.sin(f * 0.35))
             dot.set_data([xs[-1]], [ys[-1]])
