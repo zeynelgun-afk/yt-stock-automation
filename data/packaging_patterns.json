@@ -1,26 +1,27 @@
 {
  "title_patterns": [
-  "[Specific Event] just [Specific Action] — here's why",
-  "[Company/Person] says '[Provocative Quote]' about [Market/Topic]",
-  "Why [Specific Market Event] is a warning to [Broad Audience]",
-  "[Specific Number]% [Market Movement] coming: '[Expert Quote]'",
-  "[Historical Event]: What [Experts] Get Wrong",
-  "[TICKER] Earnings to Be ‘[Strong Adjective] Moment’ for Markets, [Expert] Says",
-  "[Specific Legislation] advances: [Specific Impact]"
+  "[Public Figure] Presses/Confronts [Official] on [Specific Policy/Trade Topic].",
+  "[Country/Sector]'s [Trend Name] Just [Past-Tense Verb] — Now What?",
+  "We Looked Through [Large Specific Number] of [Data Type]. [Surprising Comparison].",
+  "EARNINGS ALERT: [Ticker], [Ticker], [Ticker], [Ticker]",
+  "[Institution/Body] [Passes/Advances] Bill [Restricting/Ending] [Specific Practice]",
+  "[Person] Reacts to [Company], [Company] Earnings & [Macro Event]",
+  "[Specific Number]% [Neutral Descriptive Verb] — [Direct Question]?",
+  "[Named Investor] Explains Why [Company] Initiated/Did [Specific Action]"
  ],
  "hook_patterns": [
-  "New data reveals [specific finding] about [market/topic]...",
-  "[Expert Name], known for [credential], warns '[provocative statement]'...",
-  "A little-known rule change could impact [specific market/topic]...",
-  "While most focus on [common narrative], the real story is [counterintuitive insight]...",
-  "Historical patterns suggest [specific outcome] when [current conditions] occur..."
+  "Open with a named authority figure's exact quote or action before any commentary",
+  "Lead with one unrounded, specific data point (a %, a dollar figure, a trade count) instead of a general claim",
+  "Frame as direct comparison between two known entities ('X is doing more of this than Y')",
+  "Pose the video as answering one narrow, already-in-progress question rather than predicting doom",
+  "State the structural/legislative mechanism (bill, hearing, disclosure) before the market reaction"
  ],
  "packaging_notes": [
-  "Short videos (1-3 mins) perform exceptionally well for breaking news topics",
-  "Mid-length videos (7-15 mins) dominate for expert interviews and analysis",
-  "Specific unrounded percentages (e.g., '40-50%') outperform rounded numbers",
-  "Legislative actions on trading restrictions generate high engagement",
-  "Historical parallels to current markets drive sustained viewer interest"
+  "Duration is bimodal: sub-3-minute clips win on breaking political/regulatory news (congressional trading, hearings), while 15-25 minute videos win on analytical deep-dives (bubble/crash explainers) — very little mid-length (5-10 min) content is breaking out.",
+  "Numbers are used for credibility, not shock — specific unrounded figures (20,000 trades, 44%, $200k) outperform vague superlatives; avoid rounded dramatic claims.",
+  "Recurring institutional/legislative angle (Congress stock-trading bans, insider trading bills) is repeatable across multiple channels and even re-uploads of near-identical titles, suggesting a durable structural news hook rather than a one-off story.",
+  "Multi-ticker 'earnings alert' listicle format performs consistently in short/mid runtime even at lower absolute views, showing niche utility content still outliers relative to channel baseline.",
+  "Same underlying story (e.g., a national market event) is being reframed as both a fast news-bite and a longer explainer by different channels — packaging duration should match how much original analysis vs. pure reporting is being offered."
  ],
- "updated_at": "2026-07-23T19:50:23"
+ "updated_at": "2026-08-02T15:58:45"
 }
