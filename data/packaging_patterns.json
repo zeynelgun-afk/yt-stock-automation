@@ -1,27 +1,28 @@
 {
  "title_patterns": [
-  "[Event] Just [Past-tense verb] — Now What?",
-  "[Public Figure] Presses [Official] on [Specific Policy/Action]",
-  "We Looked Through [Large Specific Number] [Records/Trades] — Here's What We Found",
-  "[Company] Reports [Specific Outcome] on [Event Type]",
-  "EARNINGS ALERT: [TICKER], [TICKER], [TICKER], [TICKER]",
-  "The True Origin of [Historical Event]: What [Authority Group] Get Wrong",
-  "[Specific %/Number] [Concrete Outcome] | [Context Phrase] | [Analyst Name]",
-  "[Entity] Advances/Passes Bill [Restricting/Enforcing Specific Action]"
+  "[EVENT/ASSET] just [past-tense verb of completed action] — now what?  (closed-loop event + forward question, no prediction in the title)",
+  "[NAMED CREDIBLE SOURCE], [their title/firm]: [their specific claim in their own words]  (attribution-first framing that outsources the opinion)",
+  "[COMPANY] reports [specific directional result] for [exact quarter/period]  (plain reporting shape, period named explicitly)",
+  "EARNINGS/DATA ALERT: [2-3 tickers, comma-separated]  (all-caps label + ticker list, zero adjectives)",
+  "[POLICY/INSTITUTIONAL ACTION] on [market behavior] — what actually changes  (mechanism over outrage)",
+  "Key takeaways from [first/latest specific report or filing]  (numbered-insight promise anchored to a document)",
+  "[YEAR] setup for [index/sector], according to [named analyst/firm]  (year + attribution, avoids self-made forecast)",
+  "[SEGMENT/COHORT] is now [specific measured behavior with unrounded figure]  (data observation about a group, no verdict)"
  ],
  "hook_patterns": [
-  "Open with a single hard number before any framing ('$200k loss', '44% wiped out', '20,000 trades')",
-  "Cold-open on a direct quote or exchange between two named figures (Q&A/press format)",
-  "State the structural event flatly in first line, no adjectives ('X just did Y')",
-  "Lead with 'We looked through [dataset]' to signal original research over commentary",
-  "Open earnings/ticker rundowns by naming all covered tickers upfront before analysis"
+  "Lead with the single hardest number and its exact source in the first sentence, then say what it is being compared against.",
+  "State what was expected vs what was printed, in that order, before any interpretation.",
+  "Name the document/filing/transcript you are reading from, then quote the one line that matters.",
+  "Open with the timeline: 'Three weeks ago X was priced at A. As of yesterday's close it is B.' Then ask what changed.",
+  "Acknowledge the loud narrative in one sentence, then say 'here is what the data supports and what it doesn't.'"
  ],
  "packaging_notes": [
-  "Duration bifurcation: sub-90-second clips win on breaking political/policy news; 15-25 min videos win on single-topic deep dives (AI bubble, market crash mechanics) — little traction in the 5-10 min middle zone",
-  "Same-story clustering works: multiple channels covering identical event (South Korea AI bubble) each hit outlier status independently — topical timing beats originality",
-  "Specific unrounded numbers outperform rounded ones in both titles and views (20,000 trades, $200k, 44%) — precision signals credibility over hype",
-  "Congressional stock-trading accountability is a recurring high-ratio topic across news outlets and political channels — a policy/transparency angle, not a fear angle",
-  "Multi-ticker list format ('EARNINGS ALERT: TICKER, TICKER...') consistently outperforms baseline even at low absolute views — utility-style packaging works regardless of channel size"
+  "Two clear duration clusters: 45-90s clips built around one number or one quote, and 14-16 min explainers. The 7-8 min single-topic breakdown is the reliable middle lane.",
+  "Past-tense completed-event verbs ('just popped', 'reports', 'passes') outperform future-tense speculation — describe what already happened and let the analysis carry the forward view.",
+  "Attribution is a legitimacy multiplier: naming a real analyst, firm, or official document in the title lets you carry a strong claim without becoming the hype source.",
+  "Specific, unrounded figures and exact periods (quarter, close time, dollar amount) beat vague magnitude words; avoid 'massive', 'huge', 'wild' — they are doing the work that a number should do.",
+  "A trailing open question ('now what?') or 'what actually changes' outperforms declarative doom framing, and keeps the promise inside what data can answer.",
+  "Recurring format labels (ALERT-style prefixes, 'Key takeaways from') build repeat-view habit at low production cost and signal reporting rather than opinion."
  ],
- "updated_at": "2026-08-02T18:57:12"
+ "updated_at": "2026-08-09T15:27:43"
 }
