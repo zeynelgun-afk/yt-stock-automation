@@ -5,6 +5,21 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _ass_timestamp(seconds: float) -> str:
+    """Seconds -> ASS `H:MM:SS.cc`.
+
+    ASS uses one-digit hours and CENTIseconds, so an SRT stamp cannot be reused
+    by slicing it: the old code produced "00:00:0..2" from "00:00:01,234" and
+    libass silently dropped every malformed Dialogue line — the reason no video
+    has ever rendered a subtitle.
+    """
+    cs = max(0, int(round(seconds * 100)))
+    h, cs = divmod(cs, 360000)
+    m, cs = divmod(cs, 6000)
+    s, cs = divmod(cs, 100)
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+
 class SubtitleGenerator:
     """Parses SRT subtitles and converts them into YouTube Shorts style ASS (Advanced SubStation Alpha) format with highlighted words."""
 
@@ -18,15 +33,26 @@ class SubtitleGenerator:
         # ASS Header with Custom Fonts & Colors (Vibrant Yellow text on dark shadow)
         # Alignment=2 (bottom-center) for all, MarginV=240 for Shorts to avoid YT overlay UI
         alignment = 2
-        font_size = 56 if is_shorts else 36
+        # 56pt was ~3% of a 1920px frame — legible on a monitor, invisible on a
+        # phone held at arm's length. Shorts subtitles carry the retention, so
+        # they get ~5% of frame height; MarginV keeps them clear of the YT UI.
+        font_size = 96 if is_shorts else 52
         margin_v = 240 if is_shorts else 60
         
+        # PlayResX/Y are mandatory: without them libass assumes a 384x288 script
+        # canvas and scales everything by 1920/288 = 6.7x — the 56pt font became
+        # ~370px tall and the 240px margin became ~1600px, pushing every line off
+        # the bottom of the frame. They must match the render resolution.
+        play_res_x, play_res_y = (1080, 1920) if is_shorts else (1920, 1080)
+
         ass_header = f"""[Script Info]
 Title: US Stock Market Daily Subtitles
 ScriptType: v4.00+
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 YCbCr Matrix: None
+PlayResX: {play_res_x}
+PlayResY: {play_res_y}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
@@ -42,24 +68,35 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Simple SRT parser regex
             pattern = re.compile(r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n((?:.|\n)*?)(?=\n\d+|\Z)')
             matches = pattern.findall(content)
+            if not matches:
+                logger.error(f"No subtitle cues parsed from {srt_file_path} — "
+                             "the video would render with no subtitles.")
+                return ""
+
+            def to_sec(ts: str) -> float:
+                parts = ts.replace(',', '.').split(':')
+                return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+
+            # Edge-TTS now emits one cue per word, which would flash a single
+            # word at a time. Group them into short phrases — the karaoke
+            # highlight below still lands on the individual word.
+            words_per_cue = 3 if is_shorts else 5
+            groups = []
+            for i in range(0, len(matches), words_per_cue):
+                chunk = matches[i:i + words_per_cue]
+                groups.append((
+                    to_sec(chunk[0][1]),
+                    to_sec(chunk[-1][2]),
+                    " ".join(c[3].replace('\n', ' ').strip() for c in chunk),
+                ))
 
             dialogues = []
-            for m in matches:
-                start_raw = m[1]
-                end_raw = m[2]
-                text = m[3].replace('\n', ' ').strip().upper()
-
-                # Parse timestamps
-                def to_sec(ts: str) -> float:
-                    parts = ts.replace(',', '.').split(':')
-                    return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
-
-                st_sec = to_sec(start_raw)
-                et_sec = to_sec(end_raw)
+            for st_sec, et_sec, raw_text in groups:
+                text = raw_text.upper()
                 dur_sec = max(0.2, et_sec - st_sec)
 
-                start_ass = f"{m[1].replace(',', '.')[:7]}.{m[1].replace(',', '.')[8:10]}"
-                end_ass = f"{m[2].replace(',', '.')[:7]}.{m[2].replace(',', '.')[8:10]}"
+                start_ass = _ass_timestamp(st_sec)
+                end_ass = _ass_timestamp(et_sec)
 
                 words = text.split()
                 if words:

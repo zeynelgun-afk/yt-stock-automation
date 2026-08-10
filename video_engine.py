@@ -504,20 +504,28 @@ class VideoEngine:
         if bg_video_path and Path(bg_video_path).exists():
             logger.info(f"Using Pexels background video: {bg_video_path}")
             bg_inputs = ["-stream_loop", "-1", "-i", bg_video_path]
-            # Multi-Scene Timeline Cut:
-            # - 0.0s to 4.0s: Shock Opening Card + Logo + Background Video
-            # - 4.0s to 15.0s: Pure Cinematic Full-Screen B-Roll Stock Footage (Card & chart hidden for dynamic scene change)
-            # - 15.0s+: Card + Animated Matplotlib Live Chart + Summary
+            # The card and chart stay on screen for the whole video.
+            #
+            # This used to hide both between t=4s and t=15s for a "cinematic
+            # full-screen B-roll" beat. Audience-retention data killed that idea:
+            # the four most-viewed videos each lost ~60% of viewers between
+            # second 3 and second 14 — precisely the blackout window. What the
+            # viewer got there was a blurred, darkened stock clip with no ticker,
+            # no number and no subtitle: eleven seconds of nothing to hold on to.
+            #
+            # If a scene change is wanted later, it has to keep information on
+            # screen (cut the chart, move the card, swap the B-roll under it) and
+            # never run longer than a second inside the first 20.
             if chart_video_path:
                 chart_chain = (
                     f"[{chart_idx}:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
-                    f"[v1][chart]overlay={chart_x}:{chart_y}:enable='between(t,0,4)+between(t,15,999)'[v2]; "
+                    f"[v1][chart]overlay={chart_x}:{chart_y}[v2]; "
                 )
             video_filter = (
                 f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30,"
                 f"boxblur=5:2,eq=brightness=-0.25:contrast=1.1:saturation=1.2[bg]; "
                 f"[{card_idx}:v]scale={scaled_w}:-1[card]; "
-                f"[bg][card]overlay={card_x}:{card_y}:enable='between(t,0,4)+between(t,15,999)'[v1]; "
+                f"[bg][card]overlay={card_x}:{card_y}[v1]; "
                 f"{chart_chain}"
                 f"[v2]{zoom}[v3]; "
                 f"[v3]ass={ass_sub_path}[outv]"

@@ -77,19 +77,32 @@ class VoiceGenerator:
     async def _generate_edge_tts_async(self, text: str, output_path: str, subtitle_path: Optional[str] = None) -> bool:
         """Generates voice via Edge-TTS and word-boundary SRT subtitles."""
         try:
-            communicate = edge_tts.Communicate(text, self.voice)
+            # boundary must be requested explicitly: edge-tts defaults to
+            # SentenceBoundary, and this code used to feed only "WordBoundary"
+            # chunks — so nothing was ever fed, get_srt() returned "", and every
+            # video shipped with an empty SRT and therefore no subtitles at all.
+            communicate = edge_tts.Communicate(text, self.voice, boundary="WordBoundary")
             submaker = edge_tts.SubMaker()
 
             with open(output_path, "wb") as file:
                 async for chunk in communicate.stream():
                     if chunk["type"] == "audio":
                         file.write(chunk["data"])
-                    elif chunk["type"] == "WordBoundary":
+                    elif chunk["type"] in ("WordBoundary", "SentenceBoundary"):
+                        # Accept either so a future default change can't silently
+                        # empty the subtitles again
                         submaker.feed(chunk)
+
+            srt_text = submaker.get_srt()
+            if not srt_text.strip():
+                # Silent empty subtitles are the failure mode this guards against
+                logger.error("Edge-TTS returned no subtitle cues — SRT would be empty.")
+                Path(output_path).unlink(missing_ok=True)
+                return False
 
             if subtitle_path:
                 with open(subtitle_path, "w", encoding="utf-8") as sub_file:
-                    sub_file.write(submaker.get_srt())
+                    sub_file.write(srt_text)
 
             logger.info(f"Edge-TTS audio generated: {output_path}")
             return True

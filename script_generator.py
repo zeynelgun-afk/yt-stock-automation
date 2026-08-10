@@ -61,14 +61,19 @@ class ScriptGenerator:
     def generate_shorts_script(self, topic: str, data_summary: str,
                                franchise_style: str = "", angle: str = "",
                                recent_titles: Optional[List[str]] = None) -> Dict[str, Any]:
-        """Generates a ~35-second (55-68 word) English YouTube Shorts script.
+        """Generates a ~35-second (66-78 word) English YouTube Shorts script.
 
         Length is set by retention data, not by how much there is to say. The
         channel's audience-retention curves flatten at ~22 seconds watched on
         every video; at 70 seconds that reads as 31% average-view-percentage
         and YouTube stops distributing. The same 22 seconds inside a 35-second
-        Short reads as ~63% and earns the feed. Edge-TTS runs ~1.7 words/sec
-        including pauses, so 55-68 words lands at 32-40 seconds.
+        Short reads as ~63% and earns the feed.
+
+        Word budget comes from the production voice's MEASURED rate, taken from
+        CI logs against published durations: 130/131/150-word scripts rendered
+        as 64-76 second videos, i.e. ~2.05 words/sec (ElevenLabs, incl. pauses).
+        66-78 words therefore lands at 32-38 seconds. Re-measure before changing
+        this — a generic words-per-minute figure is roughly 40% too fast here.
         """
         franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
         angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
@@ -94,8 +99,8 @@ BANNED in the first ten seconds: company background, sector context, "let's take
 any sentence whose job is to prepare a later sentence. If a line could be deleted without
 losing a fact, delete it.
 
-BODY (10-30s, ~34 words): ONE concrete WHY, drawn only from the data. One idea, not three.
-CLOSE (30-35s, ~8 words): land on the exact number from BEAT 1 so the loop is seamless.
+BODY (10-30s, ~45 words): ONE concrete WHY, drawn only from the data. One idea, not three.
+CLOSE (30-35s, ~10 words): land on the exact number from BEAT 1 so the loop is seamless.
 
 TENSION REQUIREMENT (non-negotiable): the title must pose a tension, contradiction or
 open question — never a plain restatement of the news. "X happened" is a headline, not a
@@ -114,8 +119,8 @@ Question-mark titles are allowed at most once every four videos — prefer a dec
 that states something and makes the viewer need the proof.
 {_recent_titles_block(recent_titles)}{_packaging_patterns_block()}
 RULES:
-1. Word count: MUST BE BETWEEN 55 AND 68 WORDS. This is a hard requirement — 68 words is
-   40 seconds and 40 seconds is the ceiling. Cut the second-best fact, not the hook.
+1. Word count: MUST BE BETWEEN 66 AND 78 WORDS. This is a hard requirement — 78 words is
+   38 seconds and 38 seconds is the ceiling. Cut the second-best fact, not the hook.
 2. Use specific, unrounded numbers from the data — never vague words like "millions" or "a lot".
    Write them TTS-friendly: "$4.7 million" not "$4.7M", "up 23 percent" or "23%" not "+23%".
    The script is read aloud by a voice engine — abbreviations like "M", "B", "PT", "EPS" get mispronounced; spell them out ("price target", "earnings per share").
@@ -132,15 +137,15 @@ RULES:
    - "tags": Array of 6 relevant tags
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["stock market trading", "nvidia microchip", "wall street traders"])
 """
-        return self._call_llm(prompt, default_title=topic, min_words=50, max_words=78)
+        return self._call_llm(prompt, default_title=topic, min_words=58, max_words=88)
 
     def generate_long_script(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generates a 5-6 minute (520-600 word) Daily Market Recap script.
+        """Generates a 5-6 minute (660-780 word) Daily Market Recap script.
 
         Word budgets here are set from this pipeline's measured narration rate
-        of ~1.7 words/sec (Edge-TTS, including punctuation pauses) — noticeably
-        slower than the ~2.5 words/sec a generic "words per minute" figure would
-        suggest, which is how the old 1200-word budget became an 11-minute video.
+        of ~2.18 words/sec, measured from CI: a 1465-word recap rendered as an
+        11.2-minute video. A generic words-per-minute figure would have said
+        ~2.5 and is why the old 1200-word budget shipped as 11 minutes.
 
         The recap used to target 8+ minutes to clear the mid-roll ad threshold,
         but the channel is not monetized yet and the 11-minute cuts averaged
@@ -156,19 +161,19 @@ Positioning: data-first, zero hype — real numbers, real reasons, original anal
 Data Provided:
 {json.dumps(market_data, indent=2, default=str)}
 
-STRUCTURE (follow in order — the per-section word budgets are mandatory, they add up to ~560 words):
-1. COLD-OPEN HOOK (~40 words): the single most shocking number of the day as a standalone
+STRUCTURE (follow in order — the per-section word budgets are mandatory, they add up to ~720 words):
+1. COLD-OPEN HOOK (~50 words): the single most shocking number of the day as a standalone
    opening line, then the three things this video will resolve. No throat-clearing, no
    "welcome back", no restating the date before the number.
-2. MARKET SUMMARY (~80 words): S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
-3. THE 3 BIG STORIES OF THE DAY (~240 words, ~80 each): pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors. Open each story on its own hard number — these are the re-hook points where viewers decide to stay.
-4. CONGRESS & INSIDER CORNER (~80 words): notable congressional trades and insider buys/sells from the data — names, amounts, dates.
-5. EARNINGS (~60 words): today's surprises (estimate vs actual) and what's on deck this week.
+2. MARKET SUMMARY (~105 words): S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
+3. THE 3 BIG STORIES OF THE DAY (~315 words, ~105 each): pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors. Open each story on its own hard number — these are the re-hook points where viewers decide to stay.
+4. CONGRESS & INSIDER CORNER (~105 words): notable congressional trades and insider buys/sells from the data — names, amounts, dates.
+5. EARNINGS (~80 words): today's surprises (estimate vs actual) and what's on deck this week.
 6. WHAT TO WATCH TOMORROW (~45 words): the two or three events from the data most likely to move the market, each with why.
-7. OUTRO (~15 words): one line recapping the day's theme + a five-word subscribe CTA.
+7. OUTRO (~20 words): one line recapping the day's theme + a five-word subscribe CTA.
 {_packaging_patterns_block()}
 RULES:
-- Word count: 520 to 600 words (5-6 minutes of narration at this channel's pace). This is a HARD requirement.
+- Word count: 660 to 780 words (5-6 minutes of narration at this channel's pace). This is a HARD requirement.
   Depth comes from picking fewer items and explaining them properly, never from listing more.
 - Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.
 - Write numbers TTS-friendly: "$4.7 million" not "$4.7M"; spell out abbreviations ("price target", "earnings per share") — the script is read aloud by a voice engine.
@@ -185,7 +190,7 @@ RULES:
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["wall street trading floor", "stock market rally", "financial news"])
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
-                              min_words=480, max_words=650)
+                              min_words=600, max_words=850)
 
     def _call_llm(self, prompt: str, default_title: str,
                   min_words: int = 0, max_words: int = 0) -> Dict[str, Any]:
