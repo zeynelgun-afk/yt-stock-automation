@@ -137,6 +137,9 @@ def run_pipeline(video_type: str = "shorts"):
         output_path=card_img_path,
         is_shorts=is_shorts,
         franchise_name=story["franchise_name"],
+        # Empty strings fall the card back to its change%-led layout
+        hero_number=str(script_data.get("hero_number", "")).strip(),
+        hero_label=str(script_data.get("hero_label", "")).strip(),
     )
 
     # Stretch the chart reveal over ~80% of the narration so the frame keeps

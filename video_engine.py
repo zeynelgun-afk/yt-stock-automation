@@ -158,9 +158,20 @@ class VideoEngine:
 
     def create_dashboard_overlay(self, title: str, ticker: str, change_pct: str,
                                  output_path: str, is_shorts: bool = True,
-                                 franchise_name: str = "", logo_path: Optional[str] = None) -> str:
+                                 franchise_name: str = "", logo_path: Optional[str] = None,
+                                 hero_number: str = "", hero_label: str = "") -> str:
         """Glassmorphism first-frame engineered stock card:
         Translucent backdrop + glowing neon accents + high-contrast text overlay + HD Company Logo.
+
+        `hero_number` is the story's own headline figure ("$28.2M", "+290%",
+        "6,297%") and gets the largest type on the card, with `hero_label`
+        naming it above ("CEO SOLD"). The session change % moves to a small
+        chip beside the ticker.
+
+        The card used to give its biggest type to change_pct unconditionally,
+        so a video about a $28.2 million insider sale led with "-0.56%" while
+        the number the script was actually about appeared only in small body
+        text. Falls back to the old change-led layout when no hero is supplied.
         """
         layout = _card_layout(is_shorts)
         width, height = layout["card_size"]
@@ -209,20 +220,54 @@ class VideoEngine:
             except Exception as e:
                 logger.warning(f"Could not render logo image: {e}")
 
-        if is_shorts:
+        hero = str(hero_number).strip()
+        if hero:
+            # Hero-led layout: story number dominates, ticker and change shrink
+            # to identifying marks. Geometry differs per orientation because the
+            # long card puts the chart in the right half, halving the text width.
+            if is_shorts:
+                tick_size, tick_y = 96, 150
+                label_y, label_size = 292, 36
+                hero_y, hero_max = 336, 200
+                title_y, title_size, title_wrap, title_lines = 570, 42, 38, 3
+                avail = width - 96
+            else:
+                tick_size, tick_y = 76, 150
+                label_y, label_size = 250, 30
+                hero_y, hero_max = 288, 140
+                title_y, title_size, title_wrap, title_lines = 470, 34, 34, 3
+                avail = layout["chart_box"][0] - 96
+
+            draw.text((48, tick_y), ticker, font=_font(tick_size), fill=(248, 250, 252, 255))
+            # Change chip sits on the ticker's baseline, right of the symbol
+            chip_x = 48 + draw.textlength(ticker, font=_font(tick_size)) + 28
+            chip_size = round(tick_size * 0.46)
+            draw.text((chip_x, tick_y + tick_size - chip_size - 6), change_text,
+                      font=_font(chip_size), fill=change_color)
+
+            if hero_label:
+                draw.text((48, label_y), hero_label.upper()[:28],
+                          font=_font(label_size), fill=(148, 163, 184, 255))
+
+            # Shrink to fit rather than overflow the card — hero strings vary
+            # from "+290%" to "$1.56 MILLION"
+            hero_size = hero_max
+            while hero_size > 60 and draw.textlength(hero, font=_font(hero_size)) > avail:
+                hero_size -= 4
+            draw.text((48, hero_y), hero, font=_font(hero_size), fill=(248, 250, 252, 255))
+        elif is_shorts:
             draw.text((48, 160), ticker, font=_font(190), fill=(248, 250, 252, 255))
             draw.text((48, 390), change_text, font=_font(130), fill=change_color)
-            y = 580
-            for line in textwrap.wrap(title, width=38)[:3]:
-                draw.text((48, y), line, font=_font(42, bold=False), fill=(148, 163, 184, 255))
-                y += 58
+            title_y, title_size, title_wrap, title_lines = 580, 42, 38, 3
         else:
             draw.text((48, 150), ticker, font=_font(140), fill=(248, 250, 252, 255))
             draw.text((48, 330), change_text, font=_font(96), fill=change_color)
-            y = 470
-            for line in textwrap.wrap(title, width=34)[:3]:
-                draw.text((48, y), line, font=_font(34, bold=False), fill=(148, 163, 184, 255))
-                y += 48
+            title_y, title_size, title_wrap, title_lines = 470, 34, 34, 3
+
+        y = title_y
+        for line in textwrap.wrap(title, width=title_wrap)[:title_lines]:
+            draw.text((48, y), line, font=_font(title_size, bold=False), fill=(148, 163, 184, 255))
+            y += round(title_size * 1.38)
 
         # Subtle frame marking where the animated chart lands
         cx, cy, cw, ch = layout["chart_box"]

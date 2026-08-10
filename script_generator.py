@@ -131,6 +131,13 @@ RULES:
 6. Return strictly valid JSON format with keys:
    - "title": Catchy YouTube video title (40-60 chars, keyword first, specific numbers)
    - "hook": BEAT 1 only — the standalone opening line, max 8 words
+   - "hero_number": the story's headline figure as it should appear in HUGE type on
+     the on-screen card — the same number BEAT 1 says out loud. Written for the EYE,
+     not the voice, so abbreviate hard and keep it under 12 characters: "$28.2M",
+     "+290%", "6,297%", "$1.56M". Never the daily change % unless the move itself
+     IS the story.
+   - "hero_label": 2-4 words naming that figure, e.g. "CEO SOLD", "IN ONE DAY",
+     "MENTIONS SURGE", "INSIDER BOUGHT"
    - "full_script": Spoken text only
    - "ticker": Primary stock symbol (e.g. "NVDA")
    - "change_pct": Numeric percent change string (e.g. "+6.85")
@@ -187,6 +194,9 @@ RULES:
    - "change_pct": Percent change string
    - "tags": Array of tags
    - "thumbnail_hook": 3-5 word thumbnail text (e.g. "CONGRESS IS BUYING THIS")
+   - "hero_number": the day's single most striking figure for the on-screen card, written
+     for the EYE and under 12 characters ("-23K JOBS", "$28.2M", "+2.4%")
+   - "hero_label": 2-4 words naming it ("JULY PAYROLLS", "CEO SOLD")
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["wall street trading floor", "stock market rally", "financial news"])
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
