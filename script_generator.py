@@ -197,7 +197,13 @@ RULES:
    - "hero_number": the day's single most striking figure for the on-screen card, written
      for the EYE and under 12 characters ("-23K JOBS", "$28.2M", "+2.4%")
    - "hero_label": 2-4 words naming it ("JULY PAYROLLS", "CEO SOLD")
-   - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["wall street trading floor", "stock market rally", "financial news"])
+   - "visual_keywords": Array of EXACTLY 5 stock-video search phrases, one per major section
+     in order (market summary, story 1, story 2, story 3, congress/insiders). Each becomes a
+     background scene that cross-fades in as that section is narrated, so they must be
+     VISUALLY distinct from one another — different setting, subject and dominant colour,
+     not five phrasings of "stock market chart". Concrete places and objects beat abstract
+     concepts: ["wall street trading floor", "semiconductor factory robot arm", "oil refinery
+     at night", "electric vehicle assembly line", "us capitol building exterior"]
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
                               min_words=600, max_words=850)

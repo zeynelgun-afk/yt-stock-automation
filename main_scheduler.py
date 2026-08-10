@@ -9,7 +9,7 @@ from story_selector import StorySelector
 from script_generator import ScriptGenerator, ScriptGenerationError
 from voice_generator import VoiceGenerator
 from subtitle_generator import SubtitleGenerator
-from video_engine import VideoEngine
+from video_engine import VideoEngine, LONG_BG_CLIPS
 from telegram_bot import TelegramApprovalBot
 from youtube_publisher import YouTubePublisher
 from config import TEMP_DIR, MIN_SHORTS_STORY_SCORE
@@ -155,11 +155,17 @@ def run_pipeline(video_type: str = "shorts"):
         abort_pipeline(f"Animated chart rendering failed: {e}")
         return
 
-    # 7.5 Fetch background video: Higgsfield AI (if configured) -> Pexels fallback
+    # 7.5 Fetch background clips: Higgsfield AI (if configured) -> Pexels fallback
     visual_keywords = script_data.get("visual_keywords", [])
     if not visual_keywords:
-        visual_keywords = [f"{ticker} stock", "wall street trading", "stock market chart", "finance money"]
-    bg_video_path = ve.fetch_background_video(visual_keywords, is_shorts=is_shorts)
+        visual_keywords = [f"{ticker} stock", "wall street trading", "stock market chart",
+                           "finance money", "federal reserve building"]
+    # A 35-second Short holds on one clip. A 5-6 minute recap on one looping
+    # clip stops changing about 20 seconds in, so it gets a clip per section.
+    bg_clips = ve.fetch_background_videos(
+        visual_keywords, is_shorts=is_shorts,
+        count=1 if is_shorts else LONG_BG_CLIPS,
+    )
 
     thumbnail_path = ""
     if not is_shorts:
@@ -175,7 +181,7 @@ def run_pipeline(video_type: str = "shorts"):
     rendered_video_path = ve.render_video(
         audio_path, ass_path, f"render_{video_type}_{timestamp}.mp4",
         card_img_path=card_img_path, chart_video_path=chart_video_path,
-        is_shorts=is_shorts, bg_video_path=bg_video_path,
+        is_shorts=is_shorts, bg_video_path=bg_clips,
     )
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")

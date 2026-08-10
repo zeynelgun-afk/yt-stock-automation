@@ -39,6 +39,29 @@ FONT_CANDIDATES = {
 CHART_FPS = 25
 CHART_DRAW_SECONDS = 3.0  # how long the line takes to draw left-to-right
 
+# The channel's signature grade, applied to every stock-footage background
+# regardless of where the clip came from. Pexels clips and Higgsfield
+# generations arrive with wildly different white balance; without a common
+# grade a recap that cuts between them looks like four different channels.
+# Teal shadows against amber highlights sits under the card's #0f172a palette,
+# and the blur keeps the card, chart and subtitles the only things in focus.
+BG_LOOK = (
+    "boxblur=5:2,eq=brightness=-0.25:contrast=1.1:saturation=1.2,"
+    "colorbalance=rs=-0.06:bs=0.10:rm=0.04:bm=-0.04:rh=0.08:bh=-0.06"
+)
+
+# Background clips per long recap — one scene change per major script section.
+# A 35-second Short holds fine on a single clip; a 5-6 minute recap on one
+# looping clip stops changing about 20 seconds in.
+LONG_BG_CLIPS = 5
+BG_XFADE_SECONDS = 1.0
+MIN_BG_SCENE_SECONDS = 25.0  # below this a cut reads as flicker, not as pacing
+
+# Higgsfield charges two jobs (image, then video) per clip and can take minutes
+# each, so only the first couple of scenes are AI-generated and the rest come
+# from Pexels. The shared BG_LOOK grade is what makes the mix hold together.
+HIGGSFIELD_MAX_CLIPS = 2
+
 
 def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
     for path in FONT_CANDIDATES[bold]:
@@ -70,68 +93,102 @@ class VideoEngine:
 
     # ------------------------------------------------------------------ background
 
-    def fetch_background_video(self, keywords: List[str], is_shorts: bool = True) -> Optional[str]:
-        """Background clip source chain: Higgsfield AI generation (if API keys
-        are configured) -> Pexels stock footage -> None (animated gradient)."""
+    def fetch_background_videos(self, keywords: List[str], is_shorts: bool = True,
+                                count: int = 1) -> List[str]:
+        """Up to `count` visually distinct background clips, one per keyword.
+
+        Source chain per clip: Higgsfield AI generation (if API keys are
+        configured, capped at HIGGSFIELD_MAX_CLIPS) -> Pexels stock footage.
+        Returns however many clips it managed to get — possibly fewer than
+        `count`, possibly empty, in which case the renderer uses its gradient.
+        """
+        clips: List[str] = []
+        remaining = list(keywords)
+
         try:
             from higgsfield_client import HiggsfieldClient
             hf = HiggsfieldClient()
             if hf.enabled:
-                path = hf.generate_background_video(keywords, is_shorts=is_shorts)
-                if path:
-                    return path
-                logger.warning("Higgsfield generation failed; falling back to Pexels.")
+                for theme in remaining[:min(count, HIGGSFIELD_MAX_CLIPS)]:
+                    path = hf.generate_background_video([theme], is_shorts=is_shorts)
+                    if path:
+                        clips.append(path)
+                        remaining.remove(theme)
+                    else:
+                        logger.warning(f"Higgsfield generation failed for '{theme}'; "
+                                       "Pexels will cover this scene.")
         except Exception as e:
             logger.warning(f"Higgsfield unavailable ({e}); falling back to Pexels.")
-        return self.fetch_pexels_video(keywords, is_shorts=is_shorts)
+
+        for query in remaining:
+            if len(clips) >= count:
+                break
+            path = self._fetch_pexels_clip(query, is_shorts=is_shorts)
+            if path and path not in clips:
+                clips.append(path)
+
+        if not clips:
+            logger.info("No background clips available; renderer will use the gradient.")
+        return clips
+
+    def fetch_background_video(self, keywords: List[str], is_shorts: bool = True) -> Optional[str]:
+        """Single background clip — the Shorts path, where one clip is enough."""
+        clips = self.fetch_background_videos(keywords, is_shorts=is_shorts, count=1)
+        return clips[0] if clips else None
 
     # ------------------------------------------------------------------ pexels
 
     def fetch_pexels_video(self, keywords: List[str], is_shorts: bool = True) -> Optional[str]:
-        """Fetches a relevant stock video background from Pexels API matching the keywords."""
+        """First Pexels clip matching any of the keywords, in order."""
+        for query in keywords:
+            path = self._fetch_pexels_clip(query, is_shorts=is_shorts)
+            if path:
+                return path
+        return None
+
+    def _fetch_pexels_clip(self, query: str, is_shorts: bool = True) -> Optional[str]:
+        """Downloads one Pexels stock clip for a single search query."""
         if not self.pexels_key:
             logger.info("PEXELS_API_KEY is not configured; using default background.")
             return None
-        
+
         orientation = "portrait" if is_shorts else "landscape"
-        for query in keywords:
-            try:
-                url = f"https://api.pexels.com/videos/search?query={query}&per_page=5&orientation={orientation}"
-                headers = {"Authorization": self.pexels_key}
-                resp = requests.get(url, headers=headers, timeout=10)
-                if resp.status_code != 200:
-                    logger.warning(f"Pexels API error {resp.status_code} for query: {query}")
-                    continue
-                data = resp.json()
-                videos = data.get("videos", [])
-                if not videos:
-                    continue
-                
-                # Pick the first video with HD quality
-                selected_url = None
-                for vf in videos[0].get("video_files", []):
-                    if vf.get("quality") == "hd":
-                        selected_url = vf.get("link")
-                        break
-                if not selected_url and videos[0].get("video_files"):
-                    selected_url = videos[0]["video_files"][0].get("link")
+        try:
+            url = f"https://api.pexels.com/videos/search?query={query}&per_page=5&orientation={orientation}"
+            headers = {"Authorization": self.pexels_key}
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                logger.warning(f"Pexels API error {resp.status_code} for query: {query}")
+                return None
+            videos = resp.json().get("videos", [])
+            if not videos:
+                return None
 
-                if not selected_url:
-                    continue
+            # Pick the first video with HD quality
+            selected_url = None
+            for vf in videos[0].get("video_files", []):
+                if vf.get("quality") == "hd":
+                    selected_url = vf.get("link")
+                    break
+            if not selected_url and videos[0].get("video_files"):
+                selected_url = videos[0]["video_files"][0].get("link")
 
-                safe_name = "".join([c if c.isalnum() else "_" for c in query])
-                out_path = str(TEMP_DIR / f"pexels_{safe_name}_{'shorts' if is_shorts else 'long'}.mp4")
-                
-                logger.info(f"Downloading Pexels stock video for '{query}'...")
-                r = requests.get(selected_url, stream=True, timeout=30)
-                if r.status_code == 200:
-                    with open(out_path, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=16384):
-                            f.write(chunk)
-                    logger.info(f"Downloaded Pexels video clip: {out_path}")
-                    return out_path
-            except Exception as e:
-                logger.warning(f"Failed fetching Pexels video for '{query}': {e}")
+            if not selected_url:
+                return None
+
+            safe_name = "".join([c if c.isalnum() else "_" for c in query])
+            out_path = str(TEMP_DIR / f"pexels_{safe_name}_{'shorts' if is_shorts else 'long'}.mp4")
+
+            logger.info(f"Downloading Pexels stock video for '{query}'...")
+            r = requests.get(selected_url, stream=True, timeout=30)
+            if r.status_code == 200:
+                with open(out_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=16384):
+                        f.write(chunk)
+                logger.info(f"Downloaded Pexels video clip: {out_path}")
+                return out_path
+        except Exception as e:
+            logger.warning(f"Failed fetching Pexels video for '{query}': {e}")
         return None
 
     # ------------------------------------------------------------------ logo
@@ -440,11 +497,68 @@ class VideoEngine:
         except (ValueError, OSError):
             return 0.0
 
+    def _bg_chain(self, clips: List[str], width: int, height: int,
+                  audio_dur: float) -> tuple[List[str], str]:
+        """FFmpeg inputs + filter chain producing [bg] from stock-footage clips.
+
+        One clip loops for the whole video. Several clips are cut into equal
+        segments that cross-fade into each other, so a 5-6 minute recap gets a
+        scene change per script section instead of the same twelve seconds of
+        b-roll cycling for six minutes. Every clip is looped first, because
+        Pexels footage is usually 10-20 seconds and a segment is over a minute.
+
+        The last segment is frame-cloned open-ended (`tpad`) so a rounding error
+        in the segment maths can never end the background before the voiceover.
+        """
+        fit = (f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+               f"crop={width}:{height},fps=30")
+
+        d = BG_XFADE_SECONDS
+        n = len(clips)
+        seg = 0.0
+        if n > 1:
+            if audio_dur <= 0:
+                # Nothing to divide into segments — loop one clip instead of
+                # cutting to `trim=0:0` and rendering an empty background.
+                n = 1
+            else:
+                # Drop scenes rather than let them get short: cutting every few
+                # seconds under a static card reads as flicker, not as pacing.
+                n = max(1, min(n, int((audio_dur + 1.0) // MIN_BG_SCENE_SECONDS)))
+                if n > 1:
+                    seg = (audio_dur + 1.0 + (n - 1) * d) / n
+
+        if n == 1:
+            inputs = ["-stream_loop", "-1", "-i", clips[0]]
+            return inputs, f"[0:v]{fit},{BG_LOOK}[bg]; "
+
+        inputs: List[str] = []
+        chain = ""
+        for i in range(n):
+            inputs += ["-stream_loop", "-1", "-i", clips[i]]
+            chain += f"[{i}:v]{fit},trim=0:{seg:.3f},setpts=PTS-STARTPTS[s{i}]; "
+
+        d = BG_XFADE_SECONDS
+        prev = "[s0]"
+        for i in range(1, n):
+            # Running length after i-1 fades, minus the fade itself
+            offset = i * seg - i * d
+            out = "[bg_mix]" if i == n - 1 else f"[x{i}]"
+            chain += (f"{prev}[s{i}]xfade=transition=fade:duration={d:.3f}:"
+                      f"offset={offset:.3f}{out}; ")
+            prev = out
+        chain += f"[bg_mix]{BG_LOOK},tpad=stop_mode=clone:stop=-1[bg]; "
+        return inputs, chain
+
     def render_video(self, audio_path: str, ass_sub_path: str, output_filename: str,
                      card_img_path: str, chart_video_path: Optional[str] = None,
-                     is_shorts: bool = True, bg_video_path: Optional[str] = None) -> str:
-        """Final MP4: HD background (Pexels stock video or animated gradient) +
+                     is_shorts: bool = True,
+                     bg_video_path: Optional[str] | List[str] = None) -> str:
+        """Final MP4: HD background (stock footage or animated gradient) +
         glassmorphism stock card + left-to-right chart animation + subtitles.
+
+        `bg_video_path` takes a single clip path or a list of them; a list of
+        two or more is cross-faded across the video (see `_bg_chain`).
         """
         out_video = str(OUTPUT_DIR / output_filename)
 
@@ -469,73 +583,89 @@ class VideoEngine:
         chart_w = round(cw * scale) // 2 * 2   # libx264 needs even dims
         chart_h = round(ch * scale) // 2 * 2
 
-        # Track FFmpeg input indices precisely
-        cur_idx = 1  # 0 is reserved for background video/gradient
-        card_idx = cur_idx
-        tail_inputs = ["-i", card_img_path]
-        cur_idx += 1
-
-        if chart_video_path:
-            tail_inputs += ["-i", chart_video_path]
-            chart_idx = cur_idx
-            cur_idx += 1
-            chart_chain = (
-                f"[{chart_idx}:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
-                f"[v1][chart]overlay={chart_x}:{chart_y}[v2]; "
-            )
-        else:
-            chart_chain = "[v1]null[v2]; "
-
-        tail_inputs += ["-i", audio_path]
-        audio_idx = cur_idx
-        cur_idx += 1
-
         # Check for background music and SFX audio assets
         bg_music_file = BASE_DIR / "assets" / "music" / "bg_music.wav"
         whoosh_file = BASE_DIR / "assets" / "sfx" / "whoosh.wav"
-
-        audio_mix_filter = ""
-        audio_map = f"{audio_idx}:a"
-
-        if bg_music_file.exists():
-            tail_inputs += ["-stream_loop", "-1", "-i", str(bg_music_file)]
-            music_idx = cur_idx
-            cur_idx += 1
-            if whoosh_file.exists():
-                tail_inputs += ["-i", str(whoosh_file)]
-                whoosh_idx = cur_idx
-                cur_idx += 1
-                audio_mix_filter = (
-                    f"; [{music_idx}:a]volume=0.08[bgm]; "
-                    f"[{whoosh_idx}:a]adelay=4000|4000[sfx1]; "
-                    f"[{audio_idx}:a][bgm][sfx1]amix=inputs=3:duration=first[outa]"
-                )
-            else:
-                audio_mix_filter = (
-                    f"; [{music_idx}:a]volume=0.08[bgm]; "
-                    f"[{audio_idx}:a][bgm]amix=inputs=2:duration=first[outa]"
-                )
-            audio_map = "[outa]"
 
         zoom = (
             f"zoompan=z='min(1+0.00008*on,1.10)':d=1:"
             f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps=30"
         )
-        filter_complex = (
-            f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30[bg]; "
-            f"[{card_idx}:v]scale={scaled_w}:-1[card]; "
-            f"[bg][card]overlay={card_x}:{card_y}[v1]; "
-            f"{chart_chain}"
-            f"[v2]{zoom}[v3]; "
-            f"[v3]ass={ass_sub_path}[outv]"
-        )
 
-        def build_cmd(bg_inputs: List[str], custom_filter: str) -> List[str]:
+        def build_cmd(bg_inputs: List[str], bg_filter: str, n_bg: int) -> List[str]:
+            """`bg_filter` consumes inputs 0..n_bg-1 and must produce [bg].
+
+            Every other input index is derived from n_bg, so the background can
+            occupy one input (gradient, single clip) or several (cross-faded
+            scenes) without the card/chart/audio maps drifting out of sync.
+            """
+            cur_idx = n_bg
+            inputs = [*bg_inputs, "-i", card_img_path]
+            card_idx = cur_idx
+            cur_idx += 1
+
+            if chart_video_path:
+                inputs += ["-i", chart_video_path]
+                chart_idx = cur_idx
+                cur_idx += 1
+                # The card and chart stay on screen for the whole video.
+                #
+                # This used to hide both between t=4s and t=15s for a "cinematic
+                # full-screen B-roll" beat. Audience-retention data killed that
+                # idea: the four most-viewed videos each lost ~60% of viewers
+                # between second 3 and second 14 — precisely the blackout window.
+                # What the viewer got there was a blurred, darkened stock clip
+                # with no ticker, no number and no subtitle: eleven seconds of
+                # nothing to hold on to.
+                #
+                # Scene changes now happen in the background layer only (see
+                # `_bg_chain`), underneath a card that never leaves.
+                chart_chain = (
+                    f"[{chart_idx}:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
+                    f"[v1][chart]overlay={chart_x}:{chart_y}[v2]; "
+                )
+            else:
+                chart_chain = "[v1]null[v2]; "
+
+            inputs += ["-i", audio_path]
+            audio_idx = cur_idx
+            cur_idx += 1
+
+            audio_mix_filter = ""
+            audio_map = f"{audio_idx}:a"
+            if bg_music_file.exists():
+                inputs += ["-stream_loop", "-1", "-i", str(bg_music_file)]
+                music_idx = cur_idx
+                cur_idx += 1
+                if whoosh_file.exists():
+                    inputs += ["-i", str(whoosh_file)]
+                    whoosh_idx = cur_idx
+                    cur_idx += 1
+                    audio_mix_filter = (
+                        f"; [{music_idx}:a]volume=0.08[bgm]; "
+                        f"[{whoosh_idx}:a]adelay=4000|4000[sfx1]; "
+                        f"[{audio_idx}:a][bgm][sfx1]amix=inputs=3:duration=first[outa]"
+                    )
+                else:
+                    audio_mix_filter = (
+                        f"; [{music_idx}:a]volume=0.08[bgm]; "
+                        f"[{audio_idx}:a][bgm]amix=inputs=2:duration=first[outa]"
+                    )
+                audio_map = "[outa]"
+
+            filter_complex = (
+                f"{bg_filter}"
+                f"[{card_idx}:v]scale={scaled_w}:-1[card]; "
+                f"[bg][card]overlay={card_x}:{card_y}[v1]; "
+                f"{chart_chain}"
+                f"[v2]{zoom}[v3]; "
+                f"[v3]ass={ass_sub_path}[outv]"
+            )
+
             return [
                 "ffmpeg", "-y",
-                *bg_inputs,
-                *tail_inputs,
-                "-filter_complex", custom_filter + audio_mix_filter,
+                *inputs,
+                "-filter_complex", filter_complex + audio_mix_filter,
                 "-map", "[outv]", "-map", audio_map,
                 "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "192k",
@@ -545,57 +675,40 @@ class VideoEngine:
 
         logger.info(f"Rendering video to: {out_video}")
 
-        # Try Pexels background video first if available
-        if bg_video_path and Path(bg_video_path).exists():
-            logger.info(f"Using Pexels background video: {bg_video_path}")
-            bg_inputs = ["-stream_loop", "-1", "-i", bg_video_path]
-            # The card and chart stay on screen for the whole video.
-            #
-            # This used to hide both between t=4s and t=15s for a "cinematic
-            # full-screen B-roll" beat. Audience-retention data killed that idea:
-            # the four most-viewed videos each lost ~60% of viewers between
-            # second 3 and second 14 — precisely the blackout window. What the
-            # viewer got there was a blurred, darkened stock clip with no ticker,
-            # no number and no subtitle: eleven seconds of nothing to hold on to.
-            #
-            # If a scene change is wanted later, it has to keep information on
-            # screen (cut the chart, move the card, swap the B-roll under it) and
-            # never run longer than a second inside the first 20.
-            if chart_video_path:
-                chart_chain = (
-                    f"[{chart_idx}:v]scale={chart_w}:{chart_h},tpad=stop_mode=clone:stop=-1[chart]; "
-                    f"[v1][chart]overlay={chart_x}:{chart_y}[v2]; "
-                )
-            video_filter = (
-                f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps=30,"
-                f"boxblur=5:2,eq=brightness=-0.25:contrast=1.1:saturation=1.2[bg]; "
-                f"[{card_idx}:v]scale={scaled_w}:-1[card]; "
-                f"[bg][card]overlay={card_x}:{card_y}[v1]; "
-                f"{chart_chain}"
-                f"[v2]{zoom}[v3]; "
-                f"[v3]ass={ass_sub_path}[outv]"
-            )
-            result = subprocess.run(build_cmd(bg_inputs, video_filter), capture_output=True, text=True)
+        # Try stock-footage background first if any clips were fetched
+        raw = bg_video_path or []
+        clips = [raw] if isinstance(raw, str) else list(raw)
+        clips = [c for c in clips if c and Path(c).exists()]
+        if clips:
+            logger.info(f"Using {len(clips)} background clip(s): {', '.join(clips)}")
+            bg_inputs, bg_filter = self._bg_chain(clips, width, height, audio_dur)
+            result = subprocess.run(build_cmd(bg_inputs, bg_filter, len(clips)),
+                                    capture_output=True, text=True)
             if result.returncode == 0:
-                logger.info("Video render with Pexels background & Multi-Scene Cuts completed successfully!")
+                logger.info("Video render with stock-footage background completed successfully!")
                 return out_video
-            logger.warning(f"Pexels background render failed, falling back to gradient: {result.stderr[-400:]}")
+            logger.warning(f"Stock-footage render failed, falling back to gradient: {result.stderr[-400:]}")
+
+        plain_bg = (
+            f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},fps=30[bg]; "
+        )
 
         # Gradient fallback
         gradient_src = (
             f"gradients=s={width}x{height}:c0=0x0f172a:c1=0x1e3a5f:"
             f"speed=0.08:rate=30"
         )
-        bg_inputs = ["-f", "lavfi", "-i", gradient_src]
-        result = subprocess.run(build_cmd(bg_inputs, filter_complex), capture_output=True, text=True)
+        result = subprocess.run(build_cmd(["-f", "lavfi", "-i", gradient_src], plain_bg, 1),
+                                capture_output=True, text=True)
         if result.returncode == 0:
             logger.info("Video render with gradient completed successfully!")
             return out_video
 
         # Solid fallback
         solid_src = f"color=c=0x0f172a:s={width}x{height}:r=30"
-        bg_inputs = ["-f", "lavfi", "-i", solid_src]
-        fb = subprocess.run(build_cmd(bg_inputs, filter_complex), capture_output=True, text=True)
+        fb = subprocess.run(build_cmd(["-f", "lavfi", "-i", solid_src], plain_bg, 1),
+                            capture_output=True, text=True)
         if fb.returncode != 0:
             logger.error(f"Fallback render also failed: {fb.stderr[-800:]}")
             return ""

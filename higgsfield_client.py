@@ -30,15 +30,29 @@ IMAGE_TIMEOUT_S = 180
 VIDEO_TIMEOUT_S = 480
 POLL_INTERVAL_S = 10
 
-# Cinematic finance b-roll prompt; {theme} comes from the script's visual keywords
+# The channel's fixed art direction; {theme} comes from the script's visual
+# keywords. Everything except the theme is deliberately constant — a recurring
+# look is the only thing separating this channel from every other AI finance
+# feed running the same "cinematic Wall Street" default.
+#
+# Two constraints are functional, not aesthetic:
+#   - Subject pushed to the edges: the stock card sits dead centre and covers
+#     the middle third, so anything composed there is never seen.
+#   - Teal shadows / amber highlights: matches video_engine.BG_LOOK, which
+#     grades Pexels footage the same way. Clips from both sources then cut
+#     together as one channel instead of two.
 IMAGE_PROMPT_TEMPLATE = (
-    "Cinematic photorealistic shot of {theme}, moody Wall Street atmosphere, "
-    "glowing stock tickers and market data reflections, dramatic teal and "
-    "amber lighting, shallow depth of field, high detail, no text overlays"
+    "Photorealistic long-lens night photograph of {theme}, shot from a low "
+    "distant vantage point, subject pushed to the left and right edges with "
+    "deep empty negative space through the centre of the frame, single hard "
+    "light source raking across from one side, deep teal shadows and warm "
+    "amber highlights, heavy atmospheric haze, anamorphic flare, "
+    "shallow depth of field, no people facing camera, no text, no logos, "
+    "no charts, no user interface elements"
 )
 MOTION_PROMPT = (
-    "Slow cinematic push-in with subtle parallax, flickering ticker lights, "
-    "smooth professional camera movement"
+    "Very slow lateral dolly with subtle parallax, drifting haze, "
+    "faint flickering light, locked-off horizon, no camera shake, no cuts"
 )
 
 
