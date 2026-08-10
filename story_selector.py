@@ -95,6 +95,8 @@ def _is_us_ticker(symbol: str) -> bool:
 class StorySelector:
     def __init__(self, script_generator: Optional[ScriptGenerator] = None):
         self.sg = script_generator or ScriptGenerator()
+        # Populated by select(); readers must tolerate [] (dedup is never a blocker)
+        self.recent_titles: List[str] = []
 
     # ---------- Rule-based scoring ----------
 
@@ -441,7 +443,11 @@ class StorySelector:
     def select(self, pool: Dict[str, Any], top_n: int = 3) -> Dict[str, Any]:
         """Returns the chosen story: candidate fields + 'angle', 'why_it_matters'."""
         candidates = self.build_candidates(pool)
-        candidates = self._drop_recently_covered(candidates, self._recent_upload_titles())
+        # Kept on the instance so the script generator can reuse them for
+        # title-SHAPE dedup without a second YouTube API call — same-skeleton
+        # titles ("TICKER Did X — A or B?") repeat even when the company differs.
+        self.recent_titles = self._recent_upload_titles()
+        candidates = self._drop_recently_covered(candidates, self.recent_titles)
         # Analytics feedback: formats that held viewers recently score higher,
         # underperformers lower. Neutral (x1.0) when there isn't enough data.
         weights = self._franchise_weights()

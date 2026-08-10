@@ -54,7 +54,8 @@ def run_pipeline(video_type: str = "shorts"):
 
     # 2. Story selection engine: score candidates, LLM picks the day's angle
     sg = ScriptGenerator()
-    story = StorySelector(sg).select(pool)
+    selector = StorySelector(sg)
+    story = selector.select(pool)
 
     # Quality gate (Shorts only): a weak story tanks retention and trains the
     # algorithm that the channel is skippable. Skipping the slot is a decision,
@@ -82,6 +83,7 @@ def run_pipeline(video_type: str = "shorts"):
                 data_summary=data_summary,
                 franchise_style=story["franchise_style"],
                 angle=story["angle"],
+                recent_titles=selector.recent_titles,
             )
         else:
             script_data = sg.generate_long_script(market_data={

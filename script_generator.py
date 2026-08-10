@@ -1,7 +1,7 @@
 import requests
 import json
 import logging
-from typing import Dict, Any
+from typing import Any, Dict, List, Optional
 from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, PATTERNS_FILE
 
 logging.basicConfig(level=logging.INFO)
@@ -31,6 +31,19 @@ def _packaging_patterns_block() -> str:
     return ""
 
 
+def _recent_titles_block(titles: Optional[List[str]]) -> str:
+    """The channel's own recent titles, so the model can avoid reusing their shape.
+
+    The story selector already fetches these for name-level dedup; reusing the
+    list here costs no extra API call and catches the other kind of repetition —
+    same skeleton, different ticker."""
+    if not titles:
+        return ""
+    lines = ["\nRECENT TITLES ON THIS CHANNEL (do not reuse their sentence shape):"]
+    lines += [f"- {t}" for t in titles[:6]]
+    return "\n".join(lines) + "\n"
+
+
 class ScriptGenerator:
     def __init__(self, openrouter_key: str = OPENROUTER_API_KEY, gemini_key: str = GEMINI_API_KEY, groq_key: str = GROQ_API_KEY):
         self.openrouter_key = openrouter_key
@@ -46,74 +59,117 @@ class ScriptGenerator:
         ]
 
     def generate_shorts_script(self, topic: str, data_summary: str,
-                               franchise_style: str = "", angle: str = "") -> Dict[str, Any]:
-        """Generates a viral ~45-second (110-130 words) English YouTube Shorts script using DeepSeek/Qwen via OpenRouter."""
+                               franchise_style: str = "", angle: str = "",
+                               recent_titles: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Generates a ~35-second (55-68 word) English YouTube Shorts script.
+
+        Length is set by retention data, not by how much there is to say. The
+        channel's audience-retention curves flatten at ~22 seconds watched on
+        every video; at 70 seconds that reads as 31% average-view-percentage
+        and YouTube stops distributing. The same 22 seconds inside a 35-second
+        Short reads as ~63% and earns the feed. Edge-TTS runs ~1.7 words/sec
+        including pauses, so 55-68 words lands at 32-40 seconds.
+        """
         franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
         angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
         prompt = f"""You are an elite Wall Street financial analyst and viral YouTube creator for the channel "US Stock Market Daily".
 Positioning: data-first, zero hype — real numbers, real reasons, no clickbait fear-mongering.
-Generate an engaging 45-second YouTube Shorts script based on this real-time market data:
+Generate a 35-SECOND YouTube Shorts script based on this real-time market data:
 Topic: {topic}
 {angle_block}Market Context: {data_summary}
 {franchise_block}
-HOOK — the first sentence decides whether the viewer swipes away. Use one of these proven patterns:
-- Bold claim: "NVIDIA just did something no company has ever done."
-- Curiosity gap: "This chart predicted the last 3 crashes — it just flashed again."
-- Direct question: "Why is a US senator suddenly buying this stock?"
-- Specific shock number up front: "$4.7 million. That's what one insider just bet."
+THE FIRST TEN SECONDS ARE THE WHOLE JOB. This channel's retention data shows 60% of
+viewers leave between second 3 and second 14 — always at the point where the hook ends
+and background explanation begins. There is no "setup" in a 35-second Short. Build the
+opening as three hard beats with NO connective tissue between them:
 
-TENSION REQUIREMENT (non-negotiable — this channel's retention data proves it):
-Both the title AND the hook must contain a tension, contradiction, or open question — never a plain
-restatement of the news. "X happened" is a headline, not a hook. "X happened — but the real reason
-is something else" is a hook. Our best-retaining videos all follow this shape
-("+58% in a Day — After a Reverse Split?!", "Real Rally or Ratio Illusion?"); our worst simply
-announce the move ("Company Soars 124.9% on Study Boost"). If the title reads like a news wire
-headline, rewrite it until it poses a question or a twist the viewer needs resolved.
-{_packaging_patterns_block()}
+  BEAT 1 (0-3s, ~6 words): the single hardest number, standing alone as its own sentence.
+      "Twenty-eight point two million dollars."
+  BEAT 2 (3-6s, ~6 words): the contradiction that makes it strange.
+      "The CEO sold it all Tuesday."
+  BEAT 3 (6-10s, ~7 words): what is at stake for the viewer, as an unresolved question.
+      "Two weeks before earnings. Here's what he knew."
+
+BANNED in the first ten seconds: company background, sector context, "let's take a look",
+any sentence whose job is to prepare a later sentence. If a line could be deleted without
+losing a fact, delete it.
+
+BODY (10-30s, ~34 words): ONE concrete WHY, drawn only from the data. One idea, not three.
+CLOSE (30-35s, ~8 words): land on the exact number from BEAT 1 so the loop is seamless.
+
+TENSION REQUIREMENT (non-negotiable): the title must pose a tension, contradiction or
+open question — never a plain restatement of the news. "X happened" is a headline, not a
+hook; "X happened, and the timing is the story" is a hook.
+
+TITLE SHAPE ROTATION (this channel's failure mode — read carefully): our last four videos
+were all titled "TICKER Did X — A or B?" and all four underperformed. A viewer who sees
+the same sentence skeleton twice stops seeing the channel. Pick a DIFFERENT shape from
+every recent title below, choosing from:
+  - Hard number first:      "$28.2 Million Sold Two Weeks Before Earnings"
+  - Flat declarative:       "The CEO Sold Everything. Nobody Noticed."
+  - Named-actor action:     "Pelosi's Fund Bought This Before the Vote"
+  - Original-research:      "We Read 400 Filings. One Name Kept Appearing."
+  - Consequence/stakes:     "This Insider Sale Broke a Three-Year Pattern"
+Question-mark titles are allowed at most once every four videos — prefer a declarative
+that states something and makes the viewer need the proof.
+{_recent_titles_block(recent_titles)}{_packaging_patterns_block()}
 RULES:
-1. Word count: MUST BE BETWEEN 110 AND 130 WORDS (approx 45 seconds of natural speech).
+1. Word count: MUST BE BETWEEN 55 AND 68 WORDS. This is a hard requirement — 68 words is
+   40 seconds and 40 seconds is the ceiling. Cut the second-best fact, not the hook.
 2. Use specific, unrounded numbers from the data — never vague words like "millions" or "a lot".
    Write them TTS-friendly: "$4.7 million" not "$4.7M", "up 23 percent" or "23%" not "+23%".
    The script is read aloud by a voice engine — abbreviations like "M", "B", "PT", "EPS" get mispronounced; spell them out ("price target", "earnings per share").
 2b. NEVER open with "Hey guys", "Welcome back", "In today's video" — cold-open directly on the story.
 3. Do NOT use sound effect cues or stage directions (e.g. [Music playing] or (Visual: Chart)). ONLY write spoken text!
-4. LOOP DESIGN: the final sentence must connect back to the opening hook so the video rewatches seamlessly. NO long outro; at most 5 words of subscribe CTA woven in ("more daily — subscribe."), never a full sentence of it.
+4. LOOP DESIGN: the final sentence must connect back to the opening hook so the video rewatches seamlessly. NO outro and NO subscribe CTA — at 35 seconds there is no room for one, and it costs the loop.
 5. Only state facts present in the Market Context. Never invent numbers, names or reasons.
 6. Return strictly valid JSON format with keys:
    - "title": Catchy YouTube video title (40-60 chars, keyword first, specific numbers)
-   - "hook": First 3-second hook
+   - "hook": BEAT 1 only — the standalone opening line, max 8 words
    - "full_script": Spoken text only
    - "ticker": Primary stock symbol (e.g. "NVDA")
    - "change_pct": Numeric percent change string (e.g. "+6.85")
    - "tags": Array of 6 relevant tags
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["stock market trading", "nvidia microchip", "wall street traders"])
 """
-        return self._call_llm(prompt, default_title=topic, min_words=100, max_words=170)
+        return self._call_llm(prompt, default_title=topic, min_words=50, max_words=78)
 
     def generate_long_script(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generates an 8+ minute (1100-1300 words) Daily Market Recap script.
+        """Generates a 5-6 minute (520-600 word) Daily Market Recap script.
 
-        8+ minutes unlocks mid-roll ads — the long recap is the channel's
-        revenue engine, the Shorts are the reach funnel."""
+        Word budgets here are set from this pipeline's measured narration rate
+        of ~1.7 words/sec (Edge-TTS, including punctuation pauses) — noticeably
+        slower than the ~2.5 words/sec a generic "words per minute" figure would
+        suggest, which is how the old 1200-word budget became an 11-minute video.
+
+        The recap used to target 8+ minutes to clear the mid-roll ad threshold,
+        but the channel is not monetized yet and the 11-minute cuts averaged
+        16% view percentage on 27 views — an ad slot nobody reaches is worth
+        nothing. Reach first: a 5-6 minute recap that holds viewers earns the
+        distribution that makes the 8-minute version worth restoring later.
+        """
         from datetime import datetime
         today_str = datetime.now().strftime("%B %-d")  # e.g. "August 2"
-        prompt = f"""You are the lead financial anchor of "US Stock Market Daily". Write a comprehensive Daily Market Recap script for an 8-10 minute video.
+        prompt = f"""You are the lead financial anchor of "US Stock Market Daily". Write a tight Daily Market Recap script for a 5-6 minute video.
 Positioning: data-first, zero hype — real numbers, real reasons, original analysis (never a news-summary rehash).
 
 Data Provided:
 {json.dumps(market_data, indent=2, default=str)}
 
-STRUCTURE (follow in order — the per-section word budgets are mandatory, they add up to ~1200 words):
-1. COLD-OPEN HOOK (~60 words): the single most shocking number of the day, then a one-line promise of what's coming.
-2. MARKET SUMMARY (~180 words): S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
-3. THE 3 BIG STORIES OF THE DAY (~450 words, ~150 each): pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors.
-4. CONGRESS & INSIDER CORNER (~180 words): notable congressional trades and insider buys/sells from the data — names, amounts, dates.
-5. EARNINGS (~150 words): today's surprises (estimate vs actual) and what's on deck this week.
-6. WHAT TO WATCH TOMORROW (~150 words): economic events and earnings from the data, each with why it can move the market.
-7. OUTRO (~30 words): one-sentence recap of the day's theme + short subscribe CTA (max 10 words).
+STRUCTURE (follow in order — the per-section word budgets are mandatory, they add up to ~560 words):
+1. COLD-OPEN HOOK (~40 words): the single most shocking number of the day as a standalone
+   opening line, then the three things this video will resolve. No throat-clearing, no
+   "welcome back", no restating the date before the number.
+2. MARKET SUMMARY (~80 words): S&P 500, Nasdaq, Dow, VIX with actual numbers; sector winners/losers; Fear & Greed context.
+3. THE 3 BIG STORIES OF THE DAY (~240 words, ~80 each): pick the three most consequential items from the data (selected_story first). For each: what happened, the concrete WHY (from the news/facts), and what it means for investors. Open each story on its own hard number — these are the re-hook points where viewers decide to stay.
+4. CONGRESS & INSIDER CORNER (~80 words): notable congressional trades and insider buys/sells from the data — names, amounts, dates.
+5. EARNINGS (~60 words): today's surprises (estimate vs actual) and what's on deck this week.
+6. WHAT TO WATCH TOMORROW (~45 words): the two or three events from the data most likely to move the market, each with why.
+7. OUTRO (~15 words): one line recapping the day's theme + a five-word subscribe CTA.
 {_packaging_patterns_block()}
 RULES:
-- Word count: 1100 to 1300 words (8+ minutes of natural speech). This is a HARD requirement.
+- Word count: 520 to 600 words (5-6 minutes of narration at this channel's pace). This is a HARD requirement.
+  Depth comes from picking fewer items and explaining them properly, never from listing more.
 - Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.
 - Write numbers TTS-friendly: "$4.7 million" not "$4.7M"; spell out abbreviations ("price target", "earnings per share") — the script is read aloud by a voice engine.
 - ONLY output spoken script text. No stage directions, section headers, or visual cues in full_script.
@@ -129,7 +185,7 @@ RULES:
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["wall street trading floor", "stock market rally", "financial news"])
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
-                              min_words=1000, max_words=1600)
+                              min_words=480, max_words=650)
 
     def _call_llm(self, prompt: str, default_title: str,
                   min_words: int = 0, max_words: int = 0) -> Dict[str, Any]:
@@ -188,9 +244,17 @@ RULES:
                                     f"of the same data. Return the same JSON structure.\n\n"
                                     f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
                             else:
+                                # Same trick in reverse: models compress a draft
+                                # they can see far more reliably than they hit a
+                                # ceiling from scratch. Overshooting is the normal
+                                # failure mode on the 35-second Shorts budget.
                                 retry_note = (
-                                    f"\n\nIMPORTANT: Your previous attempt was {word_count} words — too long. "
-                                    f"The full_script MUST be between {min_words} and {max_words} words.")
+                                    f"\n\nIMPORTANT: Your previous draft (below) was {word_count} words — too long. "
+                                    f"The full_script MUST be {min_words}-{max_words} words. Rewrite it by CUTTING, "
+                                    f"not by rephrasing: keep the opening beats and the single strongest fact intact, "
+                                    f"and delete whole supporting sentences until it fits. Never shorten the opening "
+                                    f"to make room for the body. Return the same JSON structure.\n\n"
+                                    f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
                             continue
                         logger.info(f"Successfully generated script via {model_name} ({word_count} words)!")
                         return parsed
