@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from config import YOUTUBE_API_KEY, BASE_DIR, PATTERNS_FILE
-from script_generator import ScriptGenerator, ScriptGenerationError
+from script_generator import ScriptGenerator
 from telegram_bot import TelegramApprovalBot
 
 logging.basicConfig(level=logging.INFO)
@@ -174,7 +174,10 @@ def run_weekly_scan() -> bool:
             f"🔭 OUTLIER TARAMASI ({len(outliers)} video)\n\nEn güçlüler:\n{top}\n\n"
             f"Kalıplar güncellendi → sonraki videolar bu hafta çalışan paketlemeyi kullanacak."
         )
-    except (RuntimeError, ScriptGenerationError) as e:
+    except Exception as e:
+        # Broad on purpose: googleapiclient HttpError and friends used to
+        # escape the old (RuntimeError, ScriptGenerationError) filter and kill
+        # the weekly job with no Telegram alert
         logger.error(f"Outlier scan failed: {e}")
         return bot.send_text(f"🚨 Outlier taraması başarısız: {e}")
 

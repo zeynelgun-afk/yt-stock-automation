@@ -376,6 +376,15 @@ class StorySelector:
             return titles
         except Exception as e:
             logger.warning(f"Could not fetch recent uploads for dedup: {e}")
+            # A broken YouTube token silently disables BOTH name-level and
+            # title-shape dedup — invisible repeat risk, so tell the operator
+            try:
+                from telegram_bot import TelegramApprovalBot
+                TelegramApprovalBot().send_text(
+                    f"⚠️ Dedup devre dışı: son yüklemeler çekilemedi ({e}). "
+                    "Bu video yakın tarihli bir hikâyeyi tekrarlayabilir.")
+            except Exception:
+                pass
             return []
 
     # Generic corporate words that don't identify a company in a title
@@ -491,7 +500,11 @@ class StorySelector:
         return chosen
 
     def _llm_pick(self, pool: Dict[str, Any], top: List[Dict]) -> Dict[str, Any]:
+        # fear_greed is None on any CNN outage (an expected soft failure) —
+        # interpolating fg['score'] directly crashed the whole slot with an
+        # uncaught TypeError whenever CNN was down
         fg = pool["core"]["fear_greed"]
+        fg_str = f"{fg['score']} ({fg['rating']})" if fg else "unavailable"
         idx = ", ".join(
             f"{q['symbol']} {q.get('changePercentage', 0):+.2f}%"
             for q in pool["core"]["indexes"]
@@ -503,7 +516,7 @@ class StorySelector:
         ]
         prompt = f"""You are the editor-in-chief of "US Stock Market Daily", a data-first, no-hype finance Shorts channel.
 
-Market context: {idx}. Fear&Greed: {fg['score']} ({fg['rating']}) if available.
+Market context: {idx}. Fear&Greed: {fg_str}.
 
 Today's top story candidates (pre-scored for virality):
 {json.dumps(cands, indent=1, default=str)}

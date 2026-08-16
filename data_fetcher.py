@@ -1,10 +1,21 @@
 import logging
+import time
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 
 from config import FMP_API_KEY
+
+NY_TZ = ZoneInfo("America/New_York")
+
+
+def ny_now() -> datetime:
+    """Market time. All 'what day is it' logic must use this, not the naive
+    datetime.now(): CI runners are UTC, where every ET evening is already
+    'tomorrow' — earnings and event-day checks silently used the wrong day."""
+    return datetime.now(NY_TZ)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,20 +52,38 @@ class FMPDataFetcher:
         params = dict(params or {})
         params["apikey"] = self.api_key
         url = f"{FMP_BASE_URL}/{endpoint}"
-        try:
-            res = requests.get(url, params=params, timeout=15)
-        except requests.RequestException as e:
-            raise FMPDataError(f"FMP request failed for '{endpoint}': {e}") from e
 
-        if res.status_code != 200:
-            raise FMPDataError(
-                f"FMP '{endpoint}' returned HTTP {res.status_code}: {res.text[:200]}"
-            )
+        # One transient blip used to forfeit the whole publishing slot; a short
+        # retry is cheap. Still halt-on-failure — never fabricate data.
+        last_err = ""
+        for attempt in range(3):
+            if attempt:
+                time.sleep(3 * attempt)
+            try:
+                res = requests.get(url, params=params, timeout=15)
+            except requests.RequestException as e:
+                last_err = f"request failed: {e}"
+                continue
 
-        data = res.json()
-        if isinstance(data, dict) and "Error Message" in data:
-            raise FMPDataError(f"FMP '{endpoint}' error: {data['Error Message']}")
-        return data
+            if res.status_code == 429 or res.status_code >= 500:
+                last_err = f"HTTP {res.status_code}: {res.text[:200]}"
+                continue
+            if res.status_code != 200:
+                raise FMPDataError(
+                    f"FMP '{endpoint}' returned HTTP {res.status_code}: {res.text[:200]}"
+                )
+
+            try:
+                data = res.json()
+            except ValueError as e:
+                # A 200 with an HTML/error body used to escape as a raw
+                # JSONDecodeError, bypassing the FMPDataError abort path
+                raise FMPDataError(f"FMP '{endpoint}' returned non-JSON body: {e}") from e
+            if isinstance(data, dict) and "Error Message" in data:
+                raise FMPDataError(f"FMP '{endpoint}' error: {data['Error Message']}")
+            return data
+
+        raise FMPDataError(f"FMP request failed for '{endpoint}' after 3 attempts: {last_err}")
 
     def get_top_gainers(self, limit: int = 5) -> List[Dict[str, Any]]:
         data = self._get("biggest-gainers", {"limit": 20})
@@ -103,7 +132,7 @@ class FMPDataFetcher:
 
         Fetches a few days back so weekends/holidays still yield the last session.
         """
-        to_date = datetime.now()
+        to_date = ny_now()
         from_date = to_date - timedelta(days=4)
         data = self._get(
             f"historical-chart/{interval}",
@@ -154,7 +183,7 @@ class FMPDataFetcher:
     def get_sector_performance(self) -> List[Dict[str, Any]]:
         """Sector daily average change. Falls back a few days for weekends/holidays."""
         for days_back in range(5):
-            date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+            date = (ny_now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
             data = self._get_list("sector-performance-snapshot", {"date": date})
             if data:
                 return data
@@ -162,7 +191,7 @@ class FMPDataFetcher:
 
     def get_earnings_calendar(self, days_ahead: int = 7) -> List[Dict[str, Any]]:
         """Earnings from today through `days_ahead` days out."""
-        today = datetime.now()
+        today = ny_now()
         return self._get_list("earnings-calendar", {
             "from": today.strftime("%Y-%m-%d"),
             "to": (today + timedelta(days=days_ahead)).strftime("%Y-%m-%d"),
@@ -170,7 +199,7 @@ class FMPDataFetcher:
 
     def get_economic_calendar(self, days_ahead: int = 3) -> List[Dict[str, Any]]:
         """Economic events from today through `days_ahead` days out."""
-        today = datetime.now()
+        today = ny_now()
         return self._get_list("economic-calendar", {
             "from": today.strftime("%Y-%m-%d"),
             "to": (today + timedelta(days=days_ahead)).strftime("%Y-%m-%d"),

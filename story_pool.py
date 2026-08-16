@@ -15,7 +15,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 
-from data_fetcher import FMPDataFetcher, FMPDataError
+from data_fetcher import FMPDataFetcher, FMPDataError, ny_now
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,9 +42,12 @@ class StoryPoolCollector:
         errors: List[str] = []
 
         def soft(section: str, fn, default):
+            # Enrichment sections are degradable by definition, so ANY failure
+            # (a KeyError on an FMP schema change, not just FMPDataError) must
+            # degrade to the default instead of crashing the whole slot
             try:
                 return fn()
-            except FMPDataError as e:
+            except Exception as e:
                 logger.warning(f"Story pool section '{section}' failed: {e}")
                 errors.append(f"{section}: {e}")
                 return default
@@ -90,7 +93,7 @@ class StoryPoolCollector:
 
     def _congress_trades(self) -> List[Dict[str, Any]]:
         """Recent Senate + House disclosures, biggest first."""
-        cutoff = (datetime.now() - timedelta(days=CONGRESS_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+        cutoff = (ny_now() - timedelta(days=CONGRESS_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
         trades = []
         seen = set()
         for chamber, rows in (
@@ -195,7 +198,9 @@ class StoryPoolCollector:
 
     def _earnings(self) -> Dict[str, Any]:
         """Today's reported results (with beat/miss) + notable upcoming reports."""
-        today = datetime.now().strftime("%Y-%m-%d")
+        # ET, not runner-local: on UTC CI runners, 20:00-24:00 ET is already
+        # "tomorrow" in UTC, which silently emptied reported_today every evening
+        today = ny_now().strftime("%Y-%m-%d")
         rows = self.fetcher.get_earnings_calendar(days_ahead=7)
 
         reported_today, upcoming = [], []

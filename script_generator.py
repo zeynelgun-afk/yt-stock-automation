@@ -1,7 +1,8 @@
 import requests
 import json
 import logging
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Tuple
 from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, PATTERNS_FILE
 
 logging.basicConfig(level=logging.INFO)
@@ -74,6 +75,11 @@ class ScriptGenerator:
         as 64-76 second videos, i.e. ~2.05 words/sec (ElevenLabs, incl. pauses).
         66-78 words therefore lands at 32-38 seconds. Re-measure before changing
         this — a generic words-per-minute figure is roughly 40% too fast here.
+
+        NOTE 2026-08-16: the voice engine moved to eleven_multilingual_v2 at
+        speed 1.05 (was turbo_v2_5 at 1.1) — slightly slower. The Telegram FYI
+        message now carries the measured duration of every render; recalibrate
+        these budgets from a few of those before trusting the 32-38s claim.
         """
         franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
         angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
@@ -208,83 +214,158 @@ RULES:
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
                               min_words=600, max_words=850)
 
+    SYSTEM_MSG = "You are a professional financial AI writer. Always respond with valid JSON only."
+
+    def _providers(self) -> List[Tuple[str, str]]:
+        """(provider, model) attempts in order. The direct Gemini/Groq entries
+        exist because every 'fallback' used to route through the single
+        OpenRouter account — an account-level failure (the Jul-31 outage was a
+        monthly key limit) took down the entire chain at once."""
+        attempts: List[Tuple[str, str]] = []
+        if self.openrouter_key:
+            attempts += [("openrouter", m) for m in self.openrouter_models]
+        if self.gemini_key:
+            attempts.append(("gemini", "gemini-2.5-flash"))
+        if self.groq_key:
+            attempts.append(("groq", "llama-3.3-70b-versatile"))
+        return attempts
+
+    def _chat(self, provider: str, model: str, prompt: str) -> Optional[str]:
+        """One chat completion -> content string. None means 'try the next
+        model' (auth/4xx/malformed); transient 429/5xx retry in place first."""
+        for attempt in range(3):
+            try:
+                if provider == "openrouter":
+                    res = requests.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.openrouter_key}",
+                            "Content-Type": "application/json",
+                            "HTTP-Referer": "https://github.com/zeynelgun-afk/yt-stock-automation",
+                            "X-Title": "US Stock Market Daily Engine",
+                        },
+                        json={
+                            "model": model,
+                            "messages": [
+                                {"role": "system", "content": self.SYSTEM_MSG},
+                                {"role": "user", "content": prompt},
+                            ],
+                            "temperature": 0.7,
+                        },
+                        timeout=90,
+                    )
+                elif provider == "groq":
+                    res = requests.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {self.groq_key}",
+                                 "Content-Type": "application/json"},
+                        json={
+                            "model": model,
+                            "messages": [
+                                {"role": "system", "content": self.SYSTEM_MSG},
+                                {"role": "user", "content": prompt},
+                            ],
+                            "temperature": 0.7,
+                        },
+                        timeout=90,
+                    )
+                else:  # gemini — direct REST, no SDK dependency
+                    res = requests.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                        params={"key": self.gemini_key},
+                        json={
+                            "contents": [{"parts": [{"text": f"{self.SYSTEM_MSG}\n\n{prompt}"}]}],
+                            "generationConfig": {"temperature": 0.7,
+                                                 "responseMimeType": "application/json"},
+                        },
+                        timeout=90,
+                    )
+
+                if res.status_code == 429 or res.status_code >= 500:
+                    # Transient — a single 429 used to permanently abandon the model
+                    wait = 5 * (attempt + 1)
+                    logger.warning(f"{provider}/{model} HTTP {res.status_code}, "
+                                   f"retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                if res.status_code != 200:
+                    logger.warning(f"{provider}/{model} returned HTTP {res.status_code}: {res.text[:200]}")
+                    return None
+
+                if provider == "gemini":
+                    return res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                return res.json()["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.error(f"{provider}/{model} error: {e}")
+                return None
+        return None
+
     def _call_llm(self, prompt: str, default_title: str,
                   min_words: int = 0, max_words: int = 0) -> Dict[str, Any]:
-        """Calls DeepSeek V3 / Qwen 2.5 via OpenRouter API with fallbacks.
+        """Generates JSON via the provider chain (OpenRouter models, then
+        direct Gemini, then direct Groq).
 
         min_words/max_words bound the full_script length — a recap that comes
         back at 600 words would produce a half-length video, so an off-target
-        script gets one corrective retry per model before falling through."""
-        if self.openrouter_key:
-            headers = {
-                "Authorization": f"Bearer {self.openrouter_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/zeynelgun-afk/yt-stock-automation",
-                "X-Title": "US Stock Market Daily Engine"
-            }
+        script gets corrective retries per model before falling through."""
+        for provider, model_name in self._providers():
+            retry_note = ""
+            for attempt in range(3):
+                logger.info(f"Generating script using {provider}/{model_name}...")
+                content = self._chat(provider, model_name, prompt + retry_note)
+                if content is None:
+                    break
+                try:
+                    # Clean markdown wrappers if returned
+                    if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0].strip()
+                    elif "```" in content:
+                        content = content.split("```")[1].split("```")[0].strip()
+                    # strict=False: models embed literal newlines in JSON strings
+                    parsed = json.loads(content, strict=False)
+                except Exception as e:
+                    logger.warning(f"{provider}/{model_name} returned unparseable JSON: {e}")
+                    break
+                # Schema guard: a JSON list or string would crash the pipeline
+                # later with an uncaught KeyError/AttributeError far from here
+                if not isinstance(parsed, dict):
+                    logger.warning(f"{provider}/{model_name} returned non-object JSON "
+                                   f"({type(parsed).__name__}); trying next model.")
+                    break
+                parsed.setdefault("title", default_title)
 
-            for model_name in self.openrouter_models:
-                retry_note = ""
-                for attempt in range(3):
-                    try:
-                        logger.info(f"Generating script using OpenRouter model: {model_name}...")
-                        url = "https://openrouter.ai/api/v1/chat/completions"
-                        payload = {
-                            "model": model_name,
-                            "messages": [
-                                {"role": "system", "content": "You are a professional financial AI writer. Always respond with valid JSON only."},
-                                {"role": "user", "content": prompt + retry_note}
-                            ],
-                            "temperature": 0.7
-                        }
-                        res = requests.post(url, headers=headers, json=payload, timeout=60)
-                        if res.status_code != 200:
-                            logger.warning(f"{model_name} returned HTTP {res.status_code}: {res.text[:200]}")
-                            break
-                        content = res.json()["choices"][0]["message"]["content"]
-                        # Clean markdown wrappers if returned
-                        if "```json" in content:
-                            content = content.split("```json")[1].split("```")[0].strip()
-                        elif "```" in content:
-                            content = content.split("```")[1].split("```")[0].strip()
-
-                        # strict=False: models embed literal newlines in JSON strings
-                        parsed = json.loads(content, strict=False)
-                        word_count = len(str(parsed.get("full_script", "")).split())
-                        if min_words and not min_words <= word_count <= (max_words or 10 ** 6):
-                            logger.warning(
-                                f"{model_name} script is {word_count} words "
-                                f"(need {min_words}-{max_words}), retrying...")
-                            if word_count < min_words:
-                                # Models expand an existing draft far more reliably
-                                # than they hit a word count from scratch
-                                retry_note = (
-                                    f"\n\nIMPORTANT: Your previous draft (below) was only {word_count} words — "
-                                    f"the full_script MUST be {min_words}-{max_words} words. Rewrite it, keeping "
-                                    f"every fact, but EXPAND each section to its word budget with deeper analysis "
-                                    f"of the same data. Return the same JSON structure.\n\n"
-                                    f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
-                            else:
-                                # Same trick in reverse: models compress a draft
-                                # they can see far more reliably than they hit a
-                                # ceiling from scratch. Overshooting is the normal
-                                # failure mode on the 35-second Shorts budget.
-                                retry_note = (
-                                    f"\n\nIMPORTANT: Your previous draft (below) was {word_count} words — too long. "
-                                    f"The full_script MUST be {min_words}-{max_words} words. Rewrite it by CUTTING, "
-                                    f"not by rephrasing: keep the opening beats and the single strongest fact intact, "
-                                    f"and delete whole supporting sentences until it fits. Never shorten the opening "
-                                    f"to make room for the body. Return the same JSON structure.\n\n"
-                                    f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
-                            continue
-                        logger.info(f"Successfully generated script via {model_name} ({word_count} words)!")
-                        return parsed
-                    except Exception as e:
-                        logger.error(f"OpenRouter model {model_name} error: {e}")
-                        break
+                word_count = len(str(parsed.get("full_script", "")).split())
+                if min_words and not min_words <= word_count <= (max_words or 10 ** 6):
+                    logger.warning(
+                        f"{model_name} script is {word_count} words "
+                        f"(need {min_words}-{max_words}), retrying...")
+                    if word_count < min_words:
+                        # Models expand an existing draft far more reliably
+                        # than they hit a word count from scratch
+                        retry_note = (
+                            f"\n\nIMPORTANT: Your previous draft (below) was only {word_count} words — "
+                            f"the full_script MUST be {min_words}-{max_words} words. Rewrite it, keeping "
+                            f"every fact, but EXPAND each section to its word budget with deeper analysis "
+                            f"of the same data. Return the same JSON structure.\n\n"
+                            f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
+                    else:
+                        # Same trick in reverse: models compress a draft
+                        # they can see far more reliably than they hit a
+                        # ceiling from scratch. Overshooting is the normal
+                        # failure mode on the 35-second Shorts budget.
+                        retry_note = (
+                            f"\n\nIMPORTANT: Your previous draft (below) was {word_count} words — too long. "
+                            f"The full_script MUST be {min_words}-{max_words} words. Rewrite it by CUTTING, "
+                            f"not by rephrasing: keep the opening beats and the single strongest fact intact, "
+                            f"and delete whole supporting sentences until it fits. Never shorten the opening "
+                            f"to make room for the body. Return the same JSON structure.\n\n"
+                            f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
+                    continue
+                logger.info(f"Successfully generated script via {provider}/{model_name} ({word_count} words)!")
+                return parsed
 
         raise ScriptGenerationError(
-            f"All OpenRouter models failed to generate a script for '{default_title}'. "
+            f"All LLM providers failed to generate a script for '{default_title}'. "
             "Aborting instead of publishing a canned template."
         )
 

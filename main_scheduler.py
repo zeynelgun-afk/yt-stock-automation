@@ -1,9 +1,12 @@
 import json
 import logging
+import re
+import shutil
 import subprocess
+import time
 from datetime import datetime
 
-from data_fetcher import FMPDataFetcher, FMPDataError
+from data_fetcher import FMPDataFetcher, FMPDataError, ny_now
 from story_pool import StoryPoolCollector, summarize_pool, compact_pool
 from story_selector import StorySelector
 from script_generator import ScriptGenerator, ScriptGenerationError
@@ -33,9 +36,54 @@ def get_audio_duration(audio_path: str) -> float:
 
 
 def abort_pipeline(reason: str):
-    """Stops the pipeline and alerts the operator. NEVER publish without live data."""
+    """Stops the pipeline and alerts the operator. NEVER publish without live data.
+
+    Raises SystemExit(1): aborts used to return with exit code 0, so a failed
+    slot showed a green check in GitHub Actions — indistinguishable from
+    success in the run history."""
     logger.error(f"PIPELINE ABORTED: {reason}")
-    TelegramApprovalBot().send_text(f"🚨 Video pipeline DURDU — video üretilmedi.\n\nSebep: {reason}")
+    if not TelegramApprovalBot().send_text(
+            f"🚨 Video pipeline DURDU — video üretilmedi.\n\nSebep: {reason}"):
+        logger.error("Telegram abort alert could not be delivered either.")
+    raise SystemExit(1)
+
+
+def cleanup_temp(max_age_days: float = 3.0) -> None:
+    """Sweeps TEMP_DIR of old run artifacts (voiceovers, cards, Pexels clips,
+    chart frame dirs). CI runners are ephemeral, but the same pipeline runs on
+    the local machine, where temp assets used to accumulate indefinitely."""
+    cutoff = time.time() - max_age_days * 86400
+    try:
+        for p in TEMP_DIR.iterdir():
+            try:
+                if p.stat().st_mtime >= cutoff:
+                    continue
+                if p.is_dir():
+                    shutil.rmtree(p, ignore_errors=True)
+                else:
+                    p.unlink(missing_ok=True)
+            except OSError:
+                pass
+    except OSError:
+        pass
+
+
+def validate_hero_number(hero: str, story: dict, script: str, change_pct: str) -> str:
+    """The hero number is the biggest type on screen and comes from the LLM.
+    Guardrail, not oracle: its leading significant digits must appear somewhere
+    in the story facts, headline, script or change% — otherwise blank it so the
+    card falls back to the change-led layout instead of publishing a
+    hallucinated figure in 200pt type. Loose on purpose ('$28.2M' must survive
+    facts that say $28,171,450)."""
+    digits = re.sub(r"\D", "", hero)
+    if not digits:
+        return hero
+    corpus = re.sub(r"\D", "", json.dumps(story.get("facts", {}), default=str)
+                    + story.get("headline", "") + script + change_pct)
+    if digits[:2] in corpus:
+        return hero
+    logger.warning(f"hero_number '{hero}' not found in story data — using change-led card layout.")
+    return ""
 
 
 def run_pipeline(video_type: str = "shorts"):
@@ -49,7 +97,6 @@ def run_pipeline(video_type: str = "shorts"):
         pool = StoryPoolCollector(fetcher).collect()
     except FMPDataError as e:
         abort_pipeline(str(e))
-        return
     logger.info("Story pool collected:\n" + summarize_pool(pool))
 
     # 2. Story selection engine: score candidates, LLM picks the day's angle
@@ -92,7 +139,6 @@ def run_pipeline(video_type: str = "shorts"):
             })
     except ScriptGenerationError as e:
         abort_pipeline(str(e))
-        return
 
     # The chart must match the story — the selector's ticker wins over the LLM's
     ticker = story["ticker"] or script_data.get("ticker") or pool["movers"]["gainers"][0]["symbol"]
@@ -105,14 +151,13 @@ def run_pipeline(video_type: str = "shorts"):
         intraday = fetcher.get_intraday_chart(ticker)
     except FMPDataError as e:
         abort_pipeline(f"Intraday chart data unavailable for {ticker}: {e}")
-        return
 
     # Card change % is computed from the same candles as the chart — never from
     # the LLM, which can echo an index move instead of the ticker's own
     session_open = intraday[0]["open"] or intraday[0]["close"]
     change_pct = f"{(intraday[-1]['close'] - session_open) / session_open * 100:+.2f}"
 
-    # 5. Generate Audio Voiceover (Edge-TTS)
+    # 5. Generate Audio Voiceover (ElevenLabs -> Edge-TTS, measured word timings)
     vg = VoiceGenerator()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     audio_path, srt_path = vg.generate_audio(
@@ -120,12 +165,15 @@ def run_pipeline(video_type: str = "shorts"):
     )
     if not audio_path:
         abort_pipeline("Audio generation failed.")
-        return
 
-    # 6. Generate Subtitles
+    # 6. Generate Subtitles — an empty return here used to flow into the render
+    # as an empty ass= filter path, killing all three render attempts with a
+    # misleading "Video rendering failed" after burning asset credits
     ass_path = str(SubtitleGenerator.srt_to_ass(
         srt_path, srt_path.replace('.srt', '.ass'), is_shorts=is_shorts
     ))
+    if not ass_path:
+        abort_pipeline("Subtitle conversion failed — SRT was empty or unparseable.")
 
     # 7. Render video: first-frame card + animated real chart + subtitles
     ve = VideoEngine()
@@ -137,8 +185,11 @@ def run_pipeline(video_type: str = "shorts"):
         output_path=card_img_path,
         is_shorts=is_shorts,
         franchise_name=story["franchise_name"],
-        # Empty strings fall the card back to its change%-led layout
-        hero_number=str(script_data.get("hero_number", "")).strip(),
+        # Empty strings fall the card back to its change%-led layout;
+        # validation blanks a hero figure the story data can't back up
+        hero_number=validate_hero_number(
+            str(script_data.get("hero_number", "")).strip(),
+            story, script_data["full_script"], change_pct),
         hero_label=str(script_data.get("hero_label", "")).strip(),
     )
 
@@ -149,11 +200,10 @@ def run_pipeline(video_type: str = "shorts"):
     try:
         chart_video_path = ve.create_animated_chart(
             ticker, intraday, str(TEMP_DIR / f"chart_{timestamp}.mp4"),
-            draw_seconds=chart_draw,
+            draw_seconds=chart_draw, is_shorts=is_shorts,
         )
     except RuntimeError as e:
         abort_pipeline(f"Animated chart rendering failed: {e}")
-        return
 
     # 7.5 Fetch background clips: Higgsfield AI (if configured) -> Pexels fallback
     visual_keywords = script_data.get("visual_keywords", [])
@@ -185,14 +235,17 @@ def run_pipeline(video_type: str = "shorts"):
     )
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")
-        return
 
-    # 8. Telegram notification (FYI only) + direct YouTube upload
+    # 8. Fully autonomous publish: Telegram gets the render as an FYI (with the
+    # measured duration for pacing calibration), then YouTube upload proceeds
+    # unconditionally. This is a deliberate design decision (2026-08-16) — the
+    # old inline-button approval flow was removed, there is no human gate.
     bot = TelegramApprovalBot()
     bot.send_video_notification(
         video_path=rendered_video_path,
         title=script_data["title"],
         is_shorts=is_shorts,
+        duration_s=audio_dur,
     )
 
     yp = YouTubePublisher()
@@ -206,11 +259,13 @@ def run_pipeline(video_type: str = "shorts"):
     )
     if video_id:
         logger.info(f"Published to YouTube! Video ID: {video_id}")
-        bot.send_text(f"✅ Yayında: https://youtu.be/{video_id}")
+        bot.send_text(f"✅ Yayında ({audio_dur:.0f}sn): https://youtu.be/{video_id}")
     else:
         logger.error("YouTube upload failed.")
-        bot.send_text(f"🚨 YouTube yüklemesi BAŞARISIZ oldu. Dosya: {rendered_video_path}")
+        bot.send_text(f"🚨 YouTube yüklemesi BAŞARISIZ oldu.\nSebep: {yp.last_error}\n"
+                      f"Dosya: {rendered_video_path}")
 
+    cleanup_temp()
     logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Uploaded: {bool(video_id)} ===")
 
 
@@ -226,7 +281,7 @@ def is_event_day() -> tuple[bool, str]:
     ]
     reasons += [f"Macro: {e}" for e in macro[:3]]
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = ny_now().strftime("%Y-%m-%d")
     def _us_listed(sym: str) -> bool:
         # No exchange suffix, and not an OTC ADR/foreign ordinary
         # (5-letter tickers ending in Y/F by convention: RHHBY, NSRGY, CRERF...)
@@ -255,9 +310,25 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == "event-check":
-        hot, reason = is_event_day()
+        # Exit codes: 0 = event day, 1 = quiet day, 2 = the check itself broke.
+        # Without the distinction, an FMP outage on CPI day read as "no event"
+        # and silently skipped the turbo slot with no notification.
+        try:
+            hot, reason = is_event_day()
+        except Exception as e:
+            logger.exception("event-check failed")
+            TelegramApprovalBot().send_text(f"⚠️ Event-check çalıştırılamadı: {e}")
+            raise SystemExit(2)
         print(reason)
         raise SystemExit(0 if hot else 1)
 
     logger.info("Starting Youtube Stock Automation Engine...")
-    run_pipeline(args.mode)
+    try:
+        run_pipeline(args.mode)
+    except SystemExit:
+        raise  # abort_pipeline already alerted and set the exit code
+    except Exception as e:
+        # Catch-all: an unexpected exception anywhere in the pipeline used to
+        # die with a traceback in CI logs only — no Telegram, green check
+        logger.exception("Unhandled pipeline error")
+        abort_pipeline(f"Beklenmeyen hata: {type(e).__name__}: {e}")
