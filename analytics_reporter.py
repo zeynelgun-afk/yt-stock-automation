@@ -17,6 +17,7 @@ re-consented once: delete token.json and run any upload to re-auth.
 Cron: run weekly (see README) — `python analytics_reporter.py`.
 """
 import logging
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -33,8 +34,22 @@ SCOPES = [
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 
-# Success targets from ROADMAP — flag videos against these
+# Success targets from ROADMAP — flag videos against these.
+# Long recaps structurally cannot hit Shorts-level APV (nobody watches 80% of
+# a 6-minute video); holding them to 80 flagged every recap ⚠️ forever, which
+# trains the reader to ignore the flag.
 TARGET_AVG_VIEW_PCT_SHORTS = 80.0
+TARGET_AVG_VIEW_PCT_LONG = 45.0
+LONG_VIDEO_MIN_SECONDS = 90
+
+
+def _iso_duration_to_seconds(iso: str) -> int:
+    """PT#H#M#S -> seconds (YouTube contentDetails.duration)."""
+    m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso or "")
+    if not m:
+        return 0
+    h, mi, s = (int(g or 0) for g in m.groups())
+    return h * 3600 + mi * 60 + s
 
 
 def _get_credentials():
@@ -75,7 +90,10 @@ def fetch_video_stats(days: int = 7):
                  "averageViewPercentage,subscribersGained"),
         dimensions="video",
         sort="-views",
-        maxResults=25,
+        # 25 truncated the tail: at 4-5 uploads/weekday a 14-day window has
+        # ~50 videos, and dropping the low-view ones biased franchise weights
+        # toward whatever already got views
+        maxResults=200,
     ).execute()
 
     rows = resp.get("rows", [])
@@ -83,10 +101,15 @@ def fetch_video_stats(days: int = 7):
         return []
 
     ids = [r[0] for r in rows]
-    titles = {}
-    meta = yt_data.videos().list(part="snippet", id=",".join(ids)).execute()
-    for item in meta.get("items", []):
-        titles[item["id"]] = item["snippet"]["title"]
+    titles: Dict[str, str] = {}
+    durations: Dict[str, int] = {}
+    for i in range(0, len(ids), 50):   # videos.list caps at 50 ids per call
+        meta = yt_data.videos().list(
+            part="snippet,contentDetails", id=",".join(ids[i:i + 50])).execute()
+        for item in meta.get("items", []):
+            titles[item["id"]] = item["snippet"]["title"]
+            durations[item["id"]] = _iso_duration_to_seconds(
+                item.get("contentDetails", {}).get("duration", ""))
 
     return [{
         "video_id": r[0],
@@ -96,6 +119,7 @@ def fetch_video_stats(days: int = 7):
         "avg_view_seconds": round(r[3]),
         "avg_view_pct": round(r[4], 1),
         "subs_gained": int(r[5]),
+        "is_long": durations.get(r[0], 0) >= LONG_VIDEO_MIN_SECONDS,
     } for r in rows]
 
 
@@ -159,14 +183,17 @@ def build_report(days: int = 7) -> str:
         "",
     ]
     for s in stats[:10]:
-        flag = "✅" if s["avg_view_pct"] >= TARGET_AVG_VIEW_PCT_SHORTS else "⚠️"
+        target = TARGET_AVG_VIEW_PCT_LONG if s.get("is_long") else TARGET_AVG_VIEW_PCT_SHORTS
+        kind = "📺" if s.get("is_long") else "📱"
+        flag = "✅" if s["avg_view_pct"] >= target else "⚠️"
         lines.append(
-            f"{flag} {s['views']:,} izl. | APV %{s['avg_view_pct']} "
+            f"{flag}{kind} {s['views']:,} izl. | APV %{s['avg_view_pct']} "
             f"({s['avg_view_seconds']}sn) | +{s['subs_gained']} abone\n"
             f"   {s['title'][:70]}"
         )
     lines.append("")
-    lines.append(f"Hedef: APV ≥ %{TARGET_AVG_VIEW_PCT_SHORTS:.0f} (Shorts). "
+    lines.append(f"Hedef: APV ≥ %{TARGET_AVG_VIEW_PCT_SHORTS:.0f} (📱 Shorts), "
+                 f"≥ %{TARGET_AVG_VIEW_PCT_LONG:.0f} (📺 uzun). "
                  "⚠️ işaretli formatların hook/loop kurgusunu gözden geçir.")
 
     try:

@@ -8,14 +8,20 @@ permissions:
 
 # All times UTC. TSI = UTC+3 (no DST). NYSE close: 20:00 UTC in EDT months,
 # 21:00 UTC in EST months — the long recap must be live within ~15 min of close.
+#
+# Both recap crons fire YEAR-ROUND and the job keeps only the firing where the
+# current time in America/New_York is 16:0x (close +5). The old month-split
+# (4-10 vs 11-3) missed that US DST switches mid-month (2nd Sunday of March /
+# 1st Sunday of November), making the recap ~65 minutes late for about three
+# weeks a year — fatal to the "live within 15 minutes of the close" moat.
 on:
   schedule:
     - cron: '30 12 * * 1-5'          # Shorts #1 — 15:30 TSI (US pre-market)
     - cron: '0 17 * * 1-5'           # Shorts #2 — 20:00 TSI (mid-day)
     - cron: '30 0 * * 2-6'           # Shorts #3 (experiment) — 03:30 TSI (US evening scroll)
     - cron: '35 13 * * 1-5'          # Turbo slot — only produces if CPI/FOMC/mega-earnings day
-    - cron: '5 20 * 4-10 1-5'        # Long recap, EDT months — 23:05 TSI (close +5 min)
-    - cron: '5 21 * 11,12,1,2,3 1-5' # Long recap, EST months — 00:05 TSI (close +5 min)
+    - cron: '5 20 * * 1-5'           # Long recap candidate (EDT: 16:05 ET ✓ / EST: 15:05 ET ✗)
+    - cron: '5 21 * * 1-5'           # Long recap candidate (EST: 16:05 ET ✓ / EDT: 17:05 ET ✗)
     - cron: '0 15 * * 0'             # Weekly analytics report — Sunday 18:00 TSI
   workflow_dispatch:
     inputs:
@@ -26,9 +32,18 @@ on:
         type: choice
         options: [shorts, long, analytics]
 
+# One pipeline run at a time: an infra retry or a slow long render must not
+# overlap the next cron slot (shared Telegram chat, shared YouTube quota).
+concurrency:
+  group: yt-pipeline
+  cancel-in-progress: false
+
 jobs:
   build-and-generate:
     runs-on: ubuntu-latest
+    # A wedged step must not consume the 6h default (a credential failure once
+    # could hang on an interactive OAuth prompt that no one can answer)
+    timeout-minutes: 45
 
     steps:
       - name: Checkout Repository
@@ -55,7 +70,15 @@ jobs:
         run: |
           MODE=shorts
           case "${{ github.event.schedule }}" in
-            "5 20 * 4-10 1-5"|"5 21 * 11,12,1,2,3 1-5") MODE=long ;;
+            "5 20 * * 1-5"|"5 21 * * 1-5")
+              # Keep only the firing that is 16:0x in New York (close +5 min);
+              # the other one is the off-DST duplicate and must not produce.
+              if [ "$(TZ=America/New_York date +%H)" = "16" ]; then
+                MODE=long
+              else
+                MODE=skip
+              fi
+              ;;
             "0 15 * * 0") MODE=analytics ;;
             "35 13 * * 1-5") MODE=event-shorts ;;
           esac
@@ -83,6 +106,9 @@ jobs:
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
           case "$MODE" in
+            skip)
+              echo "Off-DST duplicate recap firing — nothing to do."
+              ;;
             analytics)
               python -c "from youtube_publisher import YouTubePublisher; YouTubePublisher()"  # materialize token.json from env
               python -c "from analytics_reporter import send_weekly_report; send_weekly_report()"
@@ -92,12 +118,22 @@ jobs:
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
               git add data/packaging_patterns.json
-              git diff --cached --quiet || { git commit -m "chore: weekly packaging patterns refresh"; git push; }
+              if ! git diff --cached --quiet; then
+                git commit -m "chore: weekly packaging patterns refresh"
+                # Rebase first: a push that landed after our checkout would
+                # otherwise reject this one and silently lose the refresh
+                git pull --rebase origin main
+                git push
+              fi
               ;;
             event-shorts)
-              if python main_scheduler.py event-check; then
+              # exit 0 = event day, 1 = quiet day, 2 = check crashed (already alerted)
+              python main_scheduler.py event-check && rc=0 || rc=$?
+              if [ "$rc" = "0" ]; then
                 echo "Event day — producing extra Shorts"
                 python main_scheduler.py shorts
+              elif [ "$rc" = "2" ]; then
+                echo "event-check failed — operator alerted via Telegram, skipping slot"
               else
                 echo "No high-impact event today — skipping turbo slot"
               fi

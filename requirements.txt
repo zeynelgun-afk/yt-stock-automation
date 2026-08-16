@@ -1,10 +1,12 @@
-python-dotenv
-requests
-edge-tts
-pillow
-numpy
-matplotlib
-google-generativeai
-python-telegram-bot
-google-api-python-client
-google-auth-oauthlib
+# Pinned to the locally tested versions (compatible-release): an unattended
+# cron pipeline must not pick up surprise majors on a random weekday morning.
+# edge-tts in particular ships breaking changes when Microsoft's endpoints move.
+# Refresh deliberately: bump here, test locally, commit.
+python-dotenv~=1.2.2
+requests~=2.34.2
+edge-tts~=7.2.8
+pillow~=12.3.0
+numpy~=2.5.1
+matplotlib~=3.11.1
+google-api-python-client~=2.198.0
+google-auth-oauthlib~=1.4.0
