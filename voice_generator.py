@@ -1,78 +1,134 @@
 import asyncio
+import base64
 import edge_tts
 import logging
-import re
 import requests
 import subprocess
 from pathlib import Path
-from typing import Tuple, Optional
-from config import DEFAULT_VOICE, TEMP_DIR, ELEVENLABS_API_KEY, OPENAI_API_KEY
+from typing import List, Optional, Tuple
+from config import DEFAULT_VOICE, TEMP_DIR, ELEVENLABS_API_KEY
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def _srt_timestamp(seconds: float) -> str:
+    ms = max(0, int(round(seconds * 1000)))
+    h, ms = divmod(ms, 3600000)
+    m, ms = divmod(ms, 60000)
+    s, ms = divmod(ms, 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
 class VoiceGenerator:
     def __init__(self, voice: str = DEFAULT_VOICE,
-                 elevenlabs_key: str = ELEVENLABS_API_KEY,
-                 openai_key: str = OPENAI_API_KEY):
+                 elevenlabs_key: str = ELEVENLABS_API_KEY):
         self.voice = voice
         self.elevenlabs_key = elevenlabs_key
-        self.openai_key = openai_key
 
-    def _generate_elevenlabs(self, text: str, output_path: str) -> bool:
-        """Generates hyper-realistic human voice via ElevenLabs API (Adam/Rachel voice)."""
+    def _generate_elevenlabs(self, text: str, output_path: str,
+                             subtitle_path: Optional[str]) -> bool:
+        """ElevenLabs multilingual_v2 (most natural model) via the
+        /with-timestamps endpoint: one call returns both the audio and
+        character-level alignment, so the SRT is built from the MEASURED word
+        timings of the actual published voiceover.
+
+        This replaced the old scheme (turbo model + Edge-TTS reference audio +
+        linear SRT stretch), which drifted several hundred ms mid-video on
+        5-6 minute recaps because ElevenLabs places pauses differently than
+        Edge-TTS — endpoint-matched stretching can't fix the middle.
+        """
         if not self.elevenlabs_key:
             return False
         try:
-            logger.info("Generating studio-quality voice via ElevenLabs...")
+            logger.info("Generating studio-quality voice via ElevenLabs (multilingual_v2)...")
             voice_id = "21m00Tcm4TlvDq8ikWAM"  # Rachel - Professional Female Voice
-            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+            url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                   f"/with-timestamps?output_format=mp3_44100_128")
             headers = {
                 "xi-api-key": self.elevenlabs_key,
                 "Content-Type": "application/json",
             }
             payload = {
                 "text": text,
-                "model_id": "eleven_turbo_v2_5",
-                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "speed": 1.1}
+                "model_id": "eleven_multilingual_v2",
+                "voice_settings": {
+                    "stability": 0.45,
+                    "similarity_boost": 0.8,
+                    "style": 0.25,
+                    "use_speaker_boost": True,
+                    # 1.1 (old turbo setting) audibly rushed the read; 1.05 keeps
+                    # the pace brisk without the sped-up artifact. Word budgets in
+                    # script_generator were measured at the old pace — re-measure
+                    # from the duration line in the Telegram FYI after changes here.
+                    "speed": 1.05,
+                },
             }
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
-            if resp.status_code == 200:
-                with open(output_path, "wb") as f:
-                    f.write(resp.content)
-                logger.info(f"ElevenLabs audio generated: {output_path}")
-                return True
-            logger.warning(f"ElevenLabs API status {resp.status_code}: {resp.text}")
+            # A 5-6 minute recap takes a while to synthesize — 30s timed out
+            resp = requests.post(url, headers=headers, json=payload, timeout=180)
+            if resp.status_code != 200:
+                logger.warning(f"ElevenLabs API status {resp.status_code}: {resp.text[:300]}")
+                return False
+
+            body = resp.json()
+            audio_b64 = body.get("audio_base64")
+            alignment = body.get("alignment") or {}
+            if not audio_b64:
+                logger.warning("ElevenLabs response carried no audio_base64.")
+                return False
+            with open(output_path, "wb") as f:
+                f.write(base64.b64decode(audio_b64))
+
+            if subtitle_path:
+                words = self._words_from_alignment(text, alignment)
+                if not words:
+                    # No measured timings -> downstream ASS conversion would fail
+                    # or drift. Treat as a full failure so Edge-TTS (which times
+                    # its own audio) takes over.
+                    logger.error("ElevenLabs returned no usable alignment — "
+                                 "falling back so subtitles stay in sync.")
+                    Path(output_path).unlink(missing_ok=True)
+                    return False
+                self._write_word_srt(words, subtitle_path)
+
+            logger.info(f"ElevenLabs audio + measured word timings generated: {output_path}")
+            return True
         except Exception as e:
             logger.warning(f"ElevenLabs TTS failed: {e}")
+            Path(output_path).unlink(missing_ok=True)
         return False
 
-    def _generate_openai(self, text: str, output_path: str) -> bool:
-        """Generates natural voice via OpenAI TTS-1-HD (Onyx voice)."""
-        if not self.openai_key:
-            return False
-        try:
-            logger.info("Generating voice via OpenAI tts-1-hd...")
-            url = "https://api.openai.com/v1/audio/speech"
-            headers = {
-                "Authorization": f"Bearer {self.openai_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": "tts-1-hd",
-                "input": text,
-                "voice": "onyx"
-            }
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
-            if resp.status_code == 200:
-                with open(output_path, "wb") as f:
-                    f.write(resp.content)
-                logger.info(f"OpenAI TTS audio generated: {output_path}")
-                return True
-            logger.warning(f"OpenAI TTS status {resp.status_code}: {resp.text}")
-        except Exception as e:
-            logger.warning(f"OpenAI TTS failed: {e}")
-        return False
+    @staticmethod
+    def _words_from_alignment(text: str, alignment: dict) -> List[Tuple[str, float, float]]:
+        """(word, start_s, end_s) list from character-level alignment."""
+        chars = alignment.get("characters") or []
+        starts = alignment.get("character_start_times_seconds") or []
+        ends = alignment.get("character_end_times_seconds") or []
+        if not (chars and len(chars) == len(starts) == len(ends)):
+            return []
+        words: List[Tuple[str, float, float]] = []
+        cur, cur_start, cur_end = "", 0.0, 0.0
+        for ch, st, et in zip(chars, starts, ends):
+            if ch.isspace():
+                if cur:
+                    words.append((cur, cur_start, cur_end))
+                    cur = ""
+                continue
+            if not cur:
+                cur_start = st
+            cur += ch
+            cur_end = et
+        if cur:
+            words.append((cur, cur_start, cur_end))
+        return words
+
+    @staticmethod
+    def _write_word_srt(words: List[Tuple[str, float, float]], srt_path: str) -> None:
+        """One cue per word — the format subtitle_generator groups into phrases."""
+        lines = []
+        for i, (word, st, et) in enumerate(words, start=1):
+            lines.append(f"{i}\n{_srt_timestamp(st)} --> {_srt_timestamp(max(et, st + 0.05))}\n{word}\n")
+        Path(srt_path).write_text("\n".join(lines), encoding="utf-8")
 
     async def _generate_edge_tts_async(self, text: str, output_path: str, subtitle_path: Optional[str] = None) -> bool:
         """Generates voice via Edge-TTS and word-boundary SRT subtitles."""
@@ -126,65 +182,29 @@ class VoiceGenerator:
             logger.warning(f"Could not probe audio duration: {e}")
             return 0.0
 
-    @staticmethod
-    def _rescale_srt(srt_path: str, factor: float) -> None:
-        """Stretches every SRT timestamp by `factor`. Word timings come from the
-        Edge-TTS reference audio; the premium voiceover speaks at a different
-        pace, so timings must be scaled to its real duration or subtitles drift."""
-        def scale(match):
-            h, m, s, ms = (int(g) for g in match.groups())
-            total_ms = int(round(((h * 3600 + m * 60 + s) * 1000 + ms) * factor))
-            h2, rem = divmod(total_ms, 3600000)
-            m2, rem = divmod(rem, 60000)
-            s2, ms2 = divmod(rem, 1000)
-            return f"{h2:02d}:{m2:02d}:{s2:02d},{ms2:03d}"
-
-        content = Path(srt_path).read_text(encoding="utf-8")
-        content = re.sub(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", scale, content)
-        Path(srt_path).write_text(content, encoding="utf-8")
-
     def generate_audio(self, text: str, output_filename: str = "voiceover.mp3",
                        srt_filename: str = "subtitles.srt") -> Tuple[str, str]:
-        """Generates audio voiceover with fallback order: ElevenLabs -> OpenAI -> Edge-TTS.
-        Always generates SRT subtitles via Edge-TTS to maintain word-level ASS subtitle sync.
+        """Voiceover + word-level SRT. Chain: ElevenLabs -> Edge-TTS.
+
+        Both engines time the SRT against the audio they actually produced, so
+        neither path can drift. There is deliberately no engine without word
+        timings in the chain (the old OpenAI middle step shipped stretched
+        Edge-TTS timings over a different voice's pacing).
         """
         out_audio = str(TEMP_DIR / output_filename)
         out_srt = str(TEMP_DIR / srt_filename) if srt_filename else None
 
-        # 1. Always generate SRT subtitles via Edge-TTS
+        if self._generate_elevenlabs(text, out_audio, out_srt):
+            return out_audio, out_srt
+
+        logger.info("Falling back to Edge-TTS for voiceover + subtitles.")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        temp_edge_audio = str(TEMP_DIR / f"temp_edge_{output_filename}")
-        loop.run_until_complete(self._generate_edge_tts_async(text, temp_edge_audio, out_srt))
-        loop.close()
-
-        # 2. Try Premium TTS (ElevenLabs -> OpenAI TTS -> fallback to Edge-TTS)
-        success = self._generate_elevenlabs(text, out_audio)
-        if not success:
-            success = self._generate_openai(text, out_audio)
-        if not success:
-            logger.info("Falling back to Edge-TTS for primary voiceover.")
-            if Path(temp_edge_audio).exists():
-                Path(temp_edge_audio).replace(out_audio)
-                success = True
-            else:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                success = loop.run_until_complete(self._generate_edge_tts_async(text, out_audio, out_srt))
-                loop.close()
-        else:
-            # Premium voice pacing differs from the Edge-TTS reference the SRT
-            # was timed against — stretch the SRT to the real voiceover length.
-            if out_srt and Path(temp_edge_audio).exists():
-                edge_dur = self._audio_duration(temp_edge_audio)
-                premium_dur = self._audio_duration(out_audio)
-                if edge_dur > 0 and premium_dur > 0:
-                    factor = premium_dur / edge_dur
-                    self._rescale_srt(out_srt, factor)
-                    logger.info(f"Rescaled SRT timings by {factor:.3f}x to match premium voiceover.")
-            # Clean up temp edge audio if premium voice succeeded
-            if Path(temp_edge_audio).exists():
-                Path(temp_edge_audio).unlink()
+        try:
+            success = loop.run_until_complete(
+                self._generate_edge_tts_async(text, out_audio, out_srt))
+        finally:
+            loop.close()
 
         if success:
             return out_audio, out_srt

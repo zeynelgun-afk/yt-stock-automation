@@ -1,4 +1,5 @@
 import math
+import shutil
 import subprocess
 import logging
 import textwrap
@@ -61,6 +62,19 @@ MIN_BG_SCENE_SECONDS = 25.0  # below this a cut reads as flicker, not as pacing
 # each, so only the first couple of scenes are AI-generated and the rest come
 # from Pexels. The shared BG_LOOK grade is what makes the mix hold together.
 HIGGSFIELD_MAX_CLIPS = 2
+
+
+def _run_ffmpeg(cmd: List[str], timeout_s: float) -> subprocess.CompletedProcess:
+    """subprocess.run with a hard timeout. A wedged ffmpeg (corrupt Pexels
+    download is a realistic trigger) used to hang the scheduled CI slot until
+    the job cap; a timeout now reads as a normal failed attempt so the
+    gradient/solid fallbacks still get their turn."""
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        logger.error(f"ffmpeg timed out after {timeout_s:.0f}s")
+        return subprocess.CompletedProcess(cmd, returncode=124, stdout="",
+                                           stderr=f"timeout after {timeout_s:.0f}s")
 
 
 def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
@@ -337,7 +351,8 @@ class VideoEngine:
     # ----------------------------------------------------------------- chart
 
     def create_animated_chart(self, symbol: str, intraday: List[Dict[str, Any]],
-                              output_path: str, draw_seconds: float = CHART_DRAW_SECONDS) -> str:
+                              output_path: str, draw_seconds: float = CHART_DRAW_SECONDS,
+                              is_shorts: bool = True) -> str:
         """Real intraday line drawn left-to-right (matplotlib frames -> ffmpeg).
 
         `intraday` must be actual candles from FMPDataFetcher.get_intraday_chart()
@@ -351,7 +366,10 @@ class VideoEngine:
 
         closes = [row["close"] for row in intraday]
         n = len(closes)
-        is_up = closes[-1] >= closes[0]
+        # Same baseline as the card's change% chip (session open) — first-candle
+        # close made a within-first-candle gap render a green chart beside a red chip
+        session_open = intraday[0].get("open") or closes[0]
+        is_up = closes[-1] >= session_open
         line_color = NEON_GREEN if is_up else NEON_RED
 
         frames_dir = Path(TEMP_DIR) / f"chart_frames_{symbol.strip('^')}"
@@ -366,7 +384,12 @@ class VideoEngine:
         y_min, y_max = min(closes), max(closes)
         pad = (y_max - y_min) * 0.08 or abs(y_max) * 0.01 or 1.0
 
-        fig, ax = plt.subplots(figsize=(8.8, 4.6), dpi=100)
+        # Render at each card's chart_box aspect: the Shorts box is 880x460
+        # (1.91) but the long card's is 800x630 (1.27) — a single 1.91 figure
+        # force-stretched ~50% vertically on every recap, distorting line
+        # weight, glow and labels.
+        figsize = (8.8, 4.6) if is_shorts else (8.0, 6.3)
+        fig, ax = plt.subplots(figsize=figsize, dpi=100)
         fig.patch.set_facecolor(DARK_BG)
         ax.set_facecolor(DARK_BG)
         ax.set_xlim(0, n - 1)
@@ -418,9 +441,12 @@ class VideoEngine:
             "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p",
             output_path,
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = _run_ffmpeg(cmd, timeout_s=300)
         if result.returncode != 0:
             raise RuntimeError(f"Chart video encode failed: {result.stderr[-400:]}")
+        # Up to 600 PNGs per run; on the local box they used to pile up until
+        # the next run for the same symbol
+        shutil.rmtree(frames_dir, ignore_errors=True)
         return output_path
 
     def create_stock_chart_image(self, symbol: str, intraday: List[Dict[str, Any]],
@@ -565,8 +591,16 @@ class VideoEngine:
         # -shortest is unreliable on some ffmpeg builds when the audio graph
         # contains looped inputs (Ubuntu CI rendered to the 900s cap with the
         # tail silent) — so the output is explicitly cut at the voiceover end.
+        # A failed probe therefore hard-fails: without the duration the only
+        # remaining cut is the unreliable -shortest, which is exactly the
+        # 15-minute-silent-tail bug this cut exists to prevent.
         audio_dur = self._probe_duration(audio_path)
-        max_dur = f"{min(audio_dur + 0.3, 900.0):.2f}" if audio_dur > 0 else "900"
+        if audio_dur <= 0:
+            logger.error(f"Could not probe voiceover duration ({audio_path}) — "
+                         "refusing to render without a reliable output cut.")
+            return ""
+        max_dur = f"{min(audio_dur + 0.3, 900.0):.2f}"
+        render_timeout = max(600.0, audio_dur * 4)
         width, height = SHORTS_RES if is_shorts else LONG_RES
 
         layout = _card_layout(is_shorts)
@@ -637,19 +671,27 @@ class VideoEngine:
                 inputs += ["-stream_loop", "-1", "-i", str(bg_music_file)]
                 music_idx = cur_idx
                 cur_idx += 1
+                # normalize=0 is load-bearing: amix defaults to normalize=1,
+                # which divides every input by the active-input count — the
+                # voiceover shipped at ~1/3 volume (-9.5 dB) on every video with
+                # BGM, and when the ~1s whoosh dropped out at ~t=5s the mix
+                # audibly swelled mid-hook, inside the 3-14s retention window.
+                # Inputs are pre-scaled instead; alimiter guards the sum.
                 if whoosh_file.exists():
                     inputs += ["-i", str(whoosh_file)]
                     whoosh_idx = cur_idx
                     cur_idx += 1
                     audio_mix_filter = (
                         f"; [{music_idx}:a]volume=0.08[bgm]; "
-                        f"[{whoosh_idx}:a]adelay=4000|4000[sfx1]; "
-                        f"[{audio_idx}:a][bgm][sfx1]amix=inputs=3:duration=first[outa]"
+                        f"[{whoosh_idx}:a]volume=0.45,adelay=4000|4000[sfx1]; "
+                        f"[{audio_idx}:a][bgm][sfx1]amix=inputs=3:duration=first:normalize=0,"
+                        f"alimiter=limit=0.97[outa]"
                     )
                 else:
                     audio_mix_filter = (
                         f"; [{music_idx}:a]volume=0.08[bgm]; "
-                        f"[{audio_idx}:a][bgm]amix=inputs=2:duration=first[outa]"
+                        f"[{audio_idx}:a][bgm]amix=inputs=2:duration=first:normalize=0,"
+                        f"alimiter=limit=0.97[outa]"
                     )
                 audio_map = "[outa]"
 
@@ -659,7 +701,7 @@ class VideoEngine:
                 f"[bg][card]overlay={card_x}:{card_y}[v1]; "
                 f"{chart_chain}"
                 f"[v2]{zoom}[v3]; "
-                f"[v3]ass={ass_sub_path}[outv]"
+                f"[v3]ass='{ass_sub_path}'[outv]"
             )
 
             return [
@@ -682,8 +724,8 @@ class VideoEngine:
         if clips:
             logger.info(f"Using {len(clips)} background clip(s): {', '.join(clips)}")
             bg_inputs, bg_filter = self._bg_chain(clips, width, height, audio_dur)
-            result = subprocess.run(build_cmd(bg_inputs, bg_filter, len(clips)),
-                                    capture_output=True, text=True)
+            result = _run_ffmpeg(build_cmd(bg_inputs, bg_filter, len(clips)),
+                                 timeout_s=render_timeout)
             if result.returncode == 0:
                 logger.info("Video render with stock-footage background completed successfully!")
                 return out_video
@@ -699,16 +741,16 @@ class VideoEngine:
             f"gradients=s={width}x{height}:c0=0x0f172a:c1=0x1e3a5f:"
             f"speed=0.08:rate=30"
         )
-        result = subprocess.run(build_cmd(["-f", "lavfi", "-i", gradient_src], plain_bg, 1),
-                                capture_output=True, text=True)
+        result = _run_ffmpeg(build_cmd(["-f", "lavfi", "-i", gradient_src], plain_bg, 1),
+                             timeout_s=render_timeout)
         if result.returncode == 0:
             logger.info("Video render with gradient completed successfully!")
             return out_video
 
         # Solid fallback
         solid_src = f"color=c=0x0f172a:s={width}x{height}:r=30"
-        fb = subprocess.run(build_cmd(["-f", "lavfi", "-i", solid_src], plain_bg, 1),
-                            capture_output=True, text=True)
+        fb = _run_ffmpeg(build_cmd(["-f", "lavfi", "-i", solid_src], plain_bg, 1),
+                         timeout_s=render_timeout)
         if fb.returncode != 0:
             logger.error(f"Fallback render also failed: {fb.stderr[-800:]}")
             return ""

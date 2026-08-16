@@ -77,34 +77,38 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 parts = ts.replace(',', '.').split(':')
                 return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
 
-            # Edge-TTS now emits one cue per word, which would flash a single
-            # word at a time. Group them into short phrases — the karaoke
-            # highlight below still lands on the individual word.
+            # The SRT arrives with one MEASURED cue per word (ElevenLabs
+            # alignment or Edge-TTS word boundaries), which would flash a single
+            # word at a time. Group into short phrases, but keep each word's own
+            # measured duration for the karaoke highlight — an equal split of
+            # the phrase span visibly lags the voice on long words and pauses.
             words_per_cue = 3 if is_shorts else 5
             groups = []
             for i in range(0, len(matches), words_per_cue):
                 chunk = matches[i:i + words_per_cue]
-                groups.append((
-                    to_sec(chunk[0][1]),
-                    to_sec(chunk[-1][2]),
-                    " ".join(c[3].replace('\n', ' ').strip() for c in chunk),
-                ))
+                groups.append([
+                    (to_sec(c[1]), to_sec(c[2]), c[3].replace('\n', ' ').strip())
+                    for c in chunk
+                ])
 
             dialogues = []
-            for st_sec, et_sec, raw_text in groups:
-                text = raw_text.upper()
-                dur_sec = max(0.2, et_sec - st_sec)
+            for chunk in groups:
+                st_sec = chunk[0][0]
+                et_sec = max(chunk[-1][1], st_sec + 0.2)
 
                 start_ass = _ass_timestamp(st_sec)
                 end_ass = _ass_timestamp(et_sec)
 
-                words = text.split()
-                if words:
-                    w_cs = max(6, int((dur_sec * 100) / len(words)))
-                    k_words = [f"{{\\k{w_cs}}}{w}" for w in words]
-                    styled_text = " ".join(k_words)
-                else:
-                    styled_text = f"{{\\c&H0000FFFF&}}{text}{{\\r}}"
+                # \k durations are sequential from the cue start, so each word's
+                # span runs from the previous word's end to its own end — an
+                # inter-word pause is charged to the word that follows it.
+                k_words = []
+                prev_end = st_sec
+                for w_st, w_et, w_text in chunk:
+                    w_cs = max(6, int(round((max(w_et, prev_end) - prev_end) * 100)))
+                    k_words.append(f"{{\\k{w_cs}}}{w_text.upper()}")
+                    prev_end = max(w_et, prev_end)
+                styled_text = " ".join(k_words)
 
                 line = f"Dialogue: 0,{start_ass},{end_ass},Default,,0,0,0,,{styled_text}"
                 dialogues.append(line)
