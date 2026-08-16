@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 from pathlib import Path
@@ -7,10 +8,17 @@ from config import YOUTUBE_CLIENT_SECRET_FILE, BASE_DIR
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+RECONSENT_RECIPE = (
+    "token.json geçersiz — lokalde OAuth akışını yeniden çalıştırıp "
+    "`gh secret set YOUTUBE_TOKEN_JSON < token.json` ile secret'ı güncelle."
+)
+
+
 class YouTubePublisher:
     def __init__(self, client_secret_file: str = YOUTUBE_CLIENT_SECRET_FILE):
         self.client_secret_path = BASE_DIR / client_secret_file
         self.token_path = BASE_DIR / "token.json"
+        self.last_error = ""   # human-readable reason for the last failed upload
         self._ensure_credentials()
 
     def _ensure_credentials(self):
@@ -36,10 +44,18 @@ class YouTubePublisher:
                     logger.error(f"Failed to write token.json: {e}")
 
     def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public", thumbnail_path: str = "") -> str:
-        """Uploads video to YouTube channel using YouTube Data API v3 and OAuth 2.0."""
+        """Uploads video to YouTube channel using YouTube Data API v3 and OAuth 2.0.
+
+        Returns the video ID, or "" on failure (reason in self.last_error).
+        This used to return a mock ID when credentials were missing, which made
+        the pipeline Telegram a false '✅ Yayında' while nothing was published.
+        """
+        self.last_error = ""
         if not self.client_secret_path.exists():
-            logger.warning(f"YouTube client_secret.json missing at {self.client_secret_path}. Skipping live YouTube upload.")
-            return "MOCK_YOUTUBE_VIDEO_ID_12345"
+            self.last_error = (f"client_secret.json missing at {self.client_secret_path} "
+                               "(YOUTUBE_CLIENT_SECRET_JSON secret unset?)")
+            logger.error(self.last_error)
+            return ""
 
         try:
             from googleapiclient.discovery import build
@@ -73,7 +89,17 @@ class YouTubePublisher:
             # Refresh token if expired or authenticate
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
+                    try:
+                        creds.refresh(Request())
+                    except Exception as e:
+                        # invalid_grant = the refresh token itself died (the
+                        # Jul-31 failure mode) — the operator must re-consent
+                        raise RuntimeError(f"OAuth refresh failed ({e}). {RECONSENT_RECIPE}") from e
+                elif os.getenv("CI") or not sys.stdin.isatty():
+                    # Never open the interactive browser flow on a headless
+                    # runner — it used to block waiting for a browser callback
+                    # until the job timeout, silently burning the slot
+                    raise RuntimeError(f"No usable OAuth token on headless runner. {RECONSENT_RECIPE}")
                 else:
                     flow = InstalledAppFlow.from_client_secrets_file(str(self.client_secret_path), SCOPES)
                     creds = flow.run_local_server(port=0)
@@ -101,7 +127,9 @@ class YouTubePublisher:
             request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
             
             logger.info("Uploading video to YouTube channel...")
-            response = request.execute()
+            # num_retries: exponential-backoff retries on transient 5xx/socket
+            # errors — a single blip used to forfeit the publishing slot
+            response = request.execute(num_retries=5)
             video_id = response.get("id")
             logger.info(f"Successfully uploaded! Video URL: https://youtu.be/{video_id}")
 
@@ -118,6 +146,7 @@ class YouTubePublisher:
 
             return video_id
         except Exception as e:
+            self.last_error = str(e)
             logger.error(f"YouTube Upload Failed: {e}")
             return ""
 

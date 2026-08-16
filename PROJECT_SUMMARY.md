@@ -1,6 +1,9 @@
 # 🚀 US Stock Market Daily - Otomatik YouTube Video Motoru Projesi
 
-Bu belge, `@zeynelgun1` YouTube kanalı için geliştirilen sıfır/mikro maliyetli, tam otomatik, DeepSeek V3 destekli ve Telegram onaylı ABD borsa video üretim sisteminin tüm özetini içermektedir.
+Bu belge, `@zeynelgun1` YouTube kanalı için geliştirilen mikro maliyetli, **tam otonom** ABD borsa video üretim sisteminin özetini içermektedir.
+
+> ⚠️ **Otonomi kararı (2026-08-16):** Sistem insan onayı OLMADAN yayınlar. Telegram
+> yalnızca bilgilendirme/uyarı kanalıdır — eski buton onay akışı bilinçli olarak kaldırıldı.
 
 ---
 
@@ -21,11 +24,11 @@ Bu belge, `@zeynelgun1` YouTube kanalı için geliştirilen sıfır/mikro maliye
 | Bileşen | Kullanılan Teknoloji | Maliyet / Açıklama |
 | :--- | :--- | :--- |
 | **Canlı Veri Kaynağı** | `FMP API` + `CNN Fear & Greed` | $0 (Var olan FMP API planınız + Canlı Borsa Verisi) |
-| **Yapay Zeka (LLM)** | `DeepSeek V3` (`deepseek/deepseek-chat`) & `Qwen 2.5 72B` (OpenRouter) | ~$0.0001 / Video (Ultra ucuz Çinli modeller) |
-| **Seslendirme (TTS)** | `Edge-TTS` (`en-US-ChristopherNeural`) | $0 (Stüdyo kalitesinde doğal Amerikan İngilizcesi) |
+| **Yapay Zeka (LLM)** | Claude Opus/Sonnet → Gemini → DeepSeek (OpenRouter) + doğrudan Gemini/Groq yedekleri | Senaryo başına kuruşluk maliyet; tek hesaba bağımlılık yok |
+| **Seslendirme (TTS)** | `ElevenLabs` (Rachel, `eleven_multilingual_v2`, ölçülü kelime zamanlamalarıyla) → `Edge-TTS` yedek | Doğal stüdyo sesi + kayması olmayan altyazı senkronu |
 | **Görsel & Grafik** | `Matplotlib` + `PIL` + `FFmpeg` | 1080x1920 HD (4.1 Mbps / 30 FPS) Canlı Neon Borsa Grafiği Kartları |
 | **Dinamik Altyazı** | `ASS Subtitle Generator` | Kelime bazlı Alex Hormozi tarzı sarı/beyaz konturlu dikey altyazılar |
-| **Telegram Onay Botu** | `@YouTube_zeynelgun_bot` | Canlı `answerCallbackQuery` dinleyicisi ile buton onay mekanizması |
+| **Telegram Bildirim Botu** | `@YouTube_zeynelgun_bot` | FYI önizleme + hata uyarıları (onay mekanizması YOK — tam otonom) |
 | **YouTube Yükleme** | `YouTube Data API v3` + `OAuth 2.0` | `client_secret.json` ve `token.json` ile sıfır etkileşimli otomatik yükleme |
 | **Bulut Çalıştırma** | `GitHub Actions` (`zeynelgun-afk/yt-stock-automation`) | %100 Ücretsiz GitHub bulut sunucularında 7/24 kesintisiz zamanlayıcı |
 
@@ -35,12 +38,13 @@ Bu belge, `@zeynelgun1` YouTube kanalı için geliştirilen sıfır/mikro maliye
 
 ```mermaid
 flowchart TD
-    A[Cron Job / GitHub Actions / Zamanlayıcı] --> B[FMP API & Fear Greed Verisi Çek]
-    B --> C[OpenRouter DeepSeek V3 Senaryo & Başlık Üret]
-    C --> D[Edge-TTS Amerikan İngilizcesi Ses Üret]
-    D --> E[Matplotlib Neon Borsa Grafiği & Altyazı Render Et]
-    E --> F[Telegram Botuna Gönder: @YouTube_zeynelgun_bot]
-    F -- "✅ Onayla & Yükle Butonuna Basıldığında" --> G[YouTube Data API ile Canlı Yayınla]
+    A[Cron Job / GitHub Actions] --> B[FMP API & Fear Greed Story Pool]
+    B --> C[Hikaye Seçim Motoru + LLM Senaryo]
+    C --> D[ElevenLabs Ses + Ölçülü Kelime Zamanlamaları]
+    D --> E[Gerçek Intraday Grafik + Kart + Altyazı Render]
+    E --> F[Telegram FYI Önizleme]
+    E --> G[YouTube Data API ile OTONOM Yayın]
+    G --> H[Telegram: Yayında bildirimi]
 ```
 
 ---
