@@ -256,6 +256,7 @@ def run_pipeline(video_type: str = "shorts"):
         tags=script_data.get("tags", ["stocks", "finance"]),
         is_shorts=is_shorts,
         thumbnail_path=thumbnail_path,
+        contains_synthetic_media=ve.used_ai_video,
         # Machine metadata (invisible to viewers): the weekly learning engine
         # reads these back for exact franchise stats + narration calibration
         extra_tags=[

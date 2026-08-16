@@ -43,12 +43,19 @@ class YouTubePublisher:
                 except Exception as e:
                     logger.error(f"Failed to write token.json: {e}")
 
-    def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public", thumbnail_path: str = "", extra_tags: list[str] | None = None) -> str:
+    def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public", thumbnail_path: str = "", extra_tags: list[str] | None = None, contains_synthetic_media: bool = False) -> str:
         """Uploads video to YouTube channel using YouTube Data API v3 and OAuth 2.0.
 
         Returns the video ID, or "" on failure (reason in self.last_error).
         This used to return a mock ID when credentials were missing, which made
         the pipeline Telegram a false '✅ Yayında' while nothing was published.
+
+        `contains_synthetic_media` sets status.containsSyntheticMedia (YouTube's
+        "Altered or synthetic content" disclosure, required since the platform's
+        Jul-2025 inauthentic-content policy update whenever AI-generated video
+        could be mistaken for real footage). Pass True when the render used any
+        Higgsfield/Seedance AI-generated background clip; leave False for
+        Pexels stock footage, gradients, or solid-color backgrounds.
         """
         self.last_error = ""
         if not self.client_secret_path.exists():
@@ -122,7 +129,8 @@ class YouTubePublisher:
                 },
                 "status": {
                     "privacyStatus": privacy_status,
-                    "selfDeclaredMadeForKids": False
+                    "selfDeclaredMadeForKids": False,
+                    "containsSyntheticMedia": contains_synthetic_media
                 }
             }
 

@@ -104,6 +104,13 @@ def _card_layout(is_shorts: bool) -> Dict[str, Any]:
 class VideoEngine:
     def __init__(self, pexels_key: str = PEXELS_API_KEY):
         self.pexels_key = pexels_key
+        # Set by fetch_background_videos — did any clip in the current video
+        # come from AI generation (Higgsfield/Seedance)? YouTube's Data API
+        # status.containsSyntheticMedia disclosure is per-video, so the
+        # caller (main_scheduler) reads this after fetching clips and before
+        # uploading. Stock footage / gradient / solid-color backgrounds do
+        # not count — only synthetically generated video does.
+        self.used_ai_video = False
 
     # ------------------------------------------------------------------ background
 
@@ -118,6 +125,7 @@ class VideoEngine:
         """
         clips: List[str] = []
         remaining = list(keywords)
+        self.used_ai_video = False
 
         try:
             from higgsfield_client import HiggsfieldClient
@@ -128,6 +136,7 @@ class VideoEngine:
                     if path:
                         clips.append(path)
                         remaining.remove(theme)
+                        self.used_ai_video = True
                     else:
                         logger.warning(f"Higgsfield generation failed for '{theme}'; "
                                        "Pexels will cover this scene.")
