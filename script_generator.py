@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from typing import Any, Dict, List, Optional, Tuple
-from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, PATTERNS_FILE
+from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,22 +14,67 @@ class ScriptGenerationError(Exception):
     publishing a canned template script would be fake content."""
 
 
-def _packaging_patterns_block() -> str:
-    """This week's proven packaging patterns from the outlier scanner (Faz 2.5).
-    Structure-only guidance — empty string if no scan has run yet."""
+def _learnings() -> Dict[str, Any]:
+    """The weekly learning engine's output (single artifact for all feedback
+    loops). Empty dict when missing/stale — every consumer has a default."""
     try:
-        if PATTERNS_FILE.exists():
-            p = json.loads(PATTERNS_FILE.read_text())
-            titles = p.get("title_patterns", [])[:5]
-            hooks = p.get("hook_patterns", [])[:3]
-            if titles or hooks:
-                lines = ["PROVEN PACKAGING THIS WEEK (structural patterns only — NEVER copy a real title):"]
-                lines += [f"- Title shape: {t}" for t in titles]
-                lines += [f"- Hook shape: {h}" for h in hooks]
-                return "\n" + "\n".join(lines) + "\n"
+        from learning_engine import load_learnings
+        return load_learnings()
     except Exception as e:
-        logger.warning(f"Could not load packaging patterns: {e}")
-    return ""
+        logger.warning(f"Could not load channel learnings: {e}")
+        return {}
+
+
+def _packaging_patterns_block() -> str:
+    """This week's proven packaging patterns from the market-wide outlier scan.
+    Structure-only guidance — empty string if no scan has run yet."""
+    p = _learnings().get("market_patterns") or {}
+    titles = [_pattern_text(t) for t in p.get("title_patterns", [])[:5]]
+    hooks = [_pattern_text(h) for h in p.get("hook_patterns", [])[:3]]
+    if not (titles or hooks):
+        return ""
+    lines = ["PROVEN PACKAGING THIS WEEK (structural patterns only — NEVER copy a real title):"]
+    lines += [f"- Title shape: {t}" for t in titles]
+    lines += [f"- Hook shape: {h}" for h in hooks]
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def _pattern_text(item: Any) -> str:
+    """A learned pattern may be a plain string or a rich dict (pattern,
+    evidence, how_to_apply) — render it prompt-ready either way."""
+    if isinstance(item, dict):
+        text = str(item.get("pattern") or item.get("title") or "").strip()
+        how = str(item.get("how_to_apply") or "").strip()
+        return f"{text} ({how})" if text and how else (text or str(item))
+    return str(item)
+
+
+def _own_channel_block() -> str:
+    """Lessons distilled weekly from OUR OWN uploads' retention/APV data.
+    Own data outranks market-wide patterns — say so to the model."""
+    p = _learnings().get("own_patterns") or {}
+    win = [_pattern_text(w) for w in p.get("winning_patterns", [])[:5]]
+    lose = [_pattern_text(l) for l in p.get("losing_patterns", [])[:4]]
+    if not (win or lose):
+        return ""
+    lines = ["OUR OWN CHANNEL'S MEASURED RESULTS (last 2 weeks — this outranks generic advice):"]
+    lines += [f"- Held OUR viewers: {w}" for w in win]
+    lines += [f"- Lost OUR viewers (avoid): {l}" for l in lose]
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def _word_range(key: str, default: Tuple[int, int],
+                sane: Tuple[int, int]) -> Tuple[int, int]:
+    """Auto-calibrated word budget from the measured narration rate, clamped
+    to a sanity window so a bad calibration can't produce a 10-word Short."""
+    rng = (_learnings().get("narration") or {}).get(key)
+    try:
+        lo, hi = int(rng[0]), int(rng[1])
+        if sane[0] <= lo < hi <= sane[1]:
+            return lo, hi
+    except (TypeError, ValueError, IndexError):
+        pass
+    return default
 
 
 def _recent_titles_block(titles: Optional[List[str]]) -> str:
@@ -76,11 +121,12 @@ class ScriptGenerator:
         66-78 words therefore lands at 32-38 seconds. Re-measure before changing
         this — a generic words-per-minute figure is roughly 40% too fast here.
 
-        NOTE 2026-08-16: the voice engine moved to eleven_multilingual_v2 at
-        speed 1.05 (was turbo_v2_5 at 1.1) — slightly slower. The Telegram FYI
-        message now carries the measured duration of every render; recalibrate
-        these budgets from a few of those before trusting the 32-38s claim.
+        NOTE 2026-08-16: word budgets are now AUTO-CALIBRATED weekly by the
+        learning engine from w:/v: machine tags on published videos (measured
+        words/sec x the 32-38s target). The 66-78 literal below is only the
+        cold-start default until enough tagged uploads exist.
         """
+        lo, hi = _word_range("shorts_word_range", default=(66, 78), sane=(45, 110))
         franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
         angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
         prompt = f"""You are an elite Wall Street financial analyst and viral YouTube creator for the channel "US Stock Market Daily".
@@ -123,10 +169,10 @@ every recent title below, choosing from:
   - Consequence/stakes:     "This Insider Sale Broke a Three-Year Pattern"
 Question-mark titles are allowed at most once every four videos — prefer a declarative
 that states something and makes the viewer need the proof.
-{_recent_titles_block(recent_titles)}{_packaging_patterns_block()}
+{_recent_titles_block(recent_titles)}{_own_channel_block()}{_packaging_patterns_block()}
 RULES:
-1. Word count: MUST BE BETWEEN 66 AND 78 WORDS. This is a hard requirement — 78 words is
-   38 seconds and 38 seconds is the ceiling. Cut the second-best fact, not the hook.
+1. Word count: MUST BE BETWEEN {lo} AND {hi} WORDS. This is a hard requirement — {hi} words
+   is ~38 seconds and 38 seconds is the ceiling. Cut the second-best fact, not the hook.
 2. Use specific, unrounded numbers from the data — never vague words like "millions" or "a lot".
    Write them TTS-friendly: "$4.7 million" not "$4.7M", "up 23 percent" or "23%" not "+23%".
    The script is read aloud by a voice engine — abbreviations like "M", "B", "PT", "EPS" get mispronounced; spell them out ("price target", "earnings per share").
@@ -150,7 +196,8 @@ RULES:
    - "tags": Array of 6 relevant tags
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["stock market trading", "nvidia microchip", "wall street traders"])
 """
-        return self._call_llm(prompt, default_title=topic, min_words=58, max_words=88)
+        return self._call_llm(prompt, default_title=topic,
+                              min_words=max(40, lo - 8), max_words=hi + 10)
 
     def generate_long_script(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generates a 5-6 minute (660-780 word) Daily Market Recap script.
@@ -165,7 +212,12 @@ RULES:
         16% view percentage on 27 views — an ad slot nobody reaches is worth
         nothing. Reach first: a 5-6 minute recap that holds viewers earns the
         distribution that makes the 8-minute version worth restoring later.
+
+        Budgets auto-calibrate weekly from the measured narration rate (see
+        generate_shorts_script note); 660-780 is the cold-start default.
         """
+        lo, hi = _word_range("long_word_range", default=(660, 780), sane=(450, 1000))
+        mid = (lo + hi) // 2
         from datetime import datetime
         today_str = datetime.now().strftime("%B %-d")  # e.g. "August 2"
         prompt = f"""You are the lead financial anchor of "US Stock Market Daily". Write a tight Daily Market Recap script for a 5-6 minute video.
@@ -174,7 +226,7 @@ Positioning: data-first, zero hype — real numbers, real reasons, original anal
 Data Provided:
 {json.dumps(market_data, indent=2, default=str)}
 
-STRUCTURE (follow in order — the per-section word budgets are mandatory, they add up to ~720 words):
+STRUCTURE (follow in order — scale every per-section budget proportionally so the total lands at ~{mid} words):
 1. COLD-OPEN HOOK (~50 words): the single most shocking number of the day as a standalone
    opening line, then the three things this video will resolve. No throat-clearing, no
    "welcome back", no restating the date before the number.
@@ -184,9 +236,9 @@ STRUCTURE (follow in order — the per-section word budgets are mandatory, they 
 5. EARNINGS (~80 words): today's surprises (estimate vs actual) and what's on deck this week.
 6. WHAT TO WATCH TOMORROW (~45 words): the two or three events from the data most likely to move the market, each with why.
 7. OUTRO (~20 words): one line recapping the day's theme + a five-word subscribe CTA.
-{_packaging_patterns_block()}
+{_own_channel_block()}{_packaging_patterns_block()}
 RULES:
-- Word count: 660 to 780 words (5-6 minutes of narration at this channel's pace). This is a HARD requirement.
+- Word count: {lo} to {hi} words (5-6 minutes of narration at this channel's measured pace). This is a HARD requirement.
   Depth comes from picking fewer items and explaining them properly, never from listing more.
 - Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.
 - Write numbers TTS-friendly: "$4.7 million" not "$4.7M"; spell out abbreviations ("price target", "earnings per share") — the script is read aloud by a voice engine.
@@ -212,7 +264,7 @@ RULES:
      at night", "electric vehicle assembly line", "us capitol building exterior"]
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
-                              min_words=600, max_words=850)
+                              min_words=max(400, lo - 60), max_words=hi + 70)
 
     SYSTEM_MSG = "You are a professional financial AI writer. Always respond with valid JSON only."
 

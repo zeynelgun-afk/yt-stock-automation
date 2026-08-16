@@ -441,7 +441,19 @@ class StorySelector:
     def _franchise_weights() -> Dict[str, float]:
         """Analytics feedback loop (ROADMAP Faz 5.1): franchise score multipliers
         from the channel's recent per-format performance. Any failure returns
-        {} — weighting is a nudge, never a blocker."""
+        {} — weighting is a nudge, never a blocker.
+
+        Primary source is the weekly learning engine's precomputed file: it
+        spares every video run a live Analytics API round-trip (and its
+        failure modes). The live computation remains as fallback for a
+        missing/stale file."""
+        try:
+            from learning_engine import load_learnings
+            weights = load_learnings().get("franchise_weights")
+            if weights:
+                return {k: float(v) for k, v in weights.items()}
+        except Exception as e:
+            logger.warning(f"Could not read precomputed franchise weights: {e}")
         try:
             from analytics_reporter import compute_franchise_weights
             return compute_franchise_weights(days=14)

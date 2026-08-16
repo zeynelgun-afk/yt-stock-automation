@@ -25,6 +25,10 @@ class VoiceGenerator:
                  elevenlabs_key: str = ELEVENLABS_API_KEY):
         self.voice = voice
         self.elevenlabs_key = elevenlabs_key
+        # Which engine actually produced the last voiceover — stamped onto the
+        # upload as a v: machine tag so weekly analytics can calibrate pacing
+        # per engine instead of mixing two different speaking rates
+        self.engine_used = ""
 
     def _generate_elevenlabs(self, text: str, output_path: str,
                              subtitle_path: Optional[str]) -> bool:
@@ -195,6 +199,7 @@ class VoiceGenerator:
         out_srt = str(TEMP_DIR / srt_filename) if srt_filename else None
 
         if self._generate_elevenlabs(text, out_audio, out_srt):
+            self.engine_used = "11l"
             return out_audio, out_srt
 
         logger.info("Falling back to Edge-TTS for voiceover + subtitles.")
@@ -207,6 +212,7 @@ class VoiceGenerator:
             loop.close()
 
         if success:
+            self.engine_used = "edge"
             return out_audio, out_srt
         return "", ""
 

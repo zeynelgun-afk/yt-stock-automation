@@ -1,8 +1,9 @@
 name: US Stock Market Daily YouTube Automation
 
-# The analytics job commits data/packaging_patterns.json back to the repo —
+# The analytics job commits data/channel_learnings.json back to the repo —
 # CI runners are ephemeral, so the repo is the only durable store for the
-# weekly outlier patterns that ScriptGenerator reads on every video run.
+# weekly learning artifact (franchise weights, word budgets, own + market
+# packaging patterns) that the pipeline reads on every video run.
 permissions:
   contents: write
 
@@ -112,14 +113,17 @@ jobs:
             analytics)
               python -c "from youtube_publisher import YouTubePublisher; YouTubePublisher()"  # materialize token.json from env
               python -c "from analytics_reporter import send_weekly_report; send_weekly_report()"
-              python -c "from outlier_scanner import run_weekly_scan; run_weekly_scan()"
-              # Persist this week's packaging patterns — without this commit the
-              # scan's output dies with the runner and ScriptGenerator never sees it
+              # Unified weekly learning: franchise weights + narration
+              # calibration + own-channel lessons + market outlier patterns,
+              # all persisted into one artifact
+              python -c "from learning_engine import run_weekly_learning; run_weekly_learning()"
+              # Persist this week's learnings — without this commit the output
+              # dies with the runner and the pipeline never sees it
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
-              git add data/packaging_patterns.json
+              git add data/channel_learnings.json
               if ! git diff --cached --quiet; then
-                git commit -m "chore: weekly packaging patterns refresh"
+                git commit -m "chore: weekly channel learnings refresh"
                 # Rebase first: a push that landed after our checkout would
                 # otherwise reject this one and silently lose the refresh
                 git pull --rebase origin main

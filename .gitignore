@@ -12,4 +12,4 @@ client_secret.json
 token.json
 .claude/
 data/*
-!data/packaging_patterns.json
+!data/channel_learnings.json

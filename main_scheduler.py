@@ -256,6 +256,13 @@ def run_pipeline(video_type: str = "shorts"):
         tags=script_data.get("tags", ["stocks", "finance"]),
         is_shorts=is_shorts,
         thumbnail_path=thumbnail_path,
+        # Machine metadata (invisible to viewers): the weekly learning engine
+        # reads these back for exact franchise stats + narration calibration
+        extra_tags=[
+            f"fr:{story['franchise']}",
+            f"w:{len(script_data['full_script'].split())}",
+            f"v:{vg.engine_used or 'unknown'}",
+        ],
     )
     if video_id:
         logger.info(f"Published to YouTube! Video ID: {video_id}")

@@ -43,7 +43,7 @@ class YouTubePublisher:
                 except Exception as e:
                     logger.error(f"Failed to write token.json: {e}")
 
-    def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public", thumbnail_path: str = "") -> str:
+    def upload_video(self, video_path: str, title: str, description: str, tags: list[str], is_shorts: bool = True, privacy_status: str = "public", thumbnail_path: str = "", extra_tags: list[str] | None = None) -> str:
         """Uploads video to YouTube channel using YouTube Data API v3 and OAuth 2.0.
 
         Returns the video ID, or "" on failure (reason in self.last_error).
@@ -114,7 +114,10 @@ class YouTubePublisher:
                 "snippet": {
                     "title": title[:100],
                     "description": description + ("\n\n#shorts #stocks #finance" if is_shorts else "\n\n#stocks #investing"),
-                    "tags": tags,
+                    # extra_tags = machine metadata (fr:/w:/v:) — tags are not
+                    # shown to viewers, but the weekly self-improvement loop
+                    # reads them back for exact franchise + pacing calibration
+                    "tags": list(tags) + list(extra_tags or []),
                     "categoryId": "27"  # Education / Finance
                 },
                 "status": {

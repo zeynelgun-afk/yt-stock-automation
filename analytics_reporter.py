@@ -103,6 +103,7 @@ def fetch_video_stats(days: int = 7):
     ids = [r[0] for r in rows]
     titles: Dict[str, str] = {}
     durations: Dict[str, int] = {}
+    machine: Dict[str, Dict[str, str]] = {}
     for i in range(0, len(ids), 50):   # videos.list caps at 50 ids per call
         meta = yt_data.videos().list(
             part="snippet,contentDetails", id=",".join(ids[i:i + 50])).execute()
@@ -110,6 +111,15 @@ def fetch_video_stats(days: int = 7):
             titles[item["id"]] = item["snippet"]["title"]
             durations[item["id"]] = _iso_duration_to_seconds(
                 item.get("contentDetails", {}).get("duration", ""))
+            # Machine tags stamped at upload (invisible to viewers): fr:=exact
+            # franchise, w:=script word count, v:=voice engine. They make the
+            # channel itself the durable per-video metadata store on stateless
+            # CI — no more guessing the franchise from title keywords.
+            machine[item["id"]] = {
+                k: v for k, _, v in
+                (t.partition(":") for t in item["snippet"].get("tags", []))
+                if k in ("fr", "w", "v") and v
+            }
 
     return [{
         "video_id": r[0],
@@ -119,7 +129,10 @@ def fetch_video_stats(days: int = 7):
         "avg_view_seconds": round(r[3]),
         "avg_view_pct": round(r[4], 1),
         "subs_gained": int(r[5]),
+        "duration_s": durations.get(r[0], 0),
         "is_long": durations.get(r[0], 0) >= LONG_VIDEO_MIN_SECONDS,
+        "machine": machine.get(r[0], {}),
+        "franchise": machine.get(r[0], {}).get("fr") or classify_franchise(titles.get(r[0], "")),
     } for r in rows]
 
 
@@ -157,7 +170,7 @@ def compute_franchise_weights(days: int = 14, min_videos: int = 2,
     """
     per: Dict[str, List[float]] = {}
     for s in fetch_video_stats(days):
-        fr = classify_franchise(s["title"])
+        fr = s.get("franchise")   # machine tag when present, else title keywords
         if fr:
             per.setdefault(fr, []).append(s["views"] * s["avg_view_pct"] / 100.0)
 

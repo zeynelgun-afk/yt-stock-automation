@@ -28,10 +28,13 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")  # Data API key (outlier scan
 # viewers and drag the channel average down — no video beats a weak video.
 MIN_SHORTS_STORY_SCORE = float(os.getenv("MIN_SHORTS_STORY_SCORE", "55"))
 
-# Persistent data (learned packaging patterns, etc.)
+# Persistent data
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-PATTERNS_FILE = DATA_DIR / "packaging_patterns.json"
+# The single weekly-learning artifact (learning_engine.py writes it on the
+# Sunday CI job; the pipeline reads it on every video run): franchise weights,
+# auto-calibrated word budgets, own-channel packaging lessons, market patterns.
+LEARNINGS_FILE = DATA_DIR / "channel_learnings.json"
 
 # Directory Paths
 OUTPUT_DIR = BASE_DIR / "output"
