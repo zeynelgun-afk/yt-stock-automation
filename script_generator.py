@@ -14,6 +14,12 @@ class ScriptGenerationError(Exception):
     publishing a canned template script would be fake content."""
 
 
+# Sentinel: the failure was account-level (bad key, monthly limit, no credits),
+# not model-level. Every other model behind the same key fails identically, so
+# the whole provider is abandoned at once instead of burning three more calls.
+_PROVIDER_DEAD = object()
+
+
 def _learnings() -> Dict[str, Any]:
     """The weekly learning engine's output (single artifact for all feedback
     loops). Empty dict when missing/stale — every consumer has a default."""
@@ -95,6 +101,9 @@ class ScriptGenerator:
         self.openrouter_key = openrouter_key
         self.gemini_key = gemini_key
         self.groq_key = groq_key
+        # Last provider-side failure text, surfaced in the abort alert — a bare
+        # "all providers failed" told the operator nothing about what to fix.
+        self.last_error = ""
         # Verified-live OpenRouter slugs (dead slugs 404 and silently ate the
         # fallback chain — check https://openrouter.ai/api/v1/models when editing)
         self.openrouter_models = [
@@ -280,6 +289,13 @@ RULES:
             attempts.append(("gemini", "gemini-2.5-flash"))
         if self.groq_key:
             attempts.append(("groq", "llama-3.3-70b-versatile"))
+        # A single configured provider means an account-level failure (key
+        # limit, expired card) stops the channel outright — that is exactly
+        # what happened on Jul-31 and again on Aug-25.
+        if len({p for p, _ in attempts}) < 2:
+            logger.warning("Only one LLM provider is configured — there is no "
+                           "account-level fallback. Set GEMINI_API_KEY and/or "
+                           "GROQ_API_KEY (both have free tiers).")
         return attempts
 
     def _chat(self, provider: str, model: str, prompt: str) -> Optional[str]:
@@ -341,7 +357,15 @@ RULES:
                     time.sleep(wait)
                     continue
                 if res.status_code != 200:
-                    logger.warning(f"{provider}/{model} returned HTTP {res.status_code}: {res.text[:200]}")
+                    detail = res.text[:200]
+                    logger.warning(f"{provider}/{model} returned HTTP {res.status_code}: {detail}")
+                    self.last_error = f"{provider}: HTTP {res.status_code} {detail}"
+                    # 401 bad key / 402 out of credits / 403 key limit exceeded
+                    # are all properties of the KEY, not of this model.
+                    if res.status_code in (401, 402, 403):
+                        logger.warning(f"{provider} key rejected at account level — "
+                                       f"skipping its remaining models.")
+                        return _PROVIDER_DEAD
                     return None
 
                 if provider == "gemini":
@@ -349,6 +373,7 @@ RULES:
                 return res.json()["choices"][0]["message"]["content"]
             except Exception as e:
                 logger.error(f"{provider}/{model} error: {e}")
+                self.last_error = f"{provider}/{model}: {e}"
                 return None
         return None
 
@@ -360,11 +385,17 @@ RULES:
         min_words/max_words bound the full_script length — a recap that comes
         back at 600 words would produce a half-length video, so an off-target
         script gets corrective retries per model before falling through."""
+        dead_providers: set = set()
         for provider, model_name in self._providers():
+            if provider in dead_providers:
+                continue
             retry_note = ""
             for attempt in range(3):
                 logger.info(f"Generating script using {provider}/{model_name}...")
                 content = self._chat(provider, model_name, prompt + retry_note)
+                if content is _PROVIDER_DEAD:
+                    dead_providers.add(provider)
+                    break
                 if content is None:
                     break
                 try:
@@ -416,9 +447,12 @@ RULES:
                 logger.info(f"Successfully generated script via {provider}/{model_name} ({word_count} words)!")
                 return parsed
 
+        configured = sorted({p for p, _ in self._providers()})
         raise ScriptGenerationError(
             f"All LLM providers failed to generate a script for '{default_title}'. "
-            "Aborting instead of publishing a canned template."
+            f"Aborting instead of publishing a canned template. "
+            f"Configured providers: {', '.join(configured) or 'NONE — no API key is set'}. "
+            f"Last error: {self.last_error or 'n/a'}"
         )
 
 if __name__ == "__main__":
