@@ -1,111 +1,116 @@
 {
  "market_patterns": {
   "title_patterns": [
-   "[ASSET/INDEX] just hit [specific unrounded level] — the highest since [precise historical reference]",
-   "I backtested [well-known group or strategy] — here are the numbers",
-   "[EVENT] just happened. Here's what the data actually shows",
-   "[COMPANY]'s first [report type]: [3-5] takeaways that matter",
-   "[SECTOR/COUNTRY] [valuation metric] went from [number] to [number] in [timeframe]",
-   "EARNINGS BREAKDOWN: [TICKER], [TICKER] — what the filings say",
-   "[N] [asset class] trading below [specific measurable threshold] right now",
-   "Why [asset] moved [exact %] in [exact number of days] — mechanically explained"
+   "[TICKER] earnings: the [specific metric] nobody is checking — with the actual number",
+   "[NAMED ANALYST/SOURCE]: [specific price target] and [specific % move] — what the math assumes",
+   "I backtested [well-known group / claim] — here's the [specific return figure]",
+   "[ASSET/YIELD] just hit [unrounded level], the highest since [specific year/event] — what that historically implied",
+   "[MACRO EVENT] moved [specific instrument] by [exact bps/%] — three second-order effects",
+   "Post-[EARNINGS EVENT]: which [N] suppliers actually saw revenue change (data, not reaction)",
+   "[COMPANY]'s first earnings report as a public company: [N] numbers that matter",
+   "[SECTOR] insiders bought $[exact amount] of their own stock — the full filing breakdown"
   ],
   "hook_patterns": [
-   "Lead with the single hardest number in the first 5 seconds, then say what it does and doesn't mean.",
-   "State the consensus claim, then immediately say 'here's what the actual data set shows' before any opinion.",
-   "Open with the timestamp/date of the event ('at the close today...') to establish this is a report, not a prediction.",
-   "Pose the exact question you tested, then reveal you ran the numbers and will show the methodology.",
-   "Name the two competing explanations circulating, then say only one survives the data."
+   "Open with the single hardest number from the report and state exactly what it changed — no preamble.",
+   "State the widely repeated claim in one sentence, then say 'here's what the data actually shows' and go straight to the figure.",
+   "Timestamp the setup: 'As of [date], [metric] sits at [exact level]. Last time it did, here's what followed.'",
+   "Name the three numbers the video will cover in the first 15 seconds, so viewers know the payoff structure.",
+   "Lead with what you were wrong about or what the consensus missed, then quantify the gap."
   ],
   "packaging_notes": [
-   "Two duration sweet spots dominate: 7-9 minutes for single-topic data breakdowns, and 15-25 minutes for multi-stock or backtest deep dives. Sub-90-second clips only work for hard news snippets.",
-   "Specific unrounded figures and dated comparisons ('highest since before the Great Recession', '+40% in 5 days') outperform vague magnitude words — this is the channel's natural advantage.",
-   "Structural framing devices that travel well without hype: 'I backtested X', 'key takeaways from', 'here's why' — all imply verifiable work rather than emotion.",
-   "Timeliness beats drama: earnings reports, yield moves and policy hearings drove most outliers. Publishing within 24-48 hours of the data print matters more than title intensity.",
-   "Skip collapse/implosion framing and doom thumbnails. Substitute mechanism-oriented titles ('why this moved', 'what the filings say') which capture the same curiosity with credibility intact.",
-   "Ticker and named-entity specificity in the title (PLTR, SpaceX, 30-year yield) consistently outperformed generic 'the market' phrasing."
+   "Two clear duration pockets: 5–9 min single-catalyst explainers (earnings, one macro print, one datapoint) and 17–25 min multi-stock or backtest deep dives. Avoid the 10–15 min middle unless it's a genuine roundup.",
+   "Unrounded, verifiable numbers in the title outperform adjectives — a price target, a bps move, a dollar filing amount, or a year reference ('highest since ___') does the work that hype words usually attempt.",
+   "Earnings-reaction videos published within 24–48 hours of the print get outsized lift; second-order framing ('who benefits downstream') beats 'good or bad quarter'.",
+   "Attribution framing (named analyst, named filing, named agency) borrows credibility without emotion — use the source as the hook instead of a threat.",
+   "'I tested / I backtested / I checked the filings' first-person research framing is the cleanest way to make a skeptical, data-first angle feel like a story.",
+   "Skip collapse/implosion language and alarm emojis; substitute a specific mechanism ('30-year yields at X% raise refi costs by Y') which conveys stakes while staying inside the no-hype positioning."
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-08-23T15:19:33",
+ "updated_at": "2026-08-30T18:25:07",
  "franchise_weights": {
-  "market_close": 1.24,
-  "insider_watch": 0.76
+  "congress_trade": 1.3,
+  "market_close": 1.01,
+  "insider_watch": 0.78,
+  "earnings_shock": 0.7
  },
  "own_patterns": {
   "winning_patterns": [
    {
-    "pattern": "Single-actor, single-action headline: a named person or firm plus one concrete completed transaction (bought X shares, sold N times, split one exit into tranches)",
-    "why_it_works": "The title is already a complete micro-story, so the hook only has to confirm and expand it rather than set it up. Our highest hook holds (1.27-1.33) and deepest average views (91-98%) all sit in this shape.",
-    "evidence": "The two best-retaining videos in the set are both named-insider single-transaction framings; both exceed 1.25 hook hold despite low view counts.",
-    "how_to_apply": "Lead with the actor and the verb. One transaction per video. Do not stack a second storyline into the title."
+    "pattern": "Named human or named institution as the acting subject, followed by a behavioral anomaly (acted repeatedly, acted late, acted against the obvious incentive).",
+    "structure": "[Known actor] + [odd action] + [implicit contradiction]",
+    "evidence": "Our two strongest retention videos both put a specific person at the center (a politician's delayed disclosure, an executive's repeated same-day selling): hook_hold 1.18 and 1.28, avg_view_pct 84% and 93%.",
+    "why_it_works": "A named actor gives the viewer someone to judge in the first 5 seconds; the anomaly creates an open question the video must answer, so they stay to see the resolution."
    },
    {
-    "pattern": "Price move plus an unresolved qualifier — a percentage or dollar figure followed by a clause that undercuts or complicates it",
-    "why_it_works": "The number creates the payoff expectation and the qualifier creates the open question. Viewers stay to find out which side wins. This shape clusters in the 70-85% avg view band.",
-    "evidence": "Move-plus-caveat titles (a large percent gain qualified by 'catalyst already scheduled', 'headline it didn't write', 'flat revenue') land 67-85% avg view with hook holds above 1.02.",
-    "how_to_apply": "Structure as [magnitude] + [but the mechanism is questionable]. Resolve the qualifier explicitly in the first 15 seconds so the promise is honored early."
+    "pattern": "Two-part title where the second clause undercuts or reframes the first (move happened, but the stated reason was not the real one).",
+    "structure": "[Price/volume event]. [Deflating qualifier about the cause.]",
+    "evidence": "Titles built on 'the catalyst was pre-scheduled', 'priced in something not yet real', 'moved on a headline it didn't originate', 'rallied despite bad news' all cleared 68-88% avg_view_pct with hook_hold above 1.0.",
+    "why_it_works": "The qualifier promises analysis, not just a recap. It signals the video contains a mechanism the viewer doesn't already know."
    },
    {
-    "pattern": "Exact, unrounded dollar figures used as the lead element",
-    "why_it_works": "Precise numbers ($385M, $705M, $43.6M, $11.8M, $90.98) read as sourced filings rather than clickbait, which matches our no-hype positioning. These consistently hold above 1.0 in the hook window.",
-    "evidence": "Dollar-lead titles average roughly 70-78% avg view pct with hook holds 1.05-1.14, above the channel mid-point.",
-    "how_to_apply": "Keep decimals and odd digits. Avoid rounding to 'nearly $400 million'. Say the figure out loud in the first sentence of the hook."
+    "pattern": "One precise number carrying the whole hook — exact digits or an oddly specific count, not a rounded headline figure.",
+    "structure": "[Exact figure] + [mechanical detail: number of trades, sessions, filings]",
+    "evidence": "An exact-dollar figure split across a stated trade count held 72% with hook_hold 1.13; a 'sold N times in one day' framing held 93%. Rounded big-dollar figures with no mechanism underperformed.",
+    "why_it_works": "Precision reads as primary-source data rather than commentary, which matches what this audience shows up for; the mechanical detail implies the video explains the how."
    },
    {
-    "pattern": "Short-form, one-idea episodes",
-    "why_it_works": "Every video in the top half of retention is short-form and covers exactly one filing or one ticker. Depth of view collapses the moment the video tries to cover a session broadly.",
-    "evidence": "The single long-form recap in the set holds only 22.5% avg view and 0.43 in the hook window — by far the worst structural outlier, despite mid-pack views.",
-    "how_to_apply": "Default to short-form single-subject. If a broad recap is needed, cut it into separate single-subject shorts rather than one multi-topic long video."
+    "pattern": "Single-event, single-ticker, short-form scope: one anomaly per video, nothing bundled.",
+    "structure": "One subject, one number, one question",
+    "evidence": "Every video above 70% avg_view_pct is short-form and covers exactly one situation. Both multi-story videos sat at 29-35% avg_view_pct.",
+    "why_it_works": "Scope matches the promise, so there's no point where the viewer feels the specific thing they clicked for is already over."
    }
   ],
   "losing_patterns": [
    {
-    "pattern": "Multi-topic session-recap titles that chain a date, an outlier mover and an index direction together",
-    "why_it_hurts": "Three competing promises in one title means no single payoff to deliver in the hook, so the opening reads as an agenda rather than a story. This produced the lowest hook hold in the set.",
-    "evidence": "The only date-plus-two-storylines recap scored 0.43 hook hold and 22.5% avg view — roughly a third of channel norm.",
-    "fix": "One subject per title. Drop the date. Drop the index status unless the index IS the story."
+    "pattern": "Dated market-recap titles with a colon, a date, and a stacked multi-clause headline.",
+    "structure": "[Show name]: [Date] — [Story A detail, Story B detail]",
+    "evidence": "Both titles in this shape are our two worst hook holds (0.50, 0.50) and bottom-tier retention (29-35%), despite being our longest videos.",
+    "why_it_fails": "The date front-loads the title with zero tension, and the stacked clauses tell the viewer the payoff is already delivered. Nothing is left unresolved."
    },
    {
-    "pattern": "Anonymous-role titles that withhold the identity and the number ('the CEO', 'the CEO already owned X%')",
-    "why_it_hurts": "Without a name or a hard figure, the title promises intrigue our audience doesn't trust. Viewers arrive expecting data and leave when the hook opens with setup instead of a fact.",
-    "evidence": "Unnamed-CEO framings landed 36-40% avg view with hook holds 0.75-0.81, versus 70-98% for named-actor equivalents."
+    "pattern": "Bare ticker abbreviation as the opening token with no orienting context.",
+    "structure": "[4-5 letter ticker] + [event]",
+    "evidence": "Ticker-led titles were highly inconsistent, including two of our weakest holds (0.79-0.89) and sub-55% retention; the ticker-led entries that did work carried an unusually strong contradiction clause behind them.",
+    "why_it_fails": "An unrecognized ticker makes the viewer resolve 'what is this' before they can care, which spends the hook window on decoding instead of curiosity."
    },
    {
-    "pattern": "Analytical-verdict titles where the conclusion is stated up front ('the upside is capped', 'is buying X')",
-    "why_it_hurts": "If the title delivers the judgment, there is no reason to watch for it. Retention drops to the 40% band even when the topic is legitimately interesting.",
-    "evidence": "Verdict-first M&A framings cluster around 40% avg view and sub-0.80 hook hold."
+    "pattern": "Large rounded dollar figure attached to a low-familiarity entity, with no actor and no mechanism.",
+    "structure": "[$XXX million] + into/out of + [company]",
+    "evidence": "A rounded nine-figure block-trade title fell to 48% avg_view_pct with hook_hold 0.93, while a comparable figure broken into exact digits plus a trade count held 72%.",
+    "why_it_fails": "Size alone isn't a question. Without a named actor or a stated oddity, the viewer assumes routine institutional flow."
    },
    {
-    "pattern": "Ticker-plus-colon-plus-fragment constructions",
-    "why_it_hurts": "The colon splits the title into a label and a fragment, so neither half is a complete claim. Both instances in the set underperformed on depth of view.",
-    "evidence": "Colon-structured ticker titles came in at 40.7% and near-zero measurable retention, well below the channel median."
+    "pattern": "Near-duplicate coverage of the same situation across two uploads with only the number or phrasing changed.",
+    "structure": "Same underlying event, re-titled",
+    "evidence": "The repeated small-cap insider-buying story landed at 49% and 35% avg_view_pct on 17 and 14 views.",
+    "why_it_fails": "The second version competes with the first for the same narrow audience and offers no new unresolved question."
    }
   ],
   "notes": [
-   "Sample is thin — 20 videos, all under 120 views — so treat these as directional. The retention signal is far more reliable than the view-count signal; views here mostly reflect distribution noise, not title quality.",
-   "The insider_watch franchise is bimodal: named-person, exact-number entries are our best retainers (91-98% avg view), while vague or colon-formatted entries in the same franchise are our worst. The franchise label isn't the driver — title specificity is.",
-   "Long-form is currently a structural liability: the only long video in the period retained a third as well as the short-form average. Two entries returned null hook data, so treat their retention readings as unverified rather than confirmed failures."
+   "Sample is thin — 20 videos, most under 100 views — so treat these as directional. The clearest, most repeated signal is duration and scope: both long multi-story videos underperformed every short single-story video on hook hold.",
+   "insider_watch is bimodal, not weak: it produced our best-retaining video (single named executive, repeated action) and several of our worst (rounded dollar blocks, ticker-only, duplicated stories). The franchise works when there's an identifiable person behaving strangely.",
+   "The congress-trade angle has only one data point but it's our top performer on views and near-top on retention. Worth testing 2-3 more before drawing conclusions."
   ],
   "title": "own-channel lessons"
  },
  "section_status": {
-  "weights": "ok (2 franchise)",
-  "narration": "ok (2.107 w/s, 20 video)",
+  "weights": "ok (4 franchise)",
+  "narration": "ok (2.13 w/s, 36 video)",
   "own_patterns": "ok",
-  "market_patterns": "ok (19 outlier)"
+  "market_patterns": "ok (21 outlier)"
  },
  "narration": {
-  "wps": 2.107,
+  "wps": 2.13,
   "engine": "11l",
-  "samples": 20,
+  "samples": 36,
   "shorts_word_range": [
-   67,
-   80
+   68,
+   81
   ],
   "long_word_range": [
-   632,
-   759
+   639,
+   767
   ]
  }
 }
