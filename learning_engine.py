@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # Duration targets set by retention data (2026-08-10 retarget)
 TARGET_SHORTS_SECONDS = (32, 38)
-TARGET_LONG_SECONDS = (300, 360)
+TARGET_LONG_SECONDS = (150, 210)  # September experiment: 76s average watch on long videos
 SANE_WPS = (1.2, 3.0)          # outside this the w: tag or duration is garbage
 MIN_WPS_SAMPLES = 3
 EARLY_RETENTION_CUTOFF = 0.3   # "hook hold" = avg watch ratio over first 30%
@@ -54,6 +54,14 @@ def load_learnings() -> Dict[str, Any]:
             logger.warning("channel_learnings.json is stale (> %d days) — ignoring.",
                            STALE_AFTER_DAYS)
             return {}
+        # Refreshing one section must not make old patterns look newly measured.
+        for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
+            stamp = data.get("section_updated_at", {}).get(section, data.get("updated_at"))
+            try:
+                if (datetime.now() - datetime.fromisoformat(stamp)).days > STALE_AFTER_DAYS:
+                    data.pop(section, None)
+            except (TypeError, ValueError):
+                data.pop(section, None)
         return data
     except Exception as e:
         logger.warning(f"Could not load channel learnings: {e}")
@@ -137,10 +145,11 @@ def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any
         "title": s["title"],
         "franchise": s.get("franchise"),
         "views": s["views"],
+        "engaged_views": s.get("engaged_views", 0),
         "avg_view_pct": s["avg_view_pct"],
         "hook_hold_first30pct": s.get("hook_hold"),
         "is_long": s.get("is_long", False),
-    } for s in stats[:MAX_RETENTION_QUERIES]]
+    } for s in stats if s.get("engaged_views", 0) >= 20][:MAX_RETENTION_QUERIES]
     if not rows:
         return None
 
@@ -153,6 +162,9 @@ hook_hold_first30pct = average audience retention over the first 30% of the vide
 
 Extract structural lessons about what holds OUR viewers and what loses them: title shapes, hook framings, number usage, franchise observations. STRUCTURE ONLY — never quote a full title back as a pattern.
 If the sample is thin (few videos or low views), return fewer, conservative patterns rather than overfitting noise.
+Analyze Shorts and long videos separately. APV is not swipe-away or feed conversion.
+Do not treat replay-driven APV above 100% as proof of broad audience demand.
+These are correlations, not causal evidence that a title shape increases distribution.
 
 Return strictly valid JSON:
 - "winning_patterns": array of 2-5 structural patterns from our best-retaining videos
@@ -177,6 +189,10 @@ def run_weekly_learning(days: int = 14) -> bool:
     except Exception:
         pass
     learnings: Dict[str, Any] = {**previous}
+    section_times = dict(previous.get("section_updated_at", {}))
+    for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
+        if section in previous:
+            section_times.setdefault(section, previous.get("updated_at", "1970-01-01T00:00:00"))
     status: Dict[str, str] = {}
 
     stats: List[Dict[str, Any]] = []
@@ -188,8 +204,9 @@ def run_weekly_learning(days: int = 14) -> bool:
 
     # 1. Franchise weights
     try:
-        weights = compute_franchise_weights(days=days)
+        weights = compute_franchise_weights(days=days, stats=stats)
         learnings["franchise_weights"] = weights
+        learnings["weights_version"] = 2
         status["weights"] = f"ok ({len(weights)} franchise)" if weights else "not enough data"
     except Exception as e:
         status["weights"] = f"failed: {e}"
@@ -230,6 +247,11 @@ def run_weekly_learning(days: int = 14) -> bool:
         status["market_patterns"] = f"failed: {e}"
 
     learnings["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    for section, status_key in (("franchise_weights", "weights"), ("narration", "narration"),
+                                ("own_patterns", "own_patterns"), ("market_patterns", "market_patterns")):
+        if status.get(status_key, "").startswith("ok"):
+            section_times[section] = learnings["updated_at"]
+    learnings["section_updated_at"] = section_times
     learnings["section_status"] = status
     LEARNINGS_FILE.write_text(json.dumps(learnings, indent=1, ensure_ascii=False))
     logger.info(f"Learnings saved to {LEARNINGS_FILE}")

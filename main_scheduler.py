@@ -1,9 +1,9 @@
 import json
 import logging
-import re
 import shutil
 import subprocess
 import time
+from content_checks import validate_hero_number
 from datetime import datetime
 
 from data_fetcher import FMPDataFetcher, FMPDataError, ny_now
@@ -66,24 +66,6 @@ def cleanup_temp(max_age_days: float = 3.0) -> None:
                 pass
     except OSError:
         pass
-
-
-def validate_hero_number(hero: str, story: dict, script: str, change_pct: str) -> str:
-    """The hero number is the biggest type on screen and comes from the LLM.
-    Guardrail, not oracle: its leading significant digits must appear somewhere
-    in the story facts, headline, script or change% — otherwise blank it so the
-    card falls back to the change-led layout instead of publishing a
-    hallucinated figure in 200pt type. Loose on purpose ('$28.2M' must survive
-    facts that say $28,171,450)."""
-    digits = re.sub(r"\D", "", hero)
-    if not digits:
-        return hero
-    corpus = re.sub(r"\D", "", json.dumps(story.get("facts", {}), default=str)
-                    + story.get("headline", "") + script + change_pct)
-    if digits[:2] in corpus:
-        return hero
-    logger.warning(f"hero_number '{hero}' not found in story data — using change-led card layout.")
-    return ""
 
 
 def run_pipeline(video_type: str = "shorts"):
@@ -236,18 +218,10 @@ def run_pipeline(video_type: str = "shorts"):
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")
 
-    # 8. Fully autonomous publish: Telegram gets the render as an FYI (with the
-    # measured duration for pacing calibration), then YouTube upload proceeds
-    # unconditionally. This is a deliberate design decision (2026-08-16) — the
+    # 8. Fully autonomous publish: upload first, then send the Telegram preview.
+    # Measured duration is retained for pacing calibration. This is a deliberate design decision (2026-08-16) — the
     # old inline-button approval flow was removed, there is no human gate.
     bot = TelegramApprovalBot()
-    bot.send_video_notification(
-        video_path=rendered_video_path,
-        title=script_data["title"],
-        is_shorts=is_shorts,
-        duration_s=audio_dur,
-    )
-
     yp = YouTubePublisher()
     video_id = yp.upload_video(
         video_path=rendered_video_path,
@@ -263,15 +237,23 @@ def run_pipeline(video_type: str = "shorts"):
             f"fr:{story['franchise']}",
             f"w:{len(script_data['full_script'].split())}",
             f"v:{vg.engine_used or 'unknown'}",
+            f"fmt:{video_type}",
         ],
     )
     if video_id:
         logger.info(f"Published to YouTube! Video ID: {video_id}")
         bot.send_text(f"✅ Yayında ({audio_dur:.0f}sn): https://youtu.be/{video_id}")
+        # Preview conversion/upload must not delay publication of market news.
+        bot.send_video_notification(
+            video_path=rendered_video_path, title=script_data["title"],
+            is_shorts=is_shorts, duration_s=audio_dur,
+        )
     else:
         logger.error("YouTube upload failed.")
         bot.send_text(f"🚨 YouTube yüklemesi BAŞARISIZ oldu.\nSebep: {yp.last_error}\n"
                       f"Dosya: {rendered_video_path}")
+        cleanup_temp()
+        raise SystemExit(1)
 
     cleanup_temp()
     logger.info(f"=== PIPELINE FINISHED FOR {video_type.upper()}! Uploaded: {bool(video_id)} ===")

@@ -77,7 +77,7 @@ class TelegramApprovalBot:
             return False
 
         dur_line = f"\n⏱ Süre: {duration_s:.0f}sn" if duration_s else ""
-        caption = (f"🎬 {'SHORTS' if is_shorts else 'LONG RECAP'} — YouTube'a yükleniyor"
+        caption = (f"🎬 {'SHORTS' if is_shorts else 'LONG RECAP'} — Yayın önizlemesi"
                    f"{dur_line}\n\n📌 {title}")
 
         preview_path = self._preview_within_limit(video_path)

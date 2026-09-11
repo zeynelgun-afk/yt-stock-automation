@@ -19,10 +19,11 @@ extract_patterns weekly and persists the result inside channel_learnings.json
 """
 import json
 import logging
-from datetime import datetime, timedelta
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from config import YOUTUBE_API_KEY, BASE_DIR
+from config import YOUTUBE_API_KEY, BASE_DIR, DATA_DIR
 from script_generator import ScriptGenerator
 
 logging.basicConfig(level=logging.INFO)
@@ -63,14 +64,15 @@ def _build_client():
     )
 
 
-def scan_outliers() -> List[Dict[str, Any]]:
+def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS,
+                  min_ratio: float = OUTLIER_RATIO, queries=None) -> List[Dict[str, Any]]:
     yt = _build_client()
     from datetime import timezone
-    published_after = (datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)) \
+    published_after = (datetime.now(timezone.utc) - timedelta(days=lookback_days)) \
         .strftime("%Y-%m-%dT%H:%M:%SZ")
 
     video_ids: List[str] = []
-    for q in SEARCH_QUERIES:
+    for q in (SEARCH_QUERIES if queries is None else queries):
         try:
             res = yt.search().list(
                 q=q, part="id", type="video", maxResults=25,
@@ -106,13 +108,20 @@ def scan_outliers() -> List[Dict[str, Any]]:
     for v in videos:
         views = int(v.get("statistics", {}).get("viewCount") or 0)
         avg = channel_avg.get(v["snippet"]["channelId"], 0.0)
-        if views < MIN_VIEWS or not avg or views < OUTLIER_RATIO * avg:
+        if views < min_views or (min_ratio and (not avg or views < min_ratio * avg)):
             continue
         # Live-stream VODs (Zee Business "First Trade" etc.) rack up views as
         # recurring broadcasts, not packaging — nothing transferable to model
         if "liveStreamingDetails" in v:
             continue
         title = v["snippet"]["title"]
+        language = v["snippet"].get("defaultAudioLanguage") or v["snippet"].get("defaultLanguage", "")
+        if language and not language.lower().startswith("en"):
+            continue
+        # Search relevance is only a hint: political speeches and general
+        # geopolitical videos can dominate a financial query's raw view count.
+        if not re.search(r"\b(stock|stocks|market|markets|earnings|shares|insider|trading|nasdaq|treasury|fed|inflation|investing)\b|S&P", title, re.I):
+            continue
         # Model the US/English niche only
         if sum(ord(c) > 127 for c in title) > len(title) * 0.2:
             continue
@@ -123,16 +132,44 @@ def scan_outliers() -> List[Dict[str, Any]]:
             continue
         per_channel[ch] = per_channel.get(ch, 0) + 1
         outliers.append({
+            "video_id": v["id"],
+            "url": f"https://www.youtube.com/watch?v={v['id']}",
             "title": v["snippet"]["title"],
             "views": views,
-            "ratio": round(views / avg, 1),
+            "ratio": round(views / avg, 1) if avg else None,
             "duration": v["contentDetails"]["duration"],
-            "publishedAt": v["snippet"]["publishedAt"][:10],
+            "publishedAt": v["snippet"]["publishedAt"],
             "channel": v["snippet"]["channelTitle"],
         })
-    outliers.sort(key=lambda o: o["ratio"], reverse=True)
-    logger.info(f"Found {len(outliers)} outlier videos")
+    for o in outliers:
+        published = datetime.fromisoformat(o["publishedAt"].replace("Z", "+00:00"))
+        age_hours = max(1, (datetime.now(timezone.utc) - published).total_seconds() / 3600)
+        o["views_per_hour"] = round(o["views"] / age_hours, 1)
+    outliers.sort(key=lambda o: o["ratio"] or 0 if min_ratio else o["views_per_hour"], reverse=True)
+    logger.info("Found %d %s videos", len(outliers), "outlier" if min_ratio else "recent popular finance")
     return outliers[:40]
+
+
+def recent_market_trends() -> List[Dict[str, Any]]:
+    """Recent popular finance videos, cached daily; not necessarily outliers.
+
+    Three searches per cache miss. These are audience-interest signals only;
+    FMP remains the source for every published financial claim.
+    """
+    path = DATA_DIR / "market_trends.json"
+    now = datetime.now(timezone.utc)
+    try:
+        cached = json.loads(path.read_text())
+        updated = datetime.fromisoformat(cached["updated_at"])
+        if 0 <= (now - updated).total_seconds() < 86400:
+            return cached["videos"]
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    videos = scan_outliers(lookback_days=3, min_views=1000, min_ratio=0, queries=[
+        "US stock market news", "stock earnings reaction", "US insider buying stocks",
+    ])[:15]
+    path.write_text(json.dumps({"updated_at": now.isoformat(), "videos": videos}, indent=2))
+    return videos
 
 
 def extract_patterns(outliers: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -147,6 +184,9 @@ Extract the PACKAGING PATTERNS that are working this week. Patterns must be stru
 (title shapes, framing devices, number usage, duration sweet spots) — NEVER copyable titles.
 REJECT fear-clickbait patterns (doom thumbnails, "everything will collapse" framing):
 this channel's positioning is "no hype, just numbers".
+You have titles, durations and view counts, NOT transcripts or retention curves.
+Hook suggestions are hypotheses, not measured evidence of successful opening lines.
+Do not infer causal performance or apply long-video durations to Shorts.
 
 Return strictly valid JSON:
 - "title_patterns": array of 5-8 abstract title templates (e.g. "[TICKER] just did [specific unrounded number] — here's why")

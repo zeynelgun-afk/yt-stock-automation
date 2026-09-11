@@ -27,13 +27,11 @@
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-09-06T17:30:26",
+ "updated_at": "2026-09-11T07:52:12",
  "franchise_weights": {
   "congress_trade": 1.3,
-  "market_close": 1.3,
-  "earnings_shock": 0.7,
-  "insider_watch": 0.7,
-  "analyst_shock": 0.7
+  "market_close": 0.7,
+  "insider_watch": 0.71
  },
  "own_patterns": {
   "winning_patterns": [
@@ -102,22 +100,29 @@
   "title": "own-channel lessons"
  },
  "section_status": {
-  "weights": "ok (5 franchise)",
-  "narration": "ok (2.108 w/s, 52 video)",
-  "own_patterns": "ok",
-  "market_patterns": "ok (25 outlier)"
+  "weights": "ok (28-day audit, Shorts only, engaged samples >=20)",
+  "narration": "ok (measured tags; shorter recap experiment)",
+  "own_patterns": "preserved from latest upstream weekly refresh",
+  "market_patterns": "preserved from latest upstream weekly refresh"
  },
  "narration": {
-  "wps": 2.108,
+  "wps": 2.132,
   "engine": "11l",
-  "samples": 52,
+  "samples": 65,
   "shorts_word_range": [
-   67,
-   80
+   68,
+   81
   ],
   "long_word_range": [
-   632,
-   759
+   320,
+   448
   ]
+ },
+ "weights_version": 2,
+ "section_updated_at": {
+  "franchise_weights": "2026-09-11T07:52:12",
+  "narration": "2026-09-11T07:52:12",
+  "own_patterns": "2026-09-06T17:30:26",
+  "market_patterns": "2026-09-06T17:30:26"
  }
 }

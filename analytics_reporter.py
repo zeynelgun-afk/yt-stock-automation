@@ -1,8 +1,8 @@
 """Analytics feedback loop — ROADMAP Faz 4.3 + Faz 5.1.
 
 Pulls per-video YouTube Analytics for the last N days and sends a weekly
-performance digest to Telegram: views, average view percentage (the Shorts
-swipe-away proxy), watch time and subscriber gains, tagged by franchise
+performance digest to Telegram: views, engaged views, average view percentage,
+watch time and subscriber gains, tagged by franchise. APV is NOT swipe-away.
 (parsed from the video title where possible).
 
 Faz 5.1: the same stats feed compute_franchise_weights(), which the story
@@ -80,13 +80,13 @@ def fetch_video_stats(days: int = 7):
     yt_analytics = build("youtubeAnalytics", "v2", credentials=creds)
     yt_data = build("youtube", "v3", credentials=creds)
 
-    end = datetime.now().date()
-    start = end - timedelta(days=days)
+    end = datetime.now().date() - timedelta(days=1)
+    start = end - timedelta(days=days - 1)
     resp = yt_analytics.reports().query(
         ids="channel==MINE",
         startDate=start.isoformat(),
         endDate=end.isoformat(),
-        metrics=("views,estimatedMinutesWatched,averageViewDuration,"
+        metrics=("views,engagedViews,estimatedMinutesWatched,averageViewDuration,"
                  "averageViewPercentage,subscribersGained"),
         dimensions="video",
         sort="-views",
@@ -100,15 +100,27 @@ def fetch_video_stats(days: int = 7):
     if not rows:
         return []
 
+    # The live API rejects video + creatorContentType as joint dimensions.
+    # Use its supported lowercase filter to classify Shorts accurately; a
+    # duration heuristic mislabels vertical Shorts longer than 90 seconds.
+    short_rows = yt_analytics.reports().query(
+        ids="channel==MINE", startDate=start.isoformat(), endDate=end.isoformat(),
+        dimensions="video", filters="creatorContentType==shorts", metrics="views",
+        sort="-views", maxResults=200,
+    ).execute().get("rows", [])
+    short_ids = {r[0] for r in short_rows}
+
     ids = [r[0] for r in rows]
     titles: Dict[str, str] = {}
     durations: Dict[str, int] = {}
     machine: Dict[str, Dict[str, str]] = {}
+    published: Dict[str, str] = {}
     for i in range(0, len(ids), 50):   # videos.list caps at 50 ids per call
         meta = yt_data.videos().list(
             part="snippet,contentDetails", id=",".join(ids[i:i + 50])).execute()
         for item in meta.get("items", []):
             titles[item["id"]] = item["snippet"]["title"]
+            published[item["id"]] = item["snippet"].get("publishedAt", "")
             durations[item["id"]] = _iso_duration_to_seconds(
                 item.get("contentDetails", {}).get("duration", ""))
             # Machine tags stamped at upload (invisible to viewers): fr:=exact
@@ -118,22 +130,33 @@ def fetch_video_stats(days: int = 7):
             machine[item["id"]] = {
                 k: v for k, _, v in
                 (t.partition(":") for t in item["snippet"].get("tags", []))
-                if k in ("fr", "w", "v") and v
+                if k in ("fr", "w", "v", "fmt") and v
             }
 
-    return [{
-        "video_id": r[0],
-        "title": titles.get(r[0], r[0]),
-        "views": int(r[1]),
-        "watch_minutes": int(r[2]),
-        "avg_view_seconds": round(r[3]),
-        "avg_view_pct": round(r[4], 1),
-        "subs_gained": int(r[5]),
-        "duration_s": durations.get(r[0], 0),
-        "is_long": durations.get(r[0], 0) >= LONG_VIDEO_MIN_SECONDS,
-        "machine": machine.get(r[0], {}),
-        "franchise": machine.get(r[0], {}).get("fr") or classify_franchise(titles.get(r[0], "")),
-    } for r in rows]
+    # Read returned headers instead of relying on dimension/metric positions.
+    names = [c["name"] for c in resp["columnHeaders"]]
+    result = []
+    for values in rows:
+        r = dict(zip(names, values))
+        vid = r["video"]
+        content_type = "shorts" if vid in short_ids else "videoondemand"
+        result.append({
+            "video_id": vid,
+            "title": titles.get(vid, vid),
+            "published_at": published.get(vid, ""),
+            "views": int(r["views"]),
+            "engaged_views": int(r["engagedViews"]),
+            "watch_minutes": float(r["estimatedMinutesWatched"]),
+            "avg_view_seconds": round(r["averageViewDuration"], 1),
+            "avg_view_pct": round(r["averageViewPercentage"], 1),
+            "subs_gained": int(r["subscribersGained"]),
+            "duration_s": durations.get(vid, 0),
+            "content_type": content_type,
+            "is_long": content_type != "shorts",
+            "machine": machine.get(vid, {}),
+            "franchise": machine.get(vid, {}).get("fr") or classify_franchise(titles.get(vid, "")),
+        })
+    return result
 
 
 # ---------- Faz 5.1: analytics -> story-selector feedback ----------
@@ -160,19 +183,24 @@ def classify_franchise(title: str) -> Optional[str]:
 
 
 def compute_franchise_weights(days: int = 14, min_videos: int = 2,
-                              lo: float = 0.7, hi: float = 1.3) -> Dict[str, float]:
+                              lo: float = 0.7, hi: float = 1.3,
+                              stats: Optional[List[Dict]] = None) -> Dict[str, float]:
     """Score multiplier per franchise from recent per-video performance.
 
-    perf = views x avg_view_pct: a video only counts as much of it as viewers
-    actually watched. Franchises with fewer than `min_videos` classified
+    Compare Shorts only, using engaged views and capped completion. Tiny
+    samples and exceptional replay loops must not dominate editorial choices.
+    Franchises with fewer than `min_videos` classified
     uploads stay unweighted so new formats keep getting explored, and the
     clamp keeps one hot streak from monopolizing the channel.
     """
     per: Dict[str, List[float]] = {}
-    for s in fetch_video_stats(days):
+    for s in (fetch_video_stats(days) if stats is None else stats):
+        engaged = s.get("engaged_views", 0)
+        if s.get("is_long") or engaged < 20:
+            continue
         fr = s.get("franchise")   # machine tag when present, else title keywords
         if fr:
-            per.setdefault(fr, []).append(s["views"] * s["avg_view_pct"] / 100.0)
+            per.setdefault(fr, []).append(engaged * min(100, max(0, s["avg_view_pct"])) / 100.0)
 
     scored = {f: sum(v) / len(v) for f, v in per.items() if len(v) >= min_videos}
     if not scored:
@@ -200,11 +228,12 @@ def build_report(days: int = 7) -> str:
         kind = "📺" if s.get("is_long") else "📱"
         flag = "✅" if s["avg_view_pct"] >= target else "⚠️"
         lines.append(
-            f"{flag}{kind} {s['views']:,} izl. | APV %{s['avg_view_pct']} "
+            f"{flag}{kind} {s['views']:,} izl. / {s['engaged_views']:,} engaged | APV %{s['avg_view_pct']} "
             f"({s['avg_view_seconds']}sn) | +{s['subs_gained']} abone\n"
             f"   {s['title'][:70]}"
         )
     lines.append("")
+    lines.append("APV, kaydırmadan izleme oranı değildir. Engaged/views oranı da Studio'daki stayed-to-watch metriği değildir.")
     lines.append(f"Hedef: APV ≥ %{TARGET_AVG_VIEW_PCT_SHORTS:.0f} (📱 Shorts), "
                  f"≥ %{TARGET_AVG_VIEW_PCT_LONG:.0f} (📺 uzun). "
                  "⚠️ işaretli formatların hook/loop kurgusunu gözden geçir.")

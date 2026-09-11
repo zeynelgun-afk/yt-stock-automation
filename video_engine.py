@@ -324,6 +324,8 @@ class VideoEngine:
             chip_size = round(tick_size * 0.46)
             draw.text((chip_x, tick_y + tick_size - chip_size - 6), change_text,
                       font=_font(chip_size), fill=change_color)
+            draw.text((48, tick_y + tick_size + 3), "SINCE SESSION OPEN",
+                      font=_font(16), fill=(148, 163, 184, 255))
 
             if hero_label:
                 draw.text((48, label_y), hero_label.upper()[:28],
@@ -338,10 +340,12 @@ class VideoEngine:
         elif is_shorts:
             draw.text((48, 160), ticker, font=_font(190), fill=(248, 250, 252, 255))
             draw.text((48, 390), change_text, font=_font(130), fill=change_color)
+            draw.text((48, 540), "SINCE SESSION OPEN", font=_font(24), fill=(148, 163, 184, 255))
             title_y, title_size, title_wrap, title_lines = 580, 42, 38, 3
         else:
             draw.text((48, 150), ticker, font=_font(140), fill=(248, 250, 252, 255))
             draw.text((48, 330), change_text, font=_font(96), fill=change_color)
+            draw.text((48, 440), "SINCE SESSION OPEN", font=_font(20), fill=(148, 163, 184, 255))
             title_y, title_size, title_wrap, title_lines = 470, 34, 34, 3
 
         y = title_y
@@ -510,6 +514,7 @@ class VideoEngine:
                   stroke_width=4, stroke_fill=(0, 0, 0))
         draw.text((60, 240), f"{arrow} {'+' if is_positive else ''}{pct}%",
                   font=_font(120), fill=color, stroke_width=4, stroke_fill=(0, 0, 0))
+        draw.text((60, 385), "SINCE SESSION OPEN", font=_font(26), fill=(148, 163, 184))
         y = 430
         for line in textwrap.wrap(hook_words, width=18)[:2]:
             draw.text((60, y), line.upper(), font=_font(72), fill=(250, 204, 21),
@@ -527,9 +532,9 @@ class VideoEngine:
             result = subprocess.run(
                 ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
                  "-of", "csv=p=0", media_path],
-                capture_output=True, text=True)
+                capture_output=True, text=True, timeout=30)
             return float(result.stdout.strip())
-        except (ValueError, OSError):
+        except (ValueError, OSError, subprocess.TimeoutExpired):
             return 0.0
 
     def _bg_chain(self, clips: List[str], width: int, height: int,
@@ -769,4 +774,3 @@ class VideoEngine:
 if __name__ == "__main__":
     ve = VideoEngine()
     print("Video Engine initialized.")
-
