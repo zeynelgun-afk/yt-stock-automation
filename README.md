@@ -9,7 +9,7 @@ Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LL
 - Shorts: yaklaşık 32–38 saniye, ilk cümlede şirket/kişi ve olay; açıklama ilk 8 saniyede başlar.
 - Uzun video: yaklaşık 150–210 saniye, tek ana hikâye ve ilgili piyasa bağlamı. Süreler ölçülen ses hızına göre haftalık kalibre edilir; kesin render süresi garantisi değildir.
 - Trendler: son 3 gündeki popüler finans videoları günde bir önbelleğe alınır. Aynı şirket hakkında zaten kaynaklı ve yeterince güçlü bir aday varsa küçük seçim bonusu uygulanır. Dış video başlıkları finansal veri veya kopyalanacak senaryo sayılmaz.
-- Öğrenme: Shorts ve uzun videolar ayrılır; format ağırlıkları en az 20 engaged izlenmeli Shorts'lardan hesaplanır. Aşırı tekrar izleme değerlerinin etkisi sınırlandırılır.
+- Öğrenme: Shorts ve uzun videolar ayrılır; format ağırlıkları en az 20 engaged izlenmeli Shorts'lardan hesaplanır. Aşırı tekrar izleme değerlerinin etkisi sınırlandırılır. Analytics kesintisinde önceki ağırlıklar ve ölçüm tarihleri korunur; başarıyla alınmış boş rapor nötr ağırlıklara geçer.
 - İnceleme ve başlangıç ölçümleri: [GROWTH_AUDIT.md](GROWTH_AUDIT.md).
 
 ## Yerel kullanım
@@ -50,6 +50,8 @@ Salt okunur performans raporu:
 
 Cron gecikmeleri mümkündür; tam dakikasında veya kapanıştan 15 dakika içinde yayın garantisi yoktur. Mevcut takvim borsa tatillerini ayrıca filtrelemez.
 
+Kapanış modu, işin başladığı saate göre değil cron ve ilk çalıştırmanın GitHub `created_at` zamanına göre seçilir. Gecikme veya yeniden çalıştırma, doğru yaz/kış saati slotunu elemez. Bu seçim için workflow'un `actions: read` izni gerekir.
+
 Workflow'da listelenen API değişkenlerini GitHub Secrets'a ekleyin. YouTube için `YOUTUBE_CLIENT_SECRET_JSON` ve `YOUTUBE_TOKEN_JSON` gerekir. Token; `youtube.upload`, `youtube.readonly`, `yt-analytics.readonly` izinlerini içermelidir. Yetkilendirme yerelde tamamlanır; CI etkileşimli tarayıcı açmaz.
 
 PR kontrolleri video yayınlamaz. Üretim workflow'u yayından önce aynı testleri çalıştırır. Günlük trend önbelleği Actions cache, haftalık öğrenme dosyası Git ile korunur.
@@ -57,5 +59,7 @@ PR kontrolleri video yayınlamaz. Üretim workflow'u yayından önce aynı testl
 ## Veri doğruluğu ve sınırlar
 
 Temel piyasa verisi yoksa yayın durur. Karttaki büyük sayı kaynak alanlarıyla tutar ve birim düzeyinde karşılaştırılır; LLM metni kanıt sayılmaz. Bu kontrol tüm senaryonun semantik doğruluğunu garanti etmez. Kart/grafik yüzdesi ilk mum açılışına göre hesaplanır ve **SINCE SESSION OPEN** olarak etiketlenir; önceki kapanışa göre günlük değişim değildir.
+
+Insider işlemleri kişi, hisse, yön **ve işlem tarihi** bazında gruplanır; farklı günler tek işlem gibi sunulmaz. Toplu alım sinyali son yedi gündeki en az üç farklı, adı bilinen alıcıdan hesaplanır. Trend taramasının OAuth yedeği, henüz `token.json` olmayan CI ortamında `YOUTUBE_TOKEN_JSON` üzerinden de çalışır. Telegram bağlantı hataları token içerebilen URL veya yanıt gövdesini loglamaz.
 
 `ROADMAP.md` ve `FMP_SKILL.md` geçmiş plan/referans belgeleridir; güncel davranış için kod ve bu README esas alınmalıdır.

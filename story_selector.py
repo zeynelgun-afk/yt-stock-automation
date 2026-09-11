@@ -40,8 +40,8 @@ FRANCHISES: Dict[str, Dict[str, str]] = {
         "style": (
             "Franchise: INSIDER WATCH. Lead with the insider's role and the dollar value. "
             "A CEO/CFO trading their own stock is the story: what do they know that the "
-            "market doesn't? For cluster buys, stress that multiple insiders bought the "
-            "same week. Facts from SEC Form 4 filings only."
+            "market doesn't? For cluster buys, stress that multiple insiders bought in the "
+            "last seven days. Facts from SEC Form 4 filings only."
         ),
     },
     "earnings_shock": {
