@@ -1,57 +1,61 @@
-# US Stock Market Daily - Cloud Automated Engine (%100 Ücretsiz Bulut Sunucusu)
+# US Stock Market Daily
 
-Bu proje, bilgisayarınız kapalıyken bile **%100 ücretsiz bulut sunucusunda (GitHub Actions)** çalışarak günde 3 kez otomatik borsa videosu üretir, Telegram onayınıza sunar ve YouTube'a yükler.
+İngilizce finans videoları üreten Python otomasyonu. FMP verisiyle hikâye seçer, senaryo ve ses üretir, gerçek grafiklerle render alır ve **insan onayı beklemeden YouTube'a yükler**. Telegram yayın sonrası önizleme ve hata bildirimleri içindir.
 
----
+Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LLM → ElevenLabs/Edge-TTS → FFmpeg → YouTube → Telegram.
 
-## ☁️ Bulutta Ücretsiz Çalıştırma Kurulumu (GitHub Actions)
+## Güncel içerik deneyi
 
-Bilgisayarınızda hiçbir işlem yapmanıza veya bilgisayarı açık bırakmanıza gerek yoktur.
+- Shorts: yaklaşık 32–38 saniye, ilk cümlede şirket/kişi ve olay; açıklama ilk 8 saniyede başlar.
+- Uzun video: yaklaşık 150–210 saniye, tek ana hikâye ve ilgili piyasa bağlamı. Süreler ölçülen ses hızına göre haftalık kalibre edilir; kesin render süresi garantisi değildir.
+- Trendler: son 3 gündeki popüler finans videoları günde bir önbelleğe alınır. Aynı şirket hakkında zaten kaynaklı ve yeterince güçlü bir aday varsa küçük seçim bonusu uygulanır. Dış video başlıkları finansal veri veya kopyalanacak senaryo sayılmaz.
+- Öğrenme: Shorts ve uzun videolar ayrılır; format ağırlıkları en az 20 engaged izlenmeli Shorts'lardan hesaplanır. Aşırı tekrar izleme değerlerinin etkisi sınırlandırılır.
+- İnceleme ve başlangıç ölçümleri: [GROWTH_AUDIT.md](GROWTH_AUDIT.md).
 
-### Adım 1: Projeyi GitHub'a Yükleyin
-1. GitHub'da yeni bir **Private (Gizli)** repository oluşturun (örn: `yt-stock-automation`).
-2. Proje kodlarını GitHub'a push edin:
-   ```bash
-   cd /home/zeynel/.gemini/antigravity-ide/scratch/yt-stock-automation
-   git init
-   git add .
-   git commit -m "Initial commit - Youtube Automation"
-   git branch -M main
-   git remote add origin https://github.com/KULLANICI_ADI/yt-stock-automation.git
-   git push -u origin main
-   ```
+## Yerel kullanım
 
-### Adım 2: API Anahtarlarını GitHub Secrets'a Ekleyin
-GitHub deponuzda: **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret** adımlarını izleyerek şu gizli anahtarları ekleyin:
+Python 3.12, FFmpeg/ffprobe ve Liberation/DejaVu fontları gerekir.
 
-- `FMP_API_KEY`: FMP API Anahtarınız
-- `GEMINI_API_KEY`: Gemini API Anahtarınız
-- `PEXELS_API_KEY`: Pexels API Anahtarınız (İsteğe bağlı)
-- `TELEGRAM_BOT_TOKEN`: Telegram Bot Token
-- `TELEGRAM_CHAT_ID`: Telegram Chat ID
+```bash
+python -m venv venv
+./venv/bin/pip install -r requirements.txt
+./venv/bin/python -m unittest discover -s tests -v
+```
 
----
+`.env.example` değişkenlerini kendi `.env` dosyanıza ekleyin. FMP anahtarı, en az bir LLM sağlayıcısı ve geçerli YouTube OAuth yetkileri gerekir. Ücretli sağlayıcı kullanımı ve GitHub Actions maliyeti hesabınızın planına bağlıdır; sistem için koşulsuz ücretsiz çalışma garantisi yoktur.
 
-## ⏰ Otomatik Zamanlayıcı (GitHub Cron)
+Aşağıdaki komutlar **gerçek üretim ve otomatik yayın** başlatır:
 
-GitHub sunucuları hafta içi otomatik olarak şu saatlerde tetiklenir:
-- 🟢 **15:30 TSI** — Pre-Market Shorts
-- 🟢 **20:00 TSI** — Mid-Day Shorts
-- 🟢 **03:30 TSI** — ABD akşam scroll saati Shorts (deneme slotu)
-- ⚡ **16:35 TSI** — Turbo slot: sadece CPI/FOMC/mega-bilanço günlerinde ekstra Shorts üretir (`event-check`)
-- 🎬 **Kapanış + 5 dk** — 8+ dakikalık Long Recap (EDT aylarında 23:05, EST aylarında 00:05 TSI; hız hendeği: kapanıştan ≤15 dk sonra yayında)
-- 📊 **Pazar 18:00 TSI** — Haftalık YouTube Analytics performans raporu Telegram'a gelir
+```bash
+./venv/bin/python main_scheduler.py shorts
+./venv/bin/python main_scheduler.py long
+```
 
-Ayrıca **Actions** sekmesinden **"Run workflow"** ile istediğiniz an `shorts` / `long` / `analytics` modunda manuel tetikleyebilirsiniz.
+Salt okunur performans raporu:
 
-Yerel kullanım: `python main_scheduler.py [shorts|long|event-check]`, haftalık rapor: `python analytics_reporter.py`.
+```bash
+./venv/bin/python analytics_reporter.py
+```
 
-> Not: Analytics raporu için `token.json`'ın readonly+analytics scope'larıyla alınmış olması gerekir. Eski token varsa bir kez silin; sonraki upload yeni scope listesiyle yeniden yetkilendirir.
+`event-check` makro/bilanço gününü kontrol eder; 0=etkinlik var, 1=sakin gün, 2=kontrol hatası. Pipeline hataları, YouTube yükleme hatası dahil, başarısız çıkış kodu üretir.
 
----
+## GitHub Actions
 
-## 💡 Alternatif Ücretsiz Bulut Seçenekleri
+`.github/workflows/youtube_auto.yml` çalışma saatlerinin asıl kaynağıdır:
 
-1. **GitHub Actions (Önerilen):** Aylık 2.000 dakika ücretsiz işlem süresi sunar (bu sistem için fazlasıyla yeterlidir).
-2. **Hugging Face Spaces (Free CPU Docker):** 7/24 kesintisiz ücretsiz Docker konteynırı.
-3. **Modal.com:** Her ay $30 ücretsiz sunucu kredisi.
+- Hafta içi Shorts: 15:30 ve 20:00 Türkiye saati; ABD akşam slotu ertesi gün 03:30.
+- Etkinlik günü ek Shorts: 16:35 Türkiye saati.
+- Uzun video: New York 16:05 için iki yaz/kış saati adayı; uygun olan çalışır.
+- Haftalık analiz ve öğrenme: pazar 18:00 Türkiye saati.
+
+Cron gecikmeleri mümkündür; tam dakikasında veya kapanıştan 15 dakika içinde yayın garantisi yoktur. Mevcut takvim borsa tatillerini ayrıca filtrelemez.
+
+Workflow'da listelenen API değişkenlerini GitHub Secrets'a ekleyin. YouTube için `YOUTUBE_CLIENT_SECRET_JSON` ve `YOUTUBE_TOKEN_JSON` gerekir. Token; `youtube.upload`, `youtube.readonly`, `yt-analytics.readonly` izinlerini içermelidir. Yetkilendirme yerelde tamamlanır; CI etkileşimli tarayıcı açmaz.
+
+PR kontrolleri video yayınlamaz. Üretim workflow'u yayından önce aynı testleri çalıştırır. Günlük trend önbelleği Actions cache, haftalık öğrenme dosyası Git ile korunur.
+
+## Veri doğruluğu ve sınırlar
+
+Temel piyasa verisi yoksa yayın durur. Karttaki büyük sayı kaynak alanlarıyla tutar ve birim düzeyinde karşılaştırılır; LLM metni kanıt sayılmaz. Bu kontrol tüm senaryonun semantik doğruluğunu garanti etmez. Kart/grafik yüzdesi ilk mum açılışına göre hesaplanır ve **SINCE SESSION OPEN** olarak etiketlenir; önceki kapanışa göre günlük değişim değildir.
+
+`ROADMAP.md` ve `FMP_SKILL.md` geçmiş plan/referans belgeleridir; güncel davranış için kod ve bu README esas alınmalıdır.

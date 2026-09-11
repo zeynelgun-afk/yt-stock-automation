@@ -1,5 +1,6 @@
 import logging
 import time
+import math
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -62,15 +63,16 @@ class FMPDataFetcher:
             try:
                 res = requests.get(url, params=params, timeout=15)
             except requests.RequestException as e:
-                last_err = f"request failed: {e}"
+                # requests exceptions can contain the URL, including ?apikey=.
+                last_err = f"request failed: {type(e).__name__}"
                 continue
 
             if res.status_code == 429 or res.status_code >= 500:
-                last_err = f"HTTP {res.status_code}: {res.text[:200]}"
+                last_err = f"HTTP {res.status_code}"
                 continue
             if res.status_code != 200:
                 raise FMPDataError(
-                    f"FMP '{endpoint}' returned HTTP {res.status_code}: {res.text[:200]}"
+                    f"FMP '{endpoint}' returned HTTP {res.status_code}"
                 )
 
             try:
@@ -80,7 +82,7 @@ class FMPDataFetcher:
                 # JSONDecodeError, bypassing the FMPDataError abort path
                 raise FMPDataError(f"FMP '{endpoint}' returned non-JSON body: {e}") from e
             if isinstance(data, dict) and "Error Message" in data:
-                raise FMPDataError(f"FMP '{endpoint}' error: {data['Error Message']}")
+                raise FMPDataError(f"FMP '{endpoint}' returned an API error")
             return data
 
         raise FMPDataError(f"FMP request failed for '{endpoint}' after 3 attempts: {last_err}")
@@ -145,11 +147,23 @@ class FMPDataFetcher:
         if not isinstance(data, list) or not data:
             raise FMPDataError(f"No intraday data for {symbol}")
 
-        latest_day = max(row["date"][:10] for row in data if row.get("date"))
-        session = [row for row in data if row.get("date", "").startswith(latest_day)]
+        dated = [row for row in data if isinstance(row, dict) and isinstance(row.get("date"), str) and row["date"]]
+        if not dated:
+            raise FMPDataError(f"No dated intraday candles for {symbol}")
+        latest_day = max(row["date"][:10] for row in dated)
+        session = [row for row in dated if row["date"].startswith(latest_day)]
         session.sort(key=lambda row: row["date"])
-        if not session:
-            raise FMPDataError(f"No intraday session data for {symbol}")
+        if len(session) < 2:
+            raise FMPDataError(f"Not enough intraday candles for {symbol}")
+        try:
+            for row in session:
+                for field in ("open", "close"):
+                    value = float(row[field])
+                    if not math.isfinite(value) or value <= 0:
+                        raise ValueError("invalid price")
+                    row[field] = value
+        except (KeyError, TypeError, ValueError) as e:
+            raise FMPDataError(f"Invalid intraday prices for {symbol}") from e
         return session
 
     def _get_list(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
