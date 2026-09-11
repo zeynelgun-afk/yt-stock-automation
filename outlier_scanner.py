@@ -18,6 +18,7 @@ extract_patterns weekly and persists the result inside channel_learnings.json
 (the scan no longer owns its own file or Telegram messaging).
 """
 import json
+import os
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -49,10 +50,17 @@ def _build_client():
         return build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
     token_path = BASE_DIR / "token.json"
-    if token_path.exists():
+    env_token = os.getenv("YOUTUBE_TOKEN_JSON", "")
+    if token_path.exists() or env_token:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
-        creds = Credentials.from_authorized_user_file(str(token_path))
+        # Fresh CI runners have the token in Secrets before token.json exists.
+        # Read that credential directly; trend scanning must not depend on a
+        # later publisher/dedup call creating files as a side effect.
+        if token_path.exists():
+            creds = Credentials.from_authorized_user_file(str(token_path))
+        else:
+            creds = Credentials.from_authorized_user_info(json.loads(env_token))
         if "https://www.googleapis.com/auth/youtube.readonly" in (creds.scopes or []):
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())

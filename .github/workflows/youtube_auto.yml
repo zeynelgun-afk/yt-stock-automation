@@ -6,15 +6,13 @@ name: US Stock Market Daily YouTube Automation
 # packaging patterns) that the pipeline reads on every video run.
 permissions:
   contents: write
+  actions: read  # Read original run creation time for delay-safe mode selection.
 
 # All times UTC. TSI = UTC+3 (no DST). NYSE close: 20:00 UTC in EDT months,
 # 21:00 UTC in EST months — the long recap must be live within ~15 min of close.
 #
-# Both recap crons fire YEAR-ROUND and the job keeps only the firing where the
-# current time in America/New_York is 16:0x (close +5). The old month-split
-# (4-10 vs 11-3) missed that US DST switches mid-month (2nd Sunday of March /
-# 1st Sunday of November), making the recap ~65 minutes late for about three
-# weeks a year — fatal to the "live within 15 minutes of the close" moat.
+# Both recap crons fire year-round. Resolve the intended firing from its cron
+# and original run creation timestamp, so queue delays/retries don't skip it.
 on:
   schedule:
     - cron: '30 12 * * 1-5'          # Shorts #1 — 15:30 TSI (US pre-market)
@@ -68,27 +66,14 @@ jobs:
 
       - name: Resolve pipeline mode
         id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          MODE=shorts
-          case "${{ github.event.schedule }}" in
-            "5 20 * * 1-5"|"5 21 * * 1-5")
-              # Keep only the firing that is 16:0x in New York (close +5 min);
-              # the other one is the off-DST duplicate and must not produce.
-              if [ "$(TZ=America/New_York date +%H)" = "16" ]; then
-                MODE=long
-              else
-                MODE=skip
-              fi
-              ;;
-            "0 15 * * 0") MODE=analytics ;;
-            "35 13 * * 1-5") MODE=event-shorts ;;
-          esac
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            MODE="${{ inputs.mode }}"
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            RUN_CREATED_AT=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
+            export RUN_CREATED_AT
           fi
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "trend_date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
-          echo "Resolved mode: $MODE"
+          python pipeline_schedule.py
 
       - name: Check pipeline reliability
         run: python -m unittest discover -s tests -v

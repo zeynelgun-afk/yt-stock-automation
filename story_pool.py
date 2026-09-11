@@ -12,7 +12,7 @@ the error in pool["errors"], but never fabricate data.
 """
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Dict, Any, List, Optional
 
 from data_fetcher import FMPDataFetcher, FMPDataError, ny_now
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 CONGRESS_LOOKBACK_DAYS = 7
 INSIDER_MIN_VALUE_USD = 1_000_000
+INSIDER_CLUSTER_LOOKBACK_DAYS = 7
 EARNINGS_MIN_REVENUE_EST = 1_000_000_000
 BIG_PT_REVISION_PCT = 30.0
 
@@ -131,22 +132,31 @@ class StoryPoolCollector:
     def _insider_trades(self) -> Dict[str, Any]:
         """$1M+ insider buys/sells plus cluster-buy signals (3+ distinct buyers).
 
-        Multi-leg Form 4 filings (same insider, same stock, same direction)
-        are aggregated into one total — one story, not five near-duplicates.
+        Same-day legs (same insider, stock and direction) are aggregated.
+        Different transaction dates remain separate. Cluster buys count named
+        buyers with positive-value purchases within the last seven days only.
         """
         rows = self.fetcher.get_insider_trades()
         agg: Dict[tuple, Dict[str, Any]] = {}
         buyers_per_symbol: Dict[str, set] = {}
+        today = ny_now().date()
+        cluster_cutoff = today - timedelta(days=INSIDER_CLUSTER_LOOKBACK_DAYS - 1)
         for row in rows:
             ttype = row.get("transactionType", "")
             if not (ttype.startswith("P-") or ttype.startswith("S-")):
                 continue
-            value = (row.get("securitiesTransacted") or 0) * (row.get("price") or 0)
-            if ttype.startswith("P-"):
-                buyers_per_symbol.setdefault(row["symbol"], set()).add(row.get("reportingName"))
-            if not value:
+            try:
+                transaction_date = date.fromisoformat(row.get("transactionDate", ""))
+            except (TypeError, ValueError):
+                logger.warning("Skipping insider transaction with no valid transaction date")
                 continue
-            key = (row.get("reportingName"), row.get("symbol"), ttype[0])
+            value = (row.get("securitiesTransacted") or 0) * (row.get("price") or 0)
+            if value <= 0:
+                continue
+            name = (row.get("reportingName") or "").strip()
+            if ttype.startswith("P-") and name and cluster_cutoff <= transaction_date <= today:
+                buyers_per_symbol.setdefault(row["symbol"], set()).add(name)
+            key = (row.get("reportingName"), row.get("symbol"), ttype[0], transaction_date)
             entry = agg.setdefault(key, {
                 "symbol": row.get("symbol", ""),
                 "insider": row.get("reportingName", ""),
@@ -160,7 +170,6 @@ class StoryPoolCollector:
             entry["value_usd"] += round(value)
             entry["shares"] += row.get("securitiesTransacted") or 0
             entry["transactions"] += 1
-            entry["transactionDate"] = max(entry["transactionDate"], row.get("transactionDate", ""))
 
         big = [t for t in agg.values() if t["value_usd"] >= INSIDER_MIN_VALUE_USD]
         big.sort(key=lambda t: t["value_usd"], reverse=True)

@@ -196,20 +196,26 @@ def run_weekly_learning(days: int = 14) -> bool:
     status: Dict[str, str] = {}
 
     stats: List[Dict[str, Any]] = []
+    stats_available = False
     try:
         stats = fetch_video_stats(days)
+        stats_available = True
     except Exception as e:
         logger.error(f"Video stats fetch failed: {e}")
         status["stats"] = f"failed: {e}"
 
     # 1. Franchise weights
-    try:
-        weights = compute_franchise_weights(days=days, stats=stats)
-        learnings["franchise_weights"] = weights
-        learnings["weights_version"] = 2
-        status["weights"] = f"ok ({len(weights)} franchise)" if weights else "not enough data"
-    except Exception as e:
-        status["weights"] = f"failed: {e}"
+    if stats_available:
+        try:
+            weights = compute_franchise_weights(days=days, stats=stats)
+            learnings["franchise_weights"] = weights
+            learnings["weights_version"] = 2
+            status["weights"] = f"ok ({len(weights)} franchise)" if weights else "not enough data"
+            section_times["franchise_weights"] = datetime.now().isoformat(timespec="seconds")
+        except Exception as e:
+            status["weights"] = f"failed: {e}"
+    else:
+        status["weights"] = "failed: stats unavailable; previous weights retained"
 
     # 2. Narration calibration (needs w:/v: machine tags on uploads)
     if stats:

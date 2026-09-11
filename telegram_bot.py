@@ -37,7 +37,7 @@ class TelegramApprovalBot:
             )
             return res.status_code == 200
         except Exception as e:
-            logger.error(f"Telegram sendMessage error: {e}")
+            logger.error("Telegram sendMessage failed (%s)", type(e).__name__)
             return False
 
     def _preview_within_limit(self, video_path: str) -> str:
@@ -93,11 +93,11 @@ class TelegramApprovalBot:
                     timeout=180,
                 )
             if res.status_code != 200:
-                logger.error(f"Failed to send video to Telegram: {res.text}")
+                logger.error("Telegram sendVideo failed (HTTP %s)", res.status_code)
                 return False
             return True
         except Exception as e:
-            logger.error(f"Telegram send error: {e}")
+            logger.error("Telegram sendVideo failed (%s)", type(e).__name__)
             return False
 
 if __name__ == "__main__":
