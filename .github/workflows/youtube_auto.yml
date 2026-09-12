@@ -29,7 +29,7 @@ on:
         required: false
         default: 'shorts'
         type: choice
-        options: [shorts, long, analytics]
+        options: [shorts, long, analytics, comments]
 
 # One pipeline run at a time: an infra retry or a slow long render must not
 # overlap the next cron slot (shared Telegram chat, shared YouTube quota).
@@ -101,6 +101,9 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
+          reply_before_shorts() {
+            timeout 240s python comment_responder.py --publish || echo "::warning::Comment pass failed or timed out; continuing video production."
+          }
           case "$MODE" in
             skip)
               echo "Off-DST duplicate recap firing — nothing to do."
@@ -125,11 +128,19 @@ jobs:
                 git push
               fi
               ;;
+            comments)
+              timeout 240s python comment_responder.py --publish
+              ;;
+            shorts)
+              reply_before_shorts
+              python main_scheduler.py shorts
+              ;;
             event-shorts)
               # exit 0 = event day, 1 = quiet day, 2 = check crashed (already alerted)
               python main_scheduler.py event-check && rc=0 || rc=$?
               if [ "$rc" = "0" ]; then
                 echo "Event day — producing extra Shorts"
+                reply_before_shorts
                 python main_scheduler.py shorts
               elif [ "$rc" = "2" ]; then
                 echo "event-check failed — operator alerted via Telegram, skipping slot"

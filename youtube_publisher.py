@@ -80,6 +80,7 @@ class YouTubePublisher:
                 UPLOAD_SCOPE,
                 "https://www.googleapis.com/auth/youtube.readonly",
                 "https://www.googleapis.com/auth/yt-analytics.readonly",
+                "https://www.googleapis.com/auth/youtube.force-ssl",
             ]
             creds = None
 
@@ -125,7 +126,9 @@ class YouTubePublisher:
                     # shown to viewers, but the weekly self-improvement loop
                     # reads them back for exact franchise + pacing calibration
                     "tags": list(tags) + list(extra_tags or []),
-                    "categoryId": "27"  # Education / Finance
+                    "categoryId": "27",  # Education / Finance
+                    "defaultLanguage": "en",
+                    "defaultAudioLanguage": "en",
                 },
                 "status": {
                     "privacyStatus": privacy_status,

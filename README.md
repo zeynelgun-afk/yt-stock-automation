@@ -4,6 +4,8 @@
 
 Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LLM → ElevenLabs/Edge-TTS → FFmpeg → YouTube → Telegram.
 
+Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses dili (`defaultAudioLanguage`) açıkça `en` olarak gönderilir. Kanalın varsayılan açıklaması İngilizcedir; 12 Eylül 2026'da Türkçe arayüzde eski açıklamayı gösteren `tr_TR` kanal çevirisi kaldırıldı. Bu tarihte taranan 160 videonun metin dili `en`; 138 eski videonun ses dili alanı boştu. Bu eski video alanları değiştirilmedi.
+
 ## Güncel içerik deneyi
 
 - Shorts: yaklaşık 32–38 saniye, ilk cümlede şirket/kişi ve olay; açıklama ilk 8 saniyede başlar.
@@ -52,7 +54,19 @@ Cron gecikmeleri mümkündür; tam dakikasında veya kapanıştan 15 dakika içi
 
 Kapanış modu, işin başladığı saate göre değil cron ve ilk çalıştırmanın GitHub `created_at` zamanına göre seçilir. Gecikme veya yeniden çalıştırma, doğru yaz/kış saati slotunu elemez. Bu seçim için workflow'un `actions: read` izni gerekir.
 
-Workflow'da listelenen API değişkenlerini GitHub Secrets'a ekleyin. YouTube için `YOUTUBE_CLIENT_SECRET_JSON` ve `YOUTUBE_TOKEN_JSON` gerekir. Token; `youtube.upload`, `youtube.readonly`, `yt-analytics.readonly` izinlerini içermelidir. Yetkilendirme yerelde tamamlanır; CI etkileşimli tarayıcı açmaz.
+Workflow'da listelenen API değişkenlerini GitHub Secrets'a ekleyin. YouTube için `YOUTUBE_CLIENT_SECRET_JSON` ve `YOUTUBE_TOKEN_JSON` gerekir. Token; `youtube.upload`, `youtube.readonly`, `yt-analytics.readonly` ve otomatik yorum yanıtları için `youtube.force-ssl` izinlerini içermelidir. Yetkilendirme yerelde tamamlanır; CI etkileşimli tarayıcı açmaz. Koda izin eklemek mevcut token'a yeni yetki kazandırmaz; eksikse yerelde yeniden yetkilendirip secret'ı güncelleyin.
+
+## Otomatik İngilizce yorum yanıtları
+
+GitHub Actions, her normal Shorts çalışmasında ve etkinlik doğrulanan turbo slotunda video üretiminden önce `comment_responder.py --publish` çalıştırır. Mevcut hafta içi Shorts takvimini kullanır; ayrıca hafta sonu yorum cron'u yoktur. Doğrudan `main_scheduler.py shorts` çalıştırmak yorum göndermez.
+
+- Son 14 gündeki yayınlanmış üst düzey yorumlar taranır: en fazla 300 yorum, 6 yanıt üretme denemesi ve çalıştırma başına 3 yanıt. Kontrol tüm kanal videolarını kapsar; yanıtların altına yeni sohbet zinciri başlatılmaz.
+- Yanıtlar kısa, İngilizce, nazik ve yoruma özeldir. Uygun yerde hafif espri veya doğal bir soru kullanılabilir; etkileşim artışı garanti değildir. Spam, reklam ve kişisel yatırım önerisi talepleri atlanır. Yorumlar modele talimat olarak değil güvenilmeyen veri olarak verilir.
+- Kanalın mevcut cevapları YouTube'dan tüm sayfalarıyla okunur; model yanıtından sonra göndermeden önce tekrar kontrol edilir. Çok büyük veya okunamayan yanıt dizisinde gönderim yapılmaz. Aynı çalışmada tekrar eden metinler atlanır. YouTube'dan silinen kanal yanıtları için ayrı kalıcı kayıt tutulmaz.
+- Yayın isteği otomatik yeniden denenmez; belirsiz hata o yorum turunu durdurur. Workflow eşzamanlı çalışmaları sıraya alır. Kontrol 240 saniyeyle sınırlıdır; hatası veya eksik yorum izni video üretimini engellemez ve Actions uyarısına yazılır.
+- Metin biçimi, uzunluk, bağlantı ve yabancı alfabe kontrolleri vardır; dilin anlamı, nezaket ve uygunluk değerlendirmesi model kalitesine bağlıdır.
+
+Yerel önizleme (yorum göndermez): `./venv/bin/python comment_responder.py`. Gerçek gönderim: `./venv/bin/python comment_responder.py --publish`. Actions'ta yalnızca yorumları çalıştırmak için manuel `comments` modu seçilebilir; bu mod video üretmez. Yerel gönderimi Actions çalışmasıyla aynı anda başlatmayın; yerel süreç workflow kilidine dahil değildir.
 
 PR kontrolleri video yayınlamaz. Üretim workflow'u yayından önce aynı testleri çalıştırır. Günlük trend önbelleği Actions cache, haftalık öğrenme dosyası Git ile korunur.
 
