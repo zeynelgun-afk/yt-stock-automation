@@ -6,7 +6,7 @@ import requests
 import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
-from config import DEFAULT_VOICE, TEMP_DIR, ELEVENLABS_API_KEY
+from config import DEFAULT_VOICE, TEMP_DIR, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class VoiceGenerator:
             return False
         try:
             logger.info("Generating studio-quality voice via ElevenLabs (multilingual_v2)...")
-            voice_id = "21m00Tcm4TlvDq8ikWAM"  # Rachel - Professional Female Voice
+            voice_id = ELEVENLABS_VOICE_ID  # Chris by default; American male presenter
             url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
                    f"/with-timestamps?output_format=mp3_44100_128")
             headers = {
@@ -187,7 +187,8 @@ class VoiceGenerator:
             return 0.0
 
     def generate_audio(self, text: str, output_filename: str = "voiceover.mp3",
-                       srt_filename: str = "subtitles.srt") -> Tuple[str, str]:
+                       srt_filename: str = "subtitles.srt", *,
+                       allow_fallback: bool = True) -> Tuple[str, str]:
         """Voiceover + word-level SRT. Chain: ElevenLabs -> Edge-TTS.
 
         Both engines time the SRT against the audio they actually produced, so
@@ -197,10 +198,18 @@ class VoiceGenerator:
         """
         out_audio = str(TEMP_DIR / output_filename)
         out_srt = str(TEMP_DIR / srt_filename) if srt_filename else None
+        self.engine_used = ""
 
         if self._generate_elevenlabs(text, out_audio, out_srt):
             self.engine_used = "11l"
             return out_audio, out_srt
+
+        if not allow_fallback:
+            logger.error("ElevenLabs narration unavailable; preserving the selected voice by stopping.")
+            Path(out_audio).unlink(missing_ok=True)
+            if out_srt:
+                Path(out_srt).unlink(missing_ok=True)
+            return "", ""
 
         logger.info("Falling back to Edge-TTS for voiceover + subtitles.")
         loop = asyncio.new_event_loop()

@@ -106,7 +106,7 @@ class ScriptTests(unittest.TestCase):
 
 
 class PipelineTests(unittest.TestCase):
-    def run_mock_pipeline(self, uploaded):
+    def run_mock_pipeline(self, uploaded, prepare_presenter=False):
         import main_scheduler as main
         events = []
         story = dict(ticker='TEST', headline='Test', score=80, facts={'value_usd': 1000000},
@@ -135,7 +135,14 @@ class PipelineTests(unittest.TestCase):
                 return 'id' if uploaded else ''
             mocked['YouTubePublisher'].return_value.upload_video.side_effect = upload
             mocked['TelegramApprovalBot'].return_value.send_video_notification.side_effect = lambda **kw: events.append('preview')
-            if uploaded:
+            if prepare_presenter:
+                with patch('presenter_workflow.prepare_package', return_value='package') as prepare:
+                    self.assertEqual(main.run_pipeline(prepare_presenter=True), 'package')
+                    prepare.assert_called_once()
+                mocked['YouTubePublisher'].assert_not_called()
+                mocked['TelegramApprovalBot'].assert_not_called()
+                self.assertFalse(mocked['VoiceGenerator'].return_value.generate_audio.call_args.kwargs['allow_fallback'])
+            elif uploaded:
                 main.run_pipeline()
             else:
                 with self.assertRaises(SystemExit) as error:
@@ -148,6 +155,9 @@ class PipelineTests(unittest.TestCase):
 
     def test_preview_happens_after_publication(self):
         self.assertEqual(self.run_mock_pipeline(True), ['upload', 'preview'])
+
+    def test_presenter_preparation_stops_before_publication(self):
+        self.assertEqual(self.run_mock_pipeline(False, prepare_presenter=True), [])
 
 
 if __name__ == '__main__':

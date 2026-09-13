@@ -11,5 +11,6 @@ __pycache__/
 client_secret.json
 token.json
 .claude/
+.playwright-cli/
 data/*
 !data/channel_learnings.json

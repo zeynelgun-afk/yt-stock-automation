@@ -2,7 +2,7 @@
 
 İngilizce finans videoları üreten Python otomasyonu. FMP verisiyle hikâye seçer, senaryo ve ses üretir, gerçek grafiklerle render alır ve **insan onayı beklemeden YouTube'a yükler**. Telegram yayın sonrası önizleme ve hata bildirimleri içindir.
 
-Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LLM → ElevenLabs/Edge-TTS → FFmpeg → YouTube → Telegram.
+Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LLM → ElevenLabs Chris → FFmpeg → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
 
 Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses dili (`defaultAudioLanguage`) açıkça `en` olarak gönderilir. Kanalın varsayılan açıklaması İngilizcedir; 12 Eylül 2026'da Türkçe arayüzde eski açıklamayı gösteren `tr_TR` kanal çevirisi kaldırıldı. Bu tarihte taranan 160 videonun metin dili `en`; 138 eski videonun ses dili alanı boştu. Bu eski video alanları değiştirilmedi.
 
@@ -38,6 +38,31 @@ Salt okunur performans raporu:
 ```bash
 ./venv/bin/python analytics_reporter.py
 ```
+
+## Deniz: Creator planıyla kısa sunucu sahneleri
+
+Tüm anlatım varsayılan olarak Chris (`iP95p4xoKVk53GoZ742B`); `ELEVENLABS_VOICE_ID` ile değiştirilebilir. Deniz Shorts'ta en fazla 6 saniyelik açılışta, uzun videoda en fazla 8 saniyelik açılış ve 5 saniyelik tek geçişte kullanılır. Uzun geçiş yalnızca en az 45 saniyelik anlatımda, orta bölümde uygun cümle sınırı varsa seçilir. Kalan görüntü mevcut grafik videosudur. Ses tek kayıt olarak kesintisiz kalır.
+
+Creator video klipleri web arayüzünde hazırlanır; bu yerel çalışma akışı otomatik video API çağrısı veya ek abonelik gerektirmez. Şu komutlar gerçek veri/senaryo/ses üretimi yapar ve sağlayıcı kredisi kullanabilir; **YouTube'a yüklemeden** hazırlık paketi çıkarır:
+
+```bash
+./venv/bin/python main_scheduler.py shorts --prepare-presenter
+./venv/bin/python main_scheduler.py long --prepare-presenter
+```
+
+Başarılı çalışmada `output/presenter_<format>_<tarih>/` altında grafik videosu, tam anlatım, altyazılar, referans portre ve `intro.wav` / varsa `transition.wav` oluşur. Paket geçici klasörden bağımsızdır. Hatalar mevcut pipeline hata bildirimi yolunu kullanır.
+
+ElevenLabs Image & Video → Lip sync ekranında Deniz'i ve paketin WAV dosyasını seçin; sesi yeniden üretmeyin veya hızını değiştirmeyin. Shorts için 9:16, uzun video için 16:9 kadraj kullanın. İndirilen klipleri pakete `intro.mp4` / `transition.mp4` adlarıyla koyun. Ardından:
+
+```bash
+./venv/bin/python presenter_workflow.py finish output/presenter_shorts_<tarih>
+```
+
+`final.mp4` ve `publication.json` oluşur. Sadece mevcut klipler ilgili saniyelere yerleştirilir; eksik klibin yerinde grafik kalır. Kaynak ses, altyazı veya klip sesi değişmişse işlem durur. Yanlış sesli eski pilotun kullanılması, klibin uzatılması veya döngüye alınması kabul edilmez. Bu dalga biçimi kontrolü yanlış/senkronu kaymış sesi yakalar; dudak hareketlerinin görsel kalitesini ölçmez. Yüksek sıkıştırma veya sağlayıcının sesi işlemesi doğru klibin de reddedilmesine yol açabilir.
+
+Birleştirme ana videonun sesini aynen kopyalar, avatar sahnelerinde zamanlamalı altyazıyı korur. Avatar kullanıldığında `publication.json` içindeki `contains_synthetic_media` true olur; bu komut yayın yapmaz. Hazır video YouTube'a yüklenirken bu işaret kullanılmalıdır.
+
+Zamanlanmış GitHub Actions akışı avatar beklemeden grafiklerle yayın yapar; `--prepare-presenter` yerel ve ayrı bir moddur. Değişiklikleri GitHub'a göndermek, Creator kliplerini hazırlamak ve avatarı canlı yayına dahil etmek ayrı adımlardır. İlk pilot ve kararlar: [Deniz karakter belgesi](docs/deniz-youtube-karakter.md).
 
 `event-check` makro/bilanço gününü kontrol eder; 0=etkinlik var, 1=sakin gün, 2=kontrol hatası. Pipeline hataları, YouTube yükleme hatası dahil, başarısız çıkış kodu üretir.
 

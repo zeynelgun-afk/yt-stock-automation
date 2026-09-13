@@ -15,7 +15,7 @@ from subtitle_generator import SubtitleGenerator
 from video_engine import VideoEngine, LONG_BG_CLIPS
 from telegram_bot import TelegramApprovalBot
 from youtube_publisher import YouTubePublisher
-from config import TEMP_DIR, MIN_SHORTS_STORY_SCORE
+from config import TEMP_DIR, OUTPUT_DIR, ELEVENLABS_VOICE_ID, MIN_SHORTS_STORY_SCORE
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("YT_AUTO")
@@ -68,7 +68,7 @@ def cleanup_temp(max_age_days: float = 3.0) -> None:
         pass
 
 
-def run_pipeline(video_type: str = "shorts"):
+def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False):
     """Executes full automated pipeline for creating a YouTube Shorts or Long video."""
     is_shorts = (video_type == "shorts")
     logger.info(f"=== STARTING AUTOMATED PIPELINE: {video_type.upper()} ===")
@@ -139,11 +139,12 @@ def run_pipeline(video_type: str = "shorts"):
     session_open = intraday[0]["open"] or intraday[0]["close"]
     change_pct = f"{(intraday[-1]['close'] - session_open) / session_open * 100:+.2f}"
 
-    # 5. Generate Audio Voiceover (ElevenLabs -> Edge-TTS, measured word timings)
+    # 5. Keep one selected ElevenLabs voice throughout; no silent voice switch.
     vg = VoiceGenerator()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     audio_path, srt_path = vg.generate_audio(
-        script_data["full_script"], f"voice_{timestamp}.mp3", f"sub_{timestamp}.srt"
+        script_data["full_script"], f"voice_{timestamp}.mp3", f"sub_{timestamp}.srt",
+        allow_fallback=False,
     )
     if not audio_path:
         abort_pipeline("Audio generation failed.")
@@ -217,6 +218,24 @@ def run_pipeline(video_type: str = "shorts"):
     )
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")
+
+    if prepare_presenter:
+        from presenter_workflow import prepare_package
+
+        package = prepare_package(
+            rendered_video_path, audio_path, srt_path,
+            OUTPUT_DIR / f"presenter_{video_type}_{timestamp}", is_shorts=is_shorts,
+            metadata={
+                "title": script_data["title"],
+                "description": script_data.get("description", script_data["full_script"]),
+                "tags": script_data.get("tags", ["stocks", "finance"]),
+                "is_shorts": is_shorts,
+                "voice_id": ELEVENLABS_VOICE_ID,
+                "contains_synthetic_media": ve.used_ai_video,
+            },
+        )
+        logger.info("Creator presenter package ready (not published): %s", package)
+        return str(package)
 
     # 8. Fully autonomous publish: upload first, then send the Telegram preview.
     # Measured duration is retained for pacing calibration. This is a deliberate design decision (2026-08-16) — the
@@ -297,6 +316,8 @@ if __name__ == "__main__":
                         choices=["shorts", "long", "event-check"],
                         help="shorts/long: produce a video; "
                              "event-check: exit 0 on CPI/FOMC/mega-earnings days (for cron turbo mode)")
+    parser.add_argument("--prepare-presenter", action="store_true",
+                        help="Prepare Creator avatar speech excerpts and base video; do not publish")
     args = parser.parse_args()
 
     if args.mode == "event-check":
@@ -314,7 +335,7 @@ if __name__ == "__main__":
 
     logger.info("Starting Youtube Stock Automation Engine...")
     try:
-        run_pipeline(args.mode)
+        run_pipeline(args.mode, prepare_presenter=args.prepare_presenter)
     except SystemExit:
         raise  # abort_pipeline already alerted and set the exit code
     except Exception as e:
