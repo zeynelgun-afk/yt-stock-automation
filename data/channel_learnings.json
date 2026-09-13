@@ -1,128 +1,137 @@
 {
  "market_patterns": {
   "title_patterns": [
-   "[NAMED EXPERT/INSTITUTION]: [specific index or price level], then [specific qualifying counter-move]",
-   "[MARKET INSTRUMENT] just hit [precise level] — highest/lowest since [specific dated reference point]",
-   "Insiders bought [exact aggregate dollar figure] of these [N] stocks — [N-1] of them are in one sector",
-   "[N] stocks trading below [specific valuation metric] right now — screened, not recommended",
-   "What [specific earnings report] actually said vs what the [price move %] implied",
-   "[Time span] of [strategy] in [duration] — the [N] positions that carried the return",
-   "The [specific mechanism/plumbing term] behind this week's [instrument] move, explained with the actual data",
-   "[Policy or Treasury action] in plain numbers: what changed, what it costs, who pays"
+   "[SPECIFIC DOLLAR FIGURE] of insider buying across [N] stocks — one outlier stands out",
+   "[TICKER] just filed a [specific transaction type] most investors missed",
+   "[NAMED EXPERT/INSTITUTION] says [specific mechanism] is finally repricing — here's the data",
+   "Earnings breakdown: [TICKER] [quarter] numbers vs. what was priced in",
+   "[N] stocks trading below [specific valuation metric] after the drawdown",
+   "What actually moved the [specific market/asset class] this week — in [N] charts",
+   "[Policy/Treasury action] explained: what it changes for [specific yield/sector] math",
+   "Why [sector] companies are buying back stock at [specific pace/number]"
   ],
   "hook_patterns": [
-   "Open with the single hardest number and its source in the first sentence, then state what it does NOT mean",
-   "Name the exact date/level of the last comparable reading before offering any interpretation",
-   "State the market's reaction (%) first, then immediately separate it from the underlying fundamentals",
-   "Lead with the disclosed filing or transcript line, quote it verbatim, then walk the math",
-   "Pose the question the price action raises, then say up front which parts the data can and cannot answer"
+   "Open with one unrounded figure from a filing or print, then state what it does and does not tell you",
+   "Name the single question the video answers, then show the data source on screen before any commentary",
+   "Lead with a named expert's specific claim, then immediately test it against the actual series",
+   "State the consensus expectation, then the reported number, then the gap — in the first 20 seconds",
+   "Start with 'here's what changed in the data since last week,' followed by a bounded list of items"
   ],
   "packaging_notes": [
-   "Two clear duration sweet spots: 5-9 min single-topic explainers (highest ratio-per-minute) and 18-30 min multi-name analysis; 45-90 min only works with named guests or documented case studies.",
-   "Unrounded and dated specifics outperform round scary numbers — '30-year yields highest since [year]' and exact insider dollar amounts travel further than percentage doom framing.",
-   "Named-authority framing (analyst, CEO filing, court document, earnings transcript) does heavy lifting; the source itself is the credibility hook, so put the name or document type in the title.",
-   "Two-part titles with a counterweight ('X, then Y' / 'this, not that') read as analysis rather than prediction and fit the no-hype position better than one-directional calls.",
-   "Earnings and macro-event windows drive most outliers — publish within 24-48h of the print or Treasury/Fed action, and let the title reference the event, not an emotion.",
-   "Screening/mechanism angles (insider buys, valuation screens, bond market plumbing) are the ethical replacement for crash bait: same curiosity gap, zero fear framing."
+   "Two duration clusters appear: 6–12 minute single-topic explainers (earnings reactions, one insider move, one policy action) and 19–29 minute multi-holding or multi-stock roundups. Pick one lane per video rather than splitting.",
+   "Titles carrying a specific dollar amount or a stock count (e.g. '$500M+', '8 stocks', '5 stocks') recur across the set; unrounded, verifiable numbers are the on-brand version of this and avoid hype framing.",
+   "Named-source framing ('says [expert]', '[official]'s move') travels well in this niche — attribution does the curiosity work without needing alarm language, and is reusable for a numbers-first channel.",
+   "Earnings-event packaging appears twice for the same ticker on the same day, suggesting event-windowed uploads matter more than title novelty; publishing inside a few hours of the print is the structural lever.",
+   "Several outliers here are political-outrage or drama-driven and are not transferable to this positioning — treat their view counts as audience-specific, not as evidence that escalation framing works.",
+   "Views-per-hour, not total views, separates this-week momentum from long-tail accumulation; the highest VPH items are event-tied, which argues for a fast-turnaround data recap format."
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-09-11T07:52:12",
+ "updated_at": "2026-09-13T17:56:05",
  "franchise_weights": {
-  "congress_trade": 1.3,
-  "market_close": 0.7,
-  "insider_watch": 0.71
+  "market_close": 0.96,
+  "reddit_radar": 1.04
  },
  "own_patterns": {
   "winning_patterns": [
    {
-    "pattern": "Two-clause contradiction titles: a concrete outcome in clause one, then a clause that undercuts the obvious explanation for it",
-    "structure": "[entity] [directional move + exact %] + [but/while/not/still clause that denies the assumed cause]",
-    "evidence": "Our highest hook-hold and avg-view-pct videos (retention 80-114%, hook index 1.19-1.49) all pair a move with a reversal or qualifier clause; single-clause descriptive titles cluster at 45-65% retention.",
-    "why_it_works": "The second clause creates an open question the viewer needs the video to close, so the hook window is spent resolving tension instead of restating the title."
+    "pattern": "Two-clause title where the second clause corrects the obvious interpretation (an 'X — but the real driver is Y' / 'A, not B' reframe)",
+    "evidence": "Our two highest-retaining non-contrast Shorts both used a corrective second clause and landed at 76.0% and 68.9% APV with hook hold above 1.07 — above the 65.0% cohort average.",
+    "why_it_may_work": "The title states a fact and then pre-commits to an explanation the viewer can't derive themselves, so the payoff is inside the video rather than in the headline.",
+    "how_to_reuse": "Keep the structure: [ticker + verified move] + [short clause that rules out the intuitive cause]. Cap the second clause at ~4 words.",
+    "confidence": "medium",
+    "format": "shorts"
    },
    {
-    "pattern": "One precise, unrounded number as the title's anchor — a percent, a price, or a day count",
-    "structure": "exactly one hard figure carried to a decimal or an exact integer, attached to one named ticker or person",
-    "evidence": "Best-retaining videos each carry a single sharp figure (a decimal percent, an exact day count). Titles built on a round dollar amount with no named subject retained 29-45%.",
-    "why_it_works": "A specific figure signals the video contains verifiable data, while a round dollar figure with no subject reads as generic and gives the hook nothing to prove."
+    "pattern": "Single-name event paired with a volatility reading rather than an index level",
+    "evidence": "Three Shorts that paired a stock-specific event with a VIX move retained 71.9%, 68.3% and 89.2%; the two that paired a stock move with a Dow or Nasdaq move retained 55.9% and 53.7%.",
+    "why_it_may_work": "A volatility number implies a regime the single name is fighting, which sets up a question; a broad index number reads as boilerplate context.",
+    "how_to_reuse": "When adding market context to a single-ticker title, prefer the volatility stat if it is genuinely relevant. Treat this as a correlation on 5 videos, not a rule.",
+    "confidence": "low",
+    "format": "shorts"
    },
    {
-    "pattern": "Disclosure-lag framing in the congress franchise: make the delay itself the subject, not the trade",
-    "structure": "[time gap or 'late' marker] + [official's filing/position]",
-    "evidence": "Within the congress franchise, versions that foreground the reporting delay hit 88-103% avg view and hook indexes of 1.21-1.36, while versions that foreground the thesis or the asset type sat at 63-76%.",
-    "why_it_works": "The lag implies something was withheld from the viewer, which is a grievance hook; the trade thesis alone is just information."
+    "pattern": "Headline number plus a flagged mechanical cause (corporate action, timing, structural quirk)",
+    "evidence": "The Short that attached a huge percentage move to a mechanical trigger held 84.9% APV despite being one of our lowest-view videos (50).",
+    "why_it_may_work": "It signals the video explains why a number is misleading, which fits a data-first audience that expects the catch.",
+    "how_to_reuse": "Where a move is driven by a split, reclassification, listing mechanic or timing artifact, name that mechanic in the title instead of amplifying the percentage.",
+    "confidence": "low",
+    "format": "shorts"
    },
    {
-    "pattern": "Timing-collision framing: place two events next to each other and let the proximity do the work",
-    "structure": "[move or rally] + [adjacent event: notice, filing, split, lawsuit] + [tight time marker like '48 hours' or 'right as']",
-    "evidence": "Videos pairing a large percentage move with a delisting notice, a split date, or simultaneous legal filings retained 61-114% with hook indexes at or above 0.98.",
-    "why_it_works": "Adjacency in time implies causation the viewer wants confirmed or denied, which is a question the hook can answer immediately."
-   },
-   {
-    "pattern": "Named-person subjects drive views; contradiction structure drives retention — the two levers are separate",
-    "structure": "recognizable name in the subject slot for reach + contradiction or lag clause for hold",
-    "evidence": "Our top-view videos (128-236) all lead with a recognizable name, but view rank does not track retention rank; the highest-retaining videos were low-view and structure-driven.",
-    "why_it_works": "The name earns the click from browse; only the structural tension keeps the viewer past the first 30%."
+    "pattern": "Named-person franchises (congress_trade, insider_watch) hold mid-to-high and convert engagement best",
+    "evidence": "Both named-person Shorts posted 68.9% and 68.3% APV with hook hold above 1.06, and the highest engaged-view shares in the set (roughly 46% and 43% of views vs a ~38% cohort level).",
+    "why_it_may_work": "A named actor plus a dollar or position size gives the hook a subject, not just a delta.",
+    "how_to_reuse": "Keep [named person] + [size of the action] + [one-clause reframe] as the standing shape for these two franchises.",
+    "confidence": "low",
+    "format": "shorts"
    }
   ],
   "losing_patterns": [
    {
-    "pattern": "Long-form date-stamped multi-topic roundups",
-    "structure": "['Stock Market Today' + calendar date] + [one unrelated example appended]",
-    "evidence": "The single long video collapsed to 12.3% avg view with a hook index of 0.31 — by far our worst on both measures.",
-    "fix": "Ship the strongest single item from the day as a short with a contradiction clause instead of bundling the day under a date."
+    "pattern": "Bare 'percent move + benchmark move' titles with no explanatory clause",
+    "evidence": "The three Shorts that were only a move plus context and no 'why' hook sat at the bottom of retention: 55.9%, 53.7% and 50.3% APV, all with hook hold below 0.93.",
+    "why_it_hurts": "The title delivers the whole datapoint, so the first seconds have nothing left to promise.",
+    "fix": "Always reserve one clause for the mechanism, the contradiction or the unresolved question.",
+    "confidence": "medium",
+    "format": "shorts"
    },
    {
-    "pattern": "First-person production framing that makes the channel the subject",
-    "structure": "['We' + our research action] + [the finding]",
-    "evidence": "Titles built around our own reading or reviewing process retained 17% despite belonging to the otherwise strong congress franchise.",
-    "fix": "Put the entity and the anomaly in the subject slot; never make our workflow the promise."
+    "pattern": "Procedural or timestamp detail used as the hook (legal-process framing, clock times)",
+    "evidence": "Our weakest-retaining Short led with a move and then a procedural timestamp; 50.3% APV, hook hold 0.868 — last in the cohort.",
+    "why_it_hurts": "Process minutiae signals a narrow administrative story rather than a market consequence.",
+    "fix": "Convert procedural detail into consequence framing (what it changes for the tape) or leave it in the body.",
+    "confidence": "low",
+    "format": "shorts"
    },
    {
-    "pattern": "Subject-less dollar amounts as the lead",
-    "structure": "[$ figure] + [vague transformation or consequence, no named ticker]",
-    "evidence": "Titles opening with a round dollar sum and no identified company retained 29-45%, among our weakest non-long videos.",
-    "fix": "Name the ticker or person first, then attach the figure as the anomaly."
+    "pattern": "Titles that state the outcome and then resolve the tension themselves",
+    "evidence": "The Short whose second clause reassured that the situation continues had the worst hook hold in the set (0.778) and 58.2% APV.",
+    "why_it_hurts": "Answering your own setup in the title removes the reason to stay past the first seconds.",
+    "fix": "End the title on the open half of the tension, not the resolution.",
+    "confidence": "low",
+    "format": "shorts"
    },
    {
-    "pattern": "Broad-market vs single-actor comparisons where neither side carries a specific number",
-    "structure": "[sweeping market statement] + [one actor's action 'anyway']",
-    "evidence": "This shape retained 31% with no measurable hook lift, while a structurally similar title that quoted an exact index percentage alongside an exact stock percentage held 53.7%.",
-    "fix": "If contrasting a stock against the market, put a hard figure on both sides of the contrast."
+    "pattern": "Static level or status titles (closing price, first-day-of-something) without a delta or conflict",
+    "evidence": "A price-level Short landed mid-pack at 58.3% APV and our lowest view count in that group (57), underperforming every title with a reframe clause.",
+    "why_it_hurts": "A level alone carries no direction and no stake for the viewer.",
+    "fix": "Pair any level with what it contradicts or what it implies next.",
+    "confidence": "low",
+    "format": "shorts"
    }
   ],
   "notes": [
-   "Sample is thin — 20 videos, most under 100 views — so treat these as directional. The only high-confidence signals are the long-form roundup failure and the disclosure-lag framing within the congress franchise.",
-   "The congress franchise reliably wins views but its retention swings from 17% to 103% purely on title structure, meaning the franchise buys the click and the structure keeps the viewer.",
-   "Retention above 100% on several shorts indicates rewatching on tight, single-fact videos — a reason to keep runtimes short rather than expand into recap formats."
+   "All 11 videos are Shorts, so there is no long-form read in this window and no duration comparison should be inferred. Views are low (48-181), so every pattern here is directional at best.",
+   "market_close carries most of our volume and has the widest retention spread (50.3%-84.9%); the split tracks title structure — cause/reframe clause versus bare move — more than the size of the move itself. A 1,400% move and a -44.7% move sat at opposite ends of retention.",
+   "Views and retention are decoupled: our highest-view Short (181) ranked 4th in APV, while two of the three best-retaining Shorts had under 80 views. hook_hold and avg_view_pct move together almost mechanically here, so treat them as one signal, not two independent confirmations, and do not read APV as evidence of feed conversion."
   ],
   "title": "own-channel lessons"
  },
  "section_status": {
-  "weights": "ok (28-day audit, Shorts only, engaged samples >=20)",
-  "narration": "ok (measured tags; shorter recap experiment)",
-  "own_patterns": "preserved from latest upstream weekly refresh",
-  "market_patterns": "preserved from latest upstream weekly refresh"
+  "weights": "ok (2 franchise)",
+  "narration": "ok (2.13 w/s, 54 video)",
+  "own_patterns": "ok",
+  "market_patterns": "ok (15 outlier)"
  },
  "narration": {
-  "wps": 2.132,
+  "wps": 2.13,
   "engine": "11l",
-  "samples": 65,
+  "samples": 54,
   "shorts_word_range": [
    68,
    81
   ],
   "long_word_range": [
    320,
-   448
+   447
   ]
  },
  "weights_version": 2,
  "section_updated_at": {
-  "franchise_weights": "2026-09-11T07:52:12",
-  "narration": "2026-09-11T07:52:12",
-  "own_patterns": "2026-09-06T17:30:26",
-  "market_patterns": "2026-09-06T17:30:26"
+  "franchise_weights": "2026-09-13T17:56:05",
+  "narration": "2026-09-13T17:56:05",
+  "own_patterns": "2026-09-13T17:56:05",
+  "market_patterns": "2026-09-13T17:56:05"
  }
 }
