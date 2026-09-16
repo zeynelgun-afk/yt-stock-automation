@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-16T11:35:12.541344+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-16T11:37:02.929886+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -11,7 +11,9 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 | Önceki Shorts | 10 / 5 | 51 | 18 | 0 |
 | Yeni deney | 0 / 0 | — | — | — |
 
-Her grubun 10 videosunda veri ve en az 200 toplam engaged izlenme olmadan karşılaştırma hazır sayılmaz. Bu eşik istatistiksel anlamlılık kanıtı değildir.
+**Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
+
+Her grubun 10 videosunda veri olduğunda betimsel karşılaştırma hazır sayılır. 200 engaged izlenmenin altındaki gruplar zayıf örneklem olarak işaretlenir; bu sayı istatistiksel anlamlılık eşiği değildir. Sabit geçmiş grubun düşük izlenmesi yeni veri toplanıyormuş gibi gösterilmez.
 
 Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz ve hiç etkinliği olmayan videolar sınıflanamayıp dışarıda kalabilir. API değerleri sonradan değişebilir. Eksik veriler sıfır sayılmaz. İzlemeyi seçme/kaydırma oranı ve CTR bu raporda yoktur.
 
