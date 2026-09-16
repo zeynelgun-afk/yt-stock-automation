@@ -272,3 +272,17 @@ class DisclosureWordingTests(unittest.TestCase):
         story = {'franchise': 'congress_trade', 'ticker': 'MSFT'}
         self.assertTrue(validate_editorial_script({'title': 'Microsoft buy surfaced 32 days late', 'full_script': ''}, story))
         self.assertFalse(validate_editorial_script({'title': 'Microsoft buy disclosed 32 days later', 'full_script': ''}, story))
+
+class DisclosureRangeCardTests(unittest.TestCase):
+    def test_real_disclosure_range_is_not_replaced_by_daily_price_change(self):
+        from content_checks import validate_hero_number
+        story = {'facts': {'amount': '$500,001 - $1,000,000'}}
+        self.assertEqual(validate_hero_number('$500K-$1M', story, '', '-0.71'), '$500K-$1M')
+        self.assertEqual(validate_hero_number('$500K–$1M', story, '', '-0.71'), '$500K–$1M')
+
+    def test_both_range_endpoints_and_units_must_match(self):
+        from content_checks import validate_hero_number
+        story = {'facts': {'amount': '$500,001 - $1,000,000'}}
+        for hero in ('$500K-$2M', '$500B-$1M', '$1M-$500K', '$500K-1M', '$500K-$1M%'):
+            self.assertEqual(validate_hero_number(hero, story, '', '-0.71'), '')
+        self.assertEqual(validate_hero_number('$500K-$1M', {'facts': {}}, '$500K-$1M', '-0.71'), '')
