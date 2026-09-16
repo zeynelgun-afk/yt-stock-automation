@@ -17,7 +17,7 @@ Fix editorial eligibility and publication history before changing visual assets 
 
 ## Measurement
 
-Daily report, no LLM or paid generation: compare first ten experiment Shorts with last ten pre-experiment Shorts. Use the first three complete Pacific calendar days after publication, excluding the partial publication day; this is not an exact first-72-hour report and DST can change its elapsed length. Wait at least two further days for Analytics; label pending/missing metrics and do not infer swipe rate or CTR. Keep counts and actual sample windows visible. Persist JSON and Markdown in the repository. Do not declare success before ten eligible experimental uploads and enough engaged views.
+Daily report, no LLM or paid generation: compare first ten experiment Shorts with last ten pre-experiment Shorts. Use the first three complete Pacific calendar days after publication, excluding the partial publication day; this is not an exact first-72-hour report and DST can change its elapsed length. Wait at least two further days for Analytics; label pending/missing metrics and do not infer swipe rate or CTR. Keep counts and actual sample windows visible. Persist JSON and Markdown in the repository. Report descriptive comparison only after ten videos per group have data. Flag groups below 200 engaged views as thin samples, not a statistical threshold. Completed windows with missing data must be distinguished from still collecting; a frozen low-view baseline must not wait forever to grow. Do not automatically declare growth success.
 
 ## Provider failure
 

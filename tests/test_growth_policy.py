@@ -248,3 +248,21 @@ class ProviderProbeTests(unittest.TestCase):
     def test_audit_mode_is_explicitly_read_only(self):
         from pipeline_schedule import resolve_mode
         self.assertEqual(resolve_mode('workflow_dispatch', {'inputs': {'mode': 'audit'}}), 'audit')
+
+class CompletedLowSampleTests(unittest.TestCase):
+    def test_fixed_low_view_baseline_does_not_wait_forever_for_more_views(self):
+        from growth_experiment import build_report, METRICS
+        from editorial_policy import EXPERIMENT_ID
+        api = MagicMock()
+        api.reports().query().execute.side_effect = [
+            {'rows': [[f'b{i}', 1] for i in range(10)]},
+            *[{'columnHeaders': [{'name': name} for name in METRICS.split(',')],
+               'rows': [[1, 1, 20, 60, 0]]} for _ in range(20)]]
+        history = [dict(video_id=f'b{i}', title='Baseline', privacy='public', machine={'fmt': 'shorts'},
+                        published_at=f'2026-09-{i+1:02d}T12:00:00Z') for i in range(10)]
+        history += [dict(video_id=f'e{i}', title='Experiment', privacy='public',
+                         machine={'fmt': 'shorts', 'exp': EXPERIMENT_ID},
+                         published_at=f'2026-09-{i+17:02d}T12:00:00Z') for i in range(10)]
+        report = build_report(history=history, analytics=api, now=datetime(2026, 10, 3, tzinfo=timezone.utc))
+        self.assertEqual(report['status'], 'ready_for_comparison')
+        self.assertTrue(report['thin_sample'])

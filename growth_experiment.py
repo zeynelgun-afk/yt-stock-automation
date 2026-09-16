@@ -39,7 +39,7 @@ def build_report(*, history=None, analytics=None, now=None, previous=None):
     if analytics is None:
         from googleapiclient.discovery import build
         analytics = build('youtubeAnalytics', 'v2', credentials=youtube_credentials(), cache_discovery=False)
-    history = fetch_upload_history(days=90, now=now) if history is None else history
+    history = fetch_upload_history(days=36500, now=now) if history is None else history
     today = now.astimezone(PACIFIC).date()
     # Use the supported Shorts filter, not a duration heuristic. Legacy videos
     # with no Analytics activity cannot be classified and are counted separately.
@@ -100,13 +100,18 @@ def build_report(*, history=None, analytics=None, now=None, previous=None):
                     row['status'] = 'no_analytics_rows'
             output.append(row)
     cohorts = {name: summarize([r for r in output if r['cohort'] == name]) for name in ('baseline', 'experiment')}
-    sufficient = all(c['available'] >= 10 and c['engaged_views'] >= 200 for c in cohorts.values())
+    sufficient = all(c['available'] >= 10 for c in cohorts.values())
+    windows_complete = len(experimental) >= 10 and not any(r['status'] == 'pending' for r in output)
+    report_status = ('ready_for_comparison' if sufficient else
+                     'measurement_windows_complete_missing_data' if windows_complete else
+                     'collecting_insufficient_sample')
     result = {'experiment_id': EXPERIMENT_ID, 'started_at': STARTED_AT, 'generated_at': now.isoformat(),
               'window_definition': 'First three complete Pacific calendar days after publication; not exact first 72 hours.',
               'metric_status': 'Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.',
               'baseline_selection': 'Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.',
               'unclassified_legacy_videos': sum(r['video_id'] not in short_ids and not r['machine'].get('fmt') for r in before),
-              'status': 'ready_for_comparison' if sufficient else 'collecting_insufficient_sample',
+              'status': report_status,
+              'thin_sample': any(c['engaged_views'] < 200 for c in cohorts.values()),
               'cohorts': cohorts, 'videos': output}
     return result
 
@@ -114,13 +119,17 @@ def build_report(*, history=None, analytics=None, now=None, previous=None):
 def markdown(report):
     lines = ['# Kanal büyüme deneyi', '', f"Deney: `{report['experiment_id']}` · Güncelleme: {report['generated_at']}", '',
              'İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.', '',
-             'Durum: ' + ('Karşılaştırma için örneklem oluştu.' if report['status'] == 'ready_for_comparison' else 'Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.'), '',
+             'Durum: ' + {'ready_for_comparison': 'Betimsel karşılaştırma için 10 + 10 video verisi var; nedensellik veya başarı kanıtı değildir.',
+                         'measurement_windows_complete_missing_data': 'İlk 10 videonun ölçüm pencereleri tamamlandı; eksik API verileri nedeniyle tam karşılaştırma yok.',
+                         'collecting_insufficient_sample': 'Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.'}[report['status']], '',
              '| Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |',
              '|---|---:|---:|---:|---:|']
     for name, label in [('baseline', 'Önceki Shorts'), ('experiment', 'Yeni deney')]:
         c = report['cohorts'][name]
         lines.append(f"| {label} | {c['selected']} / {c['available']} | {c['median_views'] if c['median_views'] is not None else '—'} | {c['median_engaged_views'] if c['median_engaged_views'] is not None else '—'} | {c['subscribers_gained'] if c['available'] else '—'} |")
-    lines += ['', 'Her grubun 10 videosunda veri ve en az 200 toplam engaged izlenme olmadan karşılaştırma hazır sayılmaz. Bu eşik istatistiksel anlamlılık kanıtı değildir.', '',
+    if report.get('thin_sample'):
+        lines += ['', '**Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.']
+    lines += ['', 'Her grubun 10 videosunda veri olduğunda betimsel karşılaştırma hazır sayılır. 200 engaged izlenmenin altındaki gruplar zayıf örneklem olarak işaretlenir; bu sayı istatistiksel anlamlılık eşiği değildir. Sabit geçmiş grubun düşük izlenmesi yeni veri toplanıyormuş gibi gösterilmez.', '',
               'Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz ve hiç etkinliği olmayan videolar sınıflanamayıp dışarıda kalabilir. API değerleri sonradan değişebilir. Eksik veriler sıfır sayılmaz. İzlemeyi seçme/kaydırma oranı ve CTR bu raporda yoktur.', '',
               '| Video | Grup | Ölçüm tarihleri (Pasifik) | Durum |', '|---|---|---|---|']
     for r in report['videos']:
