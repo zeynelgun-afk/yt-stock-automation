@@ -266,3 +266,9 @@ class CompletedLowSampleTests(unittest.TestCase):
         report = build_report(history=history, analytics=api, now=datetime(2026, 10, 3, tzinfo=timezone.utc))
         self.assertEqual(report['status'], 'ready_for_comparison')
         self.assertTrue(report['thin_sample'])
+
+class DisclosureWordingTests(unittest.TestCase):
+    def test_reporting_lag_is_not_an_established_deadline_violation(self):
+        story = {'franchise': 'congress_trade', 'ticker': 'MSFT'}
+        self.assertTrue(validate_editorial_script({'title': 'Microsoft buy surfaced 32 days late', 'full_script': ''}, story))
+        self.assertFalse(validate_editorial_script({'title': 'Microsoft buy disclosed 32 days later', 'full_script': ''}, story))

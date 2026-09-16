@@ -106,6 +106,9 @@ def validate_editorial_script(script, story):
         errors.append('unrelated index comparison in single-company experiment')
     if re.search(r'\b(?:what (?:do|does) .* know that|secret knowledge|before anyone else|guaranteed return)\b', text, re.I):
         errors.append('unsupported privileged-knowledge or return implication')
+    if story['franchise'] == 'congress_trade' and re.search(
+            r'\b(?:\d+\s+days?\s+late|overdue|hid|hidden|concealed)\b', script.get('title', ''), re.I):
+        errors.append('a disclosure lag does not establish a late filing or concealment')
     if story['franchise'] == 'reddit_radar' and re.search(r'\b(?:bought|buying|sold|selling)\b', text, re.I):
         errors.append('mention counts do not establish actual trades')
     return errors

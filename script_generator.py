@@ -170,6 +170,8 @@ If no cause is established, say that the supplied data does not establish a caus
 TITLE: put the identifiable company name or actor near the beginning, with the actual
 news and a supported number when useful. A clear factual headline is allowed.
 Do not force a question mark, tease a missing company name, or invent tension.
+For disclosures, say "disclosed X days later", never "X days late", "overdue" or
+"hidden": transaction-to-disclosure lag alone does not establish a missed deadline.
 Vary the wording naturally across recent uploads, without sacrificing discoverability.
 {_recent_titles_block(recent_titles)}{_own_channel_block()}{_packaging_patterns_block()}
 RULES:

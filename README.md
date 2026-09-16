@@ -22,7 +22,7 @@ Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses
 - Genel ve içerik türüne özel talimatlar tek şirket/tek olay etrafında birleştirildi. Bilinmeyen işlem niyeti, gizli bilgi veya ilgisiz endeks kıyası üretilmemeli. Belirli bilinen hatalar ses üretiminden önce ayrıca kontrol edilir; bu kontrol bütün iddiaların doğrulandığı anlamına gelmez.
 - Yeni Shorts `exp:growth-20260916` etiketi taşır. [Deney raporu](reports/growth-experiment.md) her gün 10:15 UTC / 13:15 Türkiye saati için planlanır; GitHub gecikmeleri olabilir. Rapor LLM, ses üretimi veya yayın işlemi kullanmaz.
 - Ölçüm yayın gününden sonraki ilk üç **tam Pasifik takvim gününü** karşılaştırır; tam ilk 72 saat değildir. İki ek tam gün veri gecikmesi beklenir. Grupların üyeliği raporda korunur; silinen/özel videolar daha iyi videolarla değiştirilmez. Eksik veriler sıfır değildir, swipe oranı ve CTR türetilmez.
-- OpenRouter/diğer sağlayıcıların 401/402/403 hesap hatası aynı çalışmayı sonlandırır; limit engelinden sonra başka model/sağlayıcı denenmez. 16 Eylül canlı üretim geçmişinde OpenRouter aylık anahtar limiti nedeniyle yayın engeli doğrulandı. Bu değişiklik hesap limitini artırmaz.
+- OpenRouter/diğer sağlayıcıların 401/402/403 hesap hatası aynı çalışmayı sonlandırır; limit engelinden sonra başka model/sağlayıcı denenmez. 16 Eylül canlı üretim geçmişinde OpenRouter aylık anahtar limiti nedeniyle yayın engeli doğrulandı. Aynı gün sonraki sunucu kontrolünde kota kullanılabilir bulundu ve ilk deney videosu başarıyla yayınlandı. Anahtar veya harcama limiti değiştirilmedi.
 
 Salt okunur kontroller:
 
