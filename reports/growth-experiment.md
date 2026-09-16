@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-16T11:37:02.929886+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-16T11:45:01.607662+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -9,7 +9,7 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 5 | 51 | 18 | 0 |
-| Yeni deney | 0 / 0 | — | — | — |
+| Yeni deney | 1 / 0 | — | — | — |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
@@ -29,5 +29,6 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [DBGI's 46.7% Jump Isn't Growth. It's a Buyout.](https://youtu.be/fQbwjblQ8g8) | baseline | 2026-09-11 – 2026-09-13 | available |
 | [TNON Up 71.7% on a Day the VIX Rose 6.87%](https://youtu.be/DR3zvr7ocF4) | baseline | 2026-09-11 – 2026-09-13 | available |
 | [TTAN Fell 29.98%. Law Firms Called at 1:51pm](https://youtu.be/JS0Al5N7tME) | baseline | 2026-09-10 – 2026-09-12 | available |
+| [Microsoft: Gottheimer's Buy Disclosed 32 Days Later](https://youtu.be/QO_dGriCQ8Y) | experiment | 2026-09-17 – 2026-09-19 | pending |
 
 Kaynak: yetkili YouTube Data/Analytics API. [Takvim günü tanımı](https://developers.google.com/youtube/analytics/dimensions).
