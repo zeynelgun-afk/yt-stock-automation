@@ -17,74 +17,46 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
-from script_generator import ScriptGenerator, ScriptGenerationError
+from script_generator import ScriptGenerator, ScriptGenerationError, ProviderAccountError
+from editorial_policy import qualify, repeated_event
+from publication_history import fetch_upload_history, parse_time
+from config import MIN_SHORTS_STORY_SCORE
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Recurring Shorts series. Each entry: display name + prompt style guidance
 # injected into the script prompt so structure/tone varies per franchise.
-FRANCHISES: Dict[str, Dict[str, str]] = {
-    "congress_trade": {
-        "name": "Congress Trade Alert",
-        "style": (
-            "Franchise: CONGRESS TRADE ALERT. Lead with the politician's name, chamber "
-            "and the dollar range in the first sentence. Core question: why is a sitting "
-            "member of Congress trading this stock right now? Mention the disclosure lag "
-            "(trade date vs disclosure date). Neutral, factual, slightly raised eyebrow — "
-            "no accusations, just the filing facts."
-        ),
-    },
-    "insider_watch": {
-        "name": "Insider Watch",
-        "style": (
-            "Franchise: INSIDER WATCH. Lead with the insider's role and the dollar value. "
-            "A CEO/CFO trading their own stock is the story: what do they know that the "
-            "market doesn't? For cluster buys, stress that multiple insiders bought in the "
-            "last seven days. Facts from SEC Form 4 filings only."
-        ),
-    },
-    "earnings_shock": {
-        "name": "Earnings Shock",
-        "style": (
-            "Franchise: EARNINGS SHOCK. Lead with expectation vs reality: the EPS estimate, "
-            "the actual, the surprise percent. If the stock moved opposite to the beat/miss "
-            "(beat but crashed / missed but rallied), make that paradox the entire angle."
-        ),
-    },
-    "fear_gauge": {
-        "name": "Fear Gauge",
-        "style": (
-            "Franchise: FEAR GAUGE. Lead with the extreme sentiment number (Fear & Greed "
-            "score or VIX spike). Explain what the gauge measures in one sentence, then "
-            "what happened historically at similar extremes — without promising outcomes."
-        ),
-    },
-    "reddit_radar": {
-        "name": "Reddit Radar",
-        "style": (
-            "Franchise: REDDIT RADAR. Lead with the mention explosion: this ticker's chatter "
-            "is up X% in 24 hours on r/wallstreetbets. Cover WHY retail is piling in, and "
-            "close with the risk note that crowd hype cuts both ways."
-        ),
-    },
-    "analyst_shock": {
-        "name": "Analyst Alert",
-        "style": (
-            "Franchise: ANALYST ALERT. Lead with the bank name and the shocking number — "
-            "a price target far above/below the current price, or a hard rating flip. "
-            "Angle: what does this desk see that the market price doesn't?"
-        ),
-    },
-    "market_close": {
-        "name": "Market Close in 60 Seconds",
-        "style": (
-            "Franchise: MARKET CLOSE IN 60 SECONDS. Fixed structure: indexes first (S&P, "
-            "Nasdaq, Dow, VIX), then the single biggest driver of the day with its reason, "
-            "then one thing to watch tomorrow. Dense, data-first, zero filler."
-        ),
-    },
-}
+FRANCHISES: Dict[str, Dict[str, str]] = {'congress_trade': {'name': 'Congress Trade Alert',
+                    'style': 'Name the politician and company, then explain the disclosed '
+                             'transaction and reporting lag. State the transaction date. A '
+                             'disclosure is not evidence of current holdings, privileged knowledge '
+                             'or wrongdoing.'},
+ 'insider_watch': {'name': 'Insider Watch',
+                   'style': "Name the company and the filer's actual role. Explain the dated "
+                            'transaction and a limitation. A ten-percent owner is not '
+                            'automatically a CEO; a transaction does not prove motive or secret '
+                            'knowledge.'},
+ 'earnings_shock': {'name': 'Earnings Explained',
+                    'style': 'Name the company, compare reported earnings with estimates, and '
+                             'explain one supported implication. Distinguish profits, revenue and '
+                             'stock returns; do not invent a reason for the price reaction.'},
+ 'fear_gauge': {'name': 'Market Sentiment',
+                'style': 'Explain what the reported gauge measures. Do not invent historical '
+                         'comparisons or forecast returns.'},
+ 'reddit_radar': {'name': 'Reddit Discussion',
+                  'style': 'Mention counts measure discussion, not purchases, fund flows or '
+                           'sentiment. Do not infer what investors bought or sold.'},
+ 'analyst_shock': {'name': 'Analyst Update',
+                   'style': 'Name the company and published analyst action. A target versus '
+                            'market-price gap is not the size or direction of a target revision, '
+                            'and is not a promised return. Use the source headline to establish '
+                            'whether the target was cut or raised.'},
+ 'market_close': {'name': 'Company Catalyst',
+                  'style': 'Open with the company and the reported event. Explain one useful fact '
+                           'and one uncertainty. Do not begin with indexes or use an unrelated '
+                           'market comparison. A simultaneous news story does not establish '
+                           'causation.'}}
 
 
 def _is_us_ticker(symbol: str) -> bool:
@@ -95,8 +67,10 @@ def _is_us_ticker(symbol: str) -> bool:
 class StorySelector:
     def __init__(self, script_generator: Optional[ScriptGenerator] = None):
         self.sg = script_generator or ScriptGenerator()
-        # Populated by select(); readers must tolerate [] (dedup is never a blocker)
+        # Populated from authenticated, complete publication history.
         self.recent_titles: List[str] = []
+        self.recent_uploads: List[Dict] = []
+        self.decision_log: List[Dict] = []
 
     # ---------- Rule-based scoring ----------
 
@@ -338,54 +312,10 @@ class StorySelector:
     # ---------- LLM angle selection ----------
 
     def _recent_upload_titles(self, days: int = 5) -> List[str]:
-        """Titles of the channel's uploads from the last N days.
-
-        Stateless dedup source: CI runners are ephemeral, so the channel
-        itself is the only durable record of which stories already ran.
-        Any failure returns [] — dedup is a filter, never a blocker.
-        """
-        try:
-            from youtube_publisher import YouTubePublisher
-            YouTubePublisher()  # materializes token.json from env on CI
-            from config import BASE_DIR
-            token_path = BASE_DIR / "token.json"
-            if not token_path.exists():
-                return []
-            from google.oauth2.credentials import Credentials
-            from google.auth.transport.requests import Request
-            from googleapiclient.discovery import build
-            creds = Credentials.from_authorized_user_file(str(token_path))
-            if creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            yt = build("youtube", "v3", credentials=creds)
-            ch = yt.channels().list(part="contentDetails", mine=True).execute()
-            items = ch.get("items", [])
-            if not items:
-                return []
-            uploads = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
-            res = yt.playlistItems().list(
-                part="snippet", playlistId=uploads, maxResults=20
-            ).execute()
-            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-            titles = []
-            for it in res.get("items", []):
-                sn = it["snippet"]
-                pub = sn.get("publishedAt", "")
-                if pub and datetime.fromisoformat(pub.replace("Z", "+00:00")) >= cutoff:
-                    titles.append(sn["title"])
-            return titles
-        except Exception as e:
-            logger.warning(f"Could not fetch recent uploads for dedup: {e}")
-            # A broken YouTube token silently disables BOTH name-level and
-            # title-shape dedup — invisible repeat risk, so tell the operator
-            try:
-                from telegram_bot import TelegramApprovalBot
-                TelegramApprovalBot().send_text(
-                    f"⚠️ Dedup devre dışı: son yüklemeler çekilemedi ({e}). "
-                    "Bu video yakın tarihli bir hikâyeyi tekrarlayabilir.")
-            except Exception:
-                pass
-            return []
+        self.recent_uploads = fetch_upload_history(days=30)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        return [row['title'] for row in self.recent_uploads
+                if parse_time(row['published_at']) >= cutoff]
 
     # Generic corporate words that don't identify a company in a title
     _GENERIC_NAME_WORDS = {
@@ -404,7 +334,7 @@ class StorySelector:
         if len(ticker) >= 2:
             terms.append(ticker)
         facts = c.get("facts", {}) or {}
-        name = str(facts.get("name") or facts.get("companyName") or facts.get("company") or "")
+        name = str(facts.get("name") or facts.get("companyName") or facts.get("company") or facts.get("asset") or "")
         for w in re.split(r"[^A-Za-z]+", name):
             if len(w) >= 4 and w.lower() not in cls._GENERIC_NAME_WORDS:
                 terms.append(w)
@@ -434,8 +364,8 @@ class StorySelector:
                     f"'{hit}' already covered in a recent upload")
                 continue
             kept.append(c)
-        # Never return an empty slate — a repeat beats no video at all
-        return kept or candidates
+        # An empty slate must remain empty; never restore rejected repeats.
+        return kept
 
     @staticmethod
     def _franchise_weights() -> Dict[str, float]:
@@ -462,19 +392,79 @@ class StorySelector:
             logger.warning(f"Could not compute franchise weights: {e}")
             return {}
 
-    def select(self, pool: Dict[str, Any], top_n: int = 3) -> Dict[str, Any]:
-        """Returns the chosen story: candidate fields + 'angle', 'why_it_matters'."""
-        candidates = self.build_candidates(pool)
+    def eligible_candidates(self, pool: Dict[str, Any]) -> List[Dict]:
+        """Enforce source eligibility and dedup before spending on generation."""
+        from data_fetcher import ny_now
+        self.recent_titles = self._recent_upload_titles()
+        self.decision_log = []
+        candidates = []
+        for candidate in self.build_candidates(pool):
+            reason = qualify(candidate, today=ny_now().date(), minimum_score=MIN_SHORTS_STORY_SCORE)
+            if not reason:
+                reason = self._covered_reason(candidate)
+            self.decision_log.append({'ticker': candidate.get('ticker'),
+                                     'headline': candidate['headline'],
+                                     'eligible': not reason, 'reason': reason or 'qualified',
+                                     'event_ids': candidate.get('event_ids', [])})
+            if reason:
+                logger.info('Editorial skip %s: %s', candidate.get('ticker'), reason)
+            else:
+                candidates.append(candidate)
+        return candidates
+
+    def _covered_reason(self, candidate):
+        if any(repeated_event(candidate, row) for row in self.recent_uploads):
+            return 'same sourced event already uploaded (30-day history)'
+        now = datetime.now(timezone.utc)
+        if any(row['machine'].get('sym') == candidate.get('ticker') and
+               parse_time(row['published_at']) >= now - timedelta(hours=48)
+               for row in self.recent_uploads):
+            return 'company already covered within 48 hours (all formats)'
+        legacy = [row['title'] for row in self.recent_uploads
+                  if not row.get('event_ids') and
+                  parse_time(row['published_at']) >= now - timedelta(days=5)]
+        if not self._drop_recently_covered([candidate], legacy):
+            return 'company already covered in recent legacy upload'
+        if self._legacy_headline_match(candidate, legacy):
+            return 'source headline matches company in recent legacy upload'
+        return ''
+
+    def publication_allowed(self, story):
+        """Re-read just before upload: another publisher may have run during render."""
+        self._recent_upload_titles()
+        reason = self._covered_reason(story)
+        if reason:
+            logger.info('Pre-upload skip: %s', reason)
+        return not reason
+
+    @staticmethod
+    def _legacy_headline_match(candidate, titles):
+        facts = candidate.get('facts') or {}
+        headline = facts.get('headline', '')
+        if not headline:
+            return False
+        # Two adjacent distinctive words, e.g. Centrus Energy, in BOTH the
+        # source headline and old title. Generic analyst phrases are ignored.
+        stop = {'price', 'target', 'stock', 'shares', 'raises', 'raised', 'cuts',
+                'cut', 'maintains', 'buy', 'sell', 'hold', 'from', 'with', 'the',
+                'for', 'and', 'to', 'on', 'at', 'of', 'by', 'is', 'in', 'a'}
+        words = re.findall(r"[a-z]+", headline.lower())
+        phrases = [' '.join((a, b)) for a, b in zip(words, words[1:])
+                   if len(a) > 2 and len(b) > 2 and a not in stop and b not in stop]
+        return any(re.search(rf'\b{re.escape(phrase)}\b', title.lower())
+                   for phrase in phrases for title in titles)
+
+    def select(self, pool: Dict[str, Any], top_n: int = 3) -> Optional[Dict[str, Any]]:
+        """Return one qualified story, or None for an explicit editorial skip."""
+        candidates = self.eligible_candidates(pool)
+        if not candidates:
+            logger.info('No fresh qualified story; publication slot skipped')
+            return None
         try:
             from outlier_scanner import recent_market_trends
             self._apply_market_trends(candidates, recent_market_trends())
         except Exception as e:
             logger.warning("Market trend scan unavailable (%s); using sourced candidates", type(e).__name__)
-        # Kept on the instance so the script generator can reuse them for
-        # title-SHAPE dedup without a second YouTube API call — same-skeleton
-        # titles ("TICKER Did X — A or B?") repeat even when the company differs.
-        self.recent_titles = self._recent_upload_titles()
-        candidates = self._drop_recently_covered(candidates, self.recent_titles)
         candidates.sort(key=lambda c: c["score"], reverse=True)
         # Analytics feedback: formats that held viewers recently score higher,
         # underperformers lower. Neutral (x1.0) when there isn't enough data.
@@ -498,6 +488,8 @@ class StorySelector:
         chosen, llm = top[0], None
         try:
             llm = self._llm_pick(pool, top)
+        except ProviderAccountError:
+            raise
         except ScriptGenerationError as e:
             logger.warning(f"LLM angle selection failed, using top-scored candidate: {e}")
 
@@ -508,10 +500,10 @@ class StorySelector:
             chosen = {
                 **chosen,
                 "angle": llm.get("angle", chosen["headline"]),
-                "why_it_matters": llm.get("why_it_matters", ""),
+                "why_it_matters": chosen["editorial_relevance"],
             }
         else:
-            chosen = {**chosen, "angle": chosen["headline"], "why_it_matters": ""}
+            chosen = {**chosen, "angle": chosen["headline"], "why_it_matters": chosen["editorial_relevance"]}
 
         chosen["franchise_name"] = FRANCHISES[chosen["franchise"]]["name"]
         chosen["franchise_style"] = FRANCHISES[chosen["franchise"]]["style"]
@@ -550,7 +542,8 @@ class StorySelector:
         cands = [
             {"index": i, "franchise": c["franchise"], "score": c["score"],
              "headline": c["headline"], "facts": c["facts"], "reasons": c["reasons"],
-             "market_interest": c.get("market_interest", [])}
+             "market_interest": c.get("market_interest", []),
+             "editorial_relevance": c.get("editorial_relevance", "")}
             for i, c in enumerate(top)
         ]
         prompt = f"""You are the editor-in-chief of "US Stock Market Daily", a data-first, no-hype finance Shorts channel.

@@ -24,9 +24,8 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 YOUTUBE_CLIENT_SECRET_FILE = os.getenv("YOUTUBE_CLIENT_SECRET_FILE", "client_secret.json")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")  # Data API key (outlier scanner)
 
-# Quality gate: Shorts slots skip production when the day's best story scores
-# below this (0-100 rule-based virality score). Weak stories retain ~15-25% of
-# viewers and drag the channel average down — no video beats a weak video.
+# Editorial floor for both formats, before trend or learned multipliers.
+# This is a heuristic admission rule, not a measured retention guarantee.
 MIN_SHORTS_STORY_SCORE = float(os.getenv("MIN_SHORTS_STORY_SCORE", "55"))
 
 # Persistent data

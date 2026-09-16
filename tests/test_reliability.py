@@ -113,13 +113,13 @@ class PipelineTests(unittest.TestCase):
                      franchise='insider_watch', franchise_name='Insider Watch',
                      franchise_style='', why_it_matters='', angle='')
         pool = {'movers': {'gainers': [{'symbol': 'TEST'}]}}
-        with ExitStack() as stack:
+        with TemporaryDirectory() as directory, ExitStack() as stack:
+            stack.enter_context(patch.object(main, "OUTPUT_DIR", Path(directory)))
             mocked = {name: stack.enter_context(patch.object(main, name)) for name in [
                 'FMPDataFetcher', 'StoryPoolCollector', 'StorySelector', 'ScriptGenerator',
                 'VoiceGenerator', 'SubtitleGenerator', 'VideoEngine', 'TelegramApprovalBot',
-                'YouTubePublisher', 'summarize_pool', 'compact_pool', 'cleanup_temp', 'get_audio_duration']}
+                'YouTubePublisher', 'summarize_pool', 'cleanup_temp', 'get_audio_duration']}
             mocked['summarize_pool'].return_value = ''
-            mocked['compact_pool'].return_value = {'market': {}}
             mocked['StoryPoolCollector'].return_value.collect.return_value = pool
             mocked['StorySelector'].return_value.select.return_value = story
             mocked['ScriptGenerator'].return_value.generate_shorts_script.return_value = {

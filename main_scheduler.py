@@ -1,13 +1,15 @@
 import json
 import logging
+import os
 import shutil
 import subprocess
 import time
 from content_checks import validate_hero_number
+from editorial_policy import publication_tags, validate_editorial_script
 from datetime import datetime
 
 from data_fetcher import FMPDataFetcher, FMPDataError, ny_now
-from story_pool import StoryPoolCollector, summarize_pool, compact_pool
+from story_pool import StoryPoolCollector, summarize_pool
 from story_selector import StorySelector
 from script_generator import ScriptGenerator, ScriptGenerationError
 from voice_generator import VoiceGenerator
@@ -15,7 +17,7 @@ from subtitle_generator import SubtitleGenerator
 from video_engine import VideoEngine, LONG_BG_CLIPS
 from telegram_bot import TelegramApprovalBot
 from youtube_publisher import YouTubePublisher
-from config import TEMP_DIR, OUTPUT_DIR, ELEVENLABS_VOICE_ID, MIN_SHORTS_STORY_SCORE
+from config import TEMP_DIR, OUTPUT_DIR, ELEVENLABS_VOICE_ID
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("YT_AUTO")
@@ -68,10 +70,13 @@ def cleanup_temp(max_age_days: float = 3.0) -> None:
         pass
 
 
-def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False):
+def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False, selection_only: bool = False):
     """Executes full automated pipeline for creating a YouTube Shorts or Long video."""
     is_shorts = (video_type == "shorts")
     logger.info(f"=== STARTING AUTOMATED PIPELINE: {video_type.upper()} ===")
+
+    for evidence_name in ('editorial_decision.json', 'editorial_story.json', 'editorial_publication.json'):
+        (OUTPUT_DIR / evidence_name).unlink(missing_ok=True)
 
     # 1. Collect the day's story pool — backbone failures abort, no fake fallbacks
     try:
@@ -84,28 +89,33 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False)
     # 2. Story selection engine: score candidates, LLM picks the day's angle
     sg = ScriptGenerator()
     selector = StorySelector(sg)
-    story = selector.select(pool)
-
-    # Quality gate (Shorts only): a weak story tanks retention and trains the
-    # algorithm that the channel is skippable. Skipping the slot is a decision,
-    # not a failure — informational Telegram note, no alarm.
-    if is_shorts and story.get("score", 100) < MIN_SHORTS_STORY_SCORE:
-        msg = (f"⏭️ Slot atlandı — günün en iyi hikâyesi zayıf "
-               f"(skor {story.get('score', 0):.0f} < {MIN_SHORTS_STORY_SCORE:.0f}): "
-               f"{story['headline']}")
-        logger.info(msg)
-        TelegramApprovalBot().send_text(msg)
+    decision_path = OUTPUT_DIR / 'editorial_decision.json'
+    selection_status = 'failed'
+    try:
+        if selection_only:
+            candidates = selector.eligible_candidates(pool)
+            selection_status = 'selection_only'
+            return {'eligible': len(candidates), 'decisions': selector.decision_log}
+        story = selector.select(pool)
+        selection_status = 'selected' if story else 'skipped'
+    finally:
+        # No prompts, credentials or HTTP exception bodies in persisted artifacts.
+        decision_path.write_text(json.dumps({
+            'created_at': datetime.now().isoformat(), 'run_id': os.getenv('GITHUB_RUN_ID', ''),
+            'mode': video_type, 'status': selection_status, 'candidates': selector.decision_log,
+        }, indent=2, default=str), encoding='utf-8')
+    if story is None:
+        logger.info('Slot skipped: no fresh, sourced story met the editorial rules')
         return
 
+
     # 3. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
-    digest = compact_pool(pool)
     try:
         if is_shorts:
             data_summary = (
                 f"SELECTED STORY ({story['franchise_name']}): {story['headline']}\n"
                 f"Why it matters: {story['why_it_matters']}\n"
-                f"Story facts: {json.dumps(story['facts'], default=str)}\n"
-                f"Market context: {json.dumps(digest['market'], default=str)}"
+                f"Story facts: {json.dumps(story['facts'], default=str)}"
             )
             script_data = sg.generate_shorts_script(
                 topic=story["headline"],
@@ -116,11 +126,17 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False)
             )
         else:
             script_data = sg.generate_long_script(market_data={
-                **digest,
                 "selected_story": {k: story[k] for k in ("franchise_name", "headline", "angle", "facts")},
             })
     except ScriptGenerationError as e:
         abort_pipeline(str(e))
+
+    editorial_errors = validate_editorial_script(script_data, story)
+    if editorial_errors:
+        abort_pipeline('Editorial script check failed: ' + '; '.join(editorial_errors))
+    (OUTPUT_DIR / 'editorial_story.json').write_text(json.dumps({
+        'story': story, 'script': script_data,
+    }, indent=2, default=str), encoding='utf-8')
 
     # The chart must match the story — the selector's ticker wins over the LLM's
     ticker = story["ticker"] or script_data.get("ticker") or pool["movers"]["gainers"][0]["symbol"]
@@ -231,6 +247,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False)
                 "tags": script_data.get("tags", ["stocks", "finance"]),
                 "is_shorts": is_shorts,
                 "voice_id": ELEVENLABS_VOICE_ID,
+                "extra_tags": [f"fr:{story['franchise']}", f"fmt:{video_type}"] + publication_tags(story, is_shorts),
                 "contains_synthetic_media": ve.used_ai_video,
             },
         )
@@ -240,6 +257,10 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False)
     # 8. Fully autonomous publish: upload first, then send the Telegram preview.
     # Measured duration is retained for pacing calibration. This is a deliberate design decision (2026-08-16) — the
     # old inline-button approval flow was removed, there is no human gate.
+    if not selector.publication_allowed(story):
+        logger.info('Upload skipped: publication history changed while rendering')
+        cleanup_temp()
+        return
     bot = TelegramApprovalBot()
     yp = YouTubePublisher()
     video_id = yp.upload_video(
@@ -257,9 +278,13 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False)
             f"w:{len(script_data['full_script'].split())}",
             f"v:{vg.engine_used or 'unknown'}",
             f"fmt:{video_type}",
-        ],
+        ] + publication_tags(story, is_shorts),
     )
     if video_id:
+        (OUTPUT_DIR / 'editorial_publication.json').write_text(json.dumps({
+            'video_id': video_id, 'title': script_data['title'],
+            'event_ids': story.get('event_ids', []), 'tags': publication_tags(story, is_shorts),
+        }, indent=2), encoding='utf-8')
         logger.info(f"Published to YouTube! Video ID: {video_id}")
         bot.send_text(f"✅ Yayında ({audio_dur:.0f}sn): https://youtu.be/{video_id}")
         # Preview conversion/upload must not delay publication of market news.
@@ -316,6 +341,8 @@ if __name__ == "__main__":
                         choices=["shorts", "long", "event-check"],
                         help="shorts/long: produce a video; "
                              "event-check: exit 0 on CPI/FOMC/mega-earnings days (for cron turbo mode)")
+    parser.add_argument("--selection-only", action="store_true",
+                        help="Read live data and publication history; no generation or upload")
     parser.add_argument("--prepare-presenter", action="store_true",
                         help="Prepare Creator avatar speech excerpts and base video; do not publish")
     args = parser.parse_args()
@@ -335,11 +362,13 @@ if __name__ == "__main__":
 
     logger.info("Starting Youtube Stock Automation Engine...")
     try:
-        run_pipeline(args.mode, prepare_presenter=args.prepare_presenter)
+        run_pipeline(args.mode, prepare_presenter=args.prepare_presenter, selection_only=args.selection_only)
     except SystemExit:
         raise  # abort_pipeline already alerted and set the exit code
     except Exception as e:
         # Catch-all: an unexpected exception anywhere in the pipeline used to
         # die with a traceback in CI logs only — no Telegram, green check
         logger.exception("Unhandled pipeline error")
+        if args.selection_only:
+            raise SystemExit(1)
         abort_pipeline(f"Beklenmeyen hata: {type(e).__name__}: {e}")

@@ -18,7 +18,7 @@ SCHEDULE_MODES = {
 def resolve_mode(event_name: str, event: dict, run_created_at: str = "") -> str:
     if event_name == "workflow_dispatch":
         mode = event.get("inputs", {}).get("mode") or "shorts"
-        if mode not in ("shorts", "long", "analytics", "comments"):
+        if mode not in ("shorts", "long", "analytics", "comments", "audit"):
             raise ValueError("Unsupported manual pipeline mode")
         return mode
     if event_name != "schedule":

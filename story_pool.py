@@ -89,6 +89,7 @@ class StoryPoolCollector:
                 by_symbol[sym].append({
                     "title": item.get("title", ""),
                     "publishedDate": item.get("publishedDate", ""),
+                    "url": item.get("url", ""),
                 })
         return by_symbol
 
@@ -222,6 +223,7 @@ class StoryPoolCollector:
                 )
                 reported_today.append({
                     "symbol": row["symbol"],
+                    "date": row["date"],
                     "epsActual": actual,
                     "epsEstimated": est,
                     "surprise_pct": surprise_pct,

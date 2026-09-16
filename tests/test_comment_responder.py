@@ -164,7 +164,7 @@ class CommentResponderTests(unittest.TestCase):
 
     def workflow_shell(self, mode, event_rc=0):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/youtube_auto.yml').read_text()
-        shell = textwrap.dedent('          MODE=' + workflow.split('          MODE=', 1)[1])
+        shell = textwrap.dedent('          MODE=' + workflow.split('          MODE=', 1)[1].split('\n      - ', 1)[0])
         shell = shell.replace('${{ steps.mode.outputs.mode }}', mode)
         # Execute the real workflow dispatch shell with harmless fake commands.
         prelude = f'''

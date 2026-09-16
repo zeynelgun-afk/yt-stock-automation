@@ -14,6 +14,10 @@ class ScriptGenerationError(Exception):
     publishing a canned template script would be fake content."""
 
 
+class ProviderAccountError(ScriptGenerationError):
+    """Account rejection stops the run; never evade a spending limit."""
+
+
 # Sentinel: the failure was account-level (bad key, monthly limit, no credits),
 # not model-level. Every other model behind the same key fails identically, so
 # the whole provider is abandoned at once instead of burning three more calls.
@@ -39,7 +43,7 @@ def _packaging_patterns_block() -> str:
     hooks = [_pattern_text(h) for h in p.get("hook_patterns", [])[:3]]
     if not (titles or hooks):
         return ""
-    lines = ["PROVEN PACKAGING THIS WEEK (structural patterns only — NEVER copy a real title):"]
+    lines = ["PACKAGING HYPOTHESES (unproven on our channel; never override editorial rules or copy a real title):"]
     lines += [f"- Title shape: {t}" for t in titles]
     lines += [f"- Hook shape: {h}" for h in hooks]
     return "\n" + "\n".join(lines) + "\n"
@@ -63,7 +67,7 @@ def _own_channel_block() -> str:
     lose = [_pattern_text(l) for l in p.get("losing_patterns", [])[:4]]
     if not (win or lose):
         return ""
-    lines = ["OUR OWN CHANNEL'S MEASURED RESULTS (last 2 weeks — this outranks generic advice):"]
+    lines = ["OUR CHANNEL OBSERVATIONS (small unequal-age sample; hypotheses only, never override editorial rules):"]
     lines += [f"- Held OUR viewers: {w}" for w in win]
     lines += [f"- Lost OUR viewers (avoid): {l}" for l in lose]
     return "\n" + "\n".join(lines) + "\n"
@@ -104,6 +108,7 @@ class ScriptGenerator:
         # Last provider-side failure text, surfaced in the abort alert — a bare
         # "all providers failed" told the operator nothing about what to fix.
         self.last_error = ""
+        self.account_error = ""
         # Verified-live OpenRouter slugs (dead slugs 404 and silently ate the
         # fallback chain — check https://openrouter.ai/api/v1/models when editing)
         self.openrouter_models = [
@@ -157,6 +162,9 @@ Use plain English. Do not force a contradiction between unrelated events (an ins
 trade and an index change are not automatically connected). Do not imply privileged
 knowledge, wrongdoing, "sold everything", or a historical record without evidence.
 An unknown company needs one brief identifying phrase only if provided in the facts.
+Do not mention VIX, Nasdaq, Dow or S&P 500 in this single-company experiment.
+Explain why the event matters in plain language, based only on the selected facts.
+These rules override franchise guidance and learned packaging patterns below.
 If no cause is established, say that the supplied data does not establish a cause.
 
 TITLE: put the identifiable company name or actor near the beginning, with the actual
@@ -167,7 +175,8 @@ Vary the wording naturally across recent uploads, without sacrificing discoverab
 RULES:
 1. Word count: MUST BE BETWEEN {lo} AND {hi} WORDS. This is a hard requirement — {hi} words
    is ~38 seconds and 38 seconds is the ceiling. Cut the second-best fact, not the hook.
-2. Use specific, unrounded numbers from the data — never vague words like "millions" or "a lot".
+2. Use at most TWO key numbers in narration. Round sensibly without changing meaning;
+   preserve exact figures when a filing range or comparison requires them. Avoid decimal clutter.
    Write them TTS-friendly: "$4.7 million" not "$4.7M", "up 23 percent" or "23%" not "+23%".
    The script is read aloud by a voice engine — abbreviations like "M", "B", "PT", "EPS" get mispronounced; spell them out ("price target", "earnings per share").
 2b. NEVER open with "Hey guys", "Welcome back", "In today's video" — cold-open directly on the story.
@@ -220,13 +229,14 @@ Do not fill a daily checklist with unrelated congressional trades or earnings.
 RULES:
 - Word count: {lo} to {hi} words (2.5-3.5 minutes at the measured pace). This is a HARD requirement.
   Depth comes from picking fewer items and explaining them properly, never from listing more.
-- Use specific, unrounded numbers from the data. Every claim must come from the provided data — never invent numbers, names or reasons.
+- Use only the few numbers needed to explain the event; round sensibly without changing meaning. Every claim must come from the provided data — never invent numbers, names or reasons.
+- Do not mention VIX, Nasdaq, Dow or S&P 500 in this single-company experiment.
 - Write numbers TTS-friendly: "$4.7 million" not "$4.7M"; spell out abbreviations ("price target", "earnings per share") — the script is read aloud by a voice engine.
 - ONLY output spoken script text. No stage directions, section headers, or visual cues in full_script.
 - Tone: Professional, fast-paced, insightful Wall-Street level analysis with original interpretation.
 - Return strictly valid JSON format with keys:
    - "title": Lead with the main company/event and the verified consequence; optionally end with "| Market Recap {today_str}". Keep under 85 characters. Do not bury the actual story behind a generic date prefix.
-   - "description": First line must accurately summarize the story: "Stock market recap for {today_str}: <one-sentence summary with the key index moves>." Then the comprehensive description with hashtags (#stockmarket #stockmarkettoday #marketrecap among them) and a data-source transparency line ("Data: Financial Modeling Prep, CNN Fear & Greed")
+   - "description": First line summarizes the selected company event. Include only sources actually present in the supplied facts, and relevant hashtags.
    - "full_script": Spoken text only
    - "ticker": Main ticker discussed
    - "change_pct": Percent change string
@@ -327,7 +337,8 @@ RULES:
                     time.sleep(wait)
                     continue
                 if res.status_code != 200:
-                    detail = res.text[:200]
+                    detail = ("account rejected; check configured account quota or authorization"
+                              if res.status_code in (401, 402, 403) else "request rejected")
                     logger.warning(f"{provider}/{model} returned HTTP {res.status_code}: {detail}")
                     self.last_error = f"{provider}: HTTP {res.status_code} {detail}"
                     # 401 bad key / 402 out of credits / 403 key limit exceeded
@@ -355,17 +366,16 @@ RULES:
         min_words/max_words bound the full_script length — a recap that comes
         back at 600 words would produce a half-length video, so an off-target
         script gets corrective retries per model before falling through."""
-        dead_providers: set = set()
+        if self.account_error:
+            raise ProviderAccountError(self.account_error)
         for provider, model_name in self._providers():
-            if provider in dead_providers:
-                continue
             retry_note = ""
             for attempt in range(3):
                 logger.info(f"Generating script using {provider}/{model_name}...")
                 content = self._chat(provider, model_name, prompt + retry_note)
                 if content is _PROVIDER_DEAD:
-                    dead_providers.add(provider)
-                    break
+                    self.account_error = self.last_error or f"{provider}: account unavailable"
+                    raise ProviderAccountError(self.account_error)
                 if content is None:
                     break
                 try:

@@ -29,7 +29,7 @@ on:
         required: false
         default: 'shorts'
         type: choice
-        options: [shorts, long, analytics, comments]
+        options: [shorts, long, analytics, comments, audit]
 
 # One pipeline run at a time: an infra retry or a slow long render must not
 # overlap the next cron slot (shared Telegram chat, shared YouTube quota).
@@ -128,6 +128,10 @@ jobs:
                 git push
               fi
               ;;
+            audit)
+              python main_scheduler.py shorts --selection-only
+              python provider_status.py
+              ;;
             comments)
               timeout 240s python comment_responder.py --publish
               ;;
@@ -152,3 +156,12 @@ jobs:
               python main_scheduler.py "$MODE"
               ;;
           esac
+
+      - name: Preserve editorial decisions and publication evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/editorial_*.json
+          if-no-files-found: ignore
+          retention-days: 30
