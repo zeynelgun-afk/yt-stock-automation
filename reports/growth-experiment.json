@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20260916",
   "started_at": "2026-09-16T11:24:59Z",
-  "generated_at": "2026-09-16T11:45:01.607662+00:00",
+  "generated_at": "2026-09-17T15:01:30.662927+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -11,16 +11,16 @@
   "cohorts": {
     "baseline": {
       "selected": 10,
-      "available": 5,
-      "engaged_views": 74,
-      "median_views": 51,
-      "median_engaged_views": 18,
-      "median_average_view_seconds": 21,
+      "available": 9,
+      "engaged_views": 86,
+      "median_views": 7,
+      "median_engaged_views": 4,
+      "median_average_view_seconds": 24,
       "subscribers_gained": 0,
       "subscribers_per_1000_engaged": 0.0
     },
     "experiment": {
-      "selected": 1,
+      "selected": 3,
       "available": 0,
       "engaged_views": 0,
       "median_views": null,
@@ -48,8 +48,14 @@
       "published_at": "2026-09-12T04:52:09Z",
       "window_start": "2026-09-12",
       "window_end": "2026-09-14",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 13,
+        "engagedViews": 5,
+        "averageViewDuration": 43,
+        "averageViewPercentage": 129.3,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -58,8 +64,14 @@
       "published_at": "2026-09-11T19:28:57Z",
       "window_start": "2026-09-12",
       "window_end": "2026-09-14",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 5,
+        "engagedViews": 1,
+        "averageViewDuration": 35,
+        "averageViewPercentage": 100.90999999999998,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -68,8 +80,14 @@
       "published_at": "2026-09-11T17:10:07Z",
       "window_start": "2026-09-12",
       "window_end": "2026-09-14",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 7,
+        "engagedViews": 4,
+        "averageViewDuration": 17,
+        "averageViewPercentage": 47.94,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -78,8 +96,14 @@
       "published_at": "2026-09-11T16:42:14Z",
       "window_start": "2026-09-12",
       "window_end": "2026-09-14",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 5,
+        "engagedViews": 2,
+        "averageViewDuration": 24,
+        "averageViewPercentage": 68.91,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -166,6 +190,26 @@
       "video_id": "QO_dGriCQ8Y",
       "title": "Microsoft: Gottheimer's Buy Disclosed 32 Days Later",
       "published_at": "2026-09-16T11:40:54Z",
+      "window_start": "2026-09-17",
+      "window_end": "2026-09-19",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "pG8DUhCJnCw",
+      "title": "DataMEDS AI Up 279% on Cancer Lab Deal Report",
+      "published_at": "2026-09-16T17:46:23Z",
+      "window_start": "2026-09-17",
+      "window_end": "2026-09-19",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "1GFK92U-zwU",
+      "title": "Xenetic Biosciences Fell 50% on Santersus Deal Day",
+      "published_at": "2026-09-16T19:53:03Z",
       "window_start": "2026-09-17",
       "window_end": "2026-09-19",
       "status": "pending",

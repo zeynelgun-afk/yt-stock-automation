@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-16T11:45:01.607662+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-17T15:01:30.662927+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -8,8 +8,8 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
-| Önceki Shorts | 10 / 5 | 51 | 18 | 0 |
-| Yeni deney | 1 / 0 | — | — | — |
+| Önceki Shorts | 10 / 9 | 7 | 4 | 0 |
+| Yeni deney | 3 / 0 | — | — | — |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
@@ -20,15 +20,17 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | Video | Grup | Ölçüm tarihleri (Pasifik) | Durum |
 |---|---|---|---|
 | [SPY #1 on WSB: Retail Bought the Index, Not Stocks](https://youtu.be/azStJGo0tR4) | baseline | 2026-09-15 – 2026-09-17 | pending |
-| [Centrus Energy's Lowered Target Is Still $107 Away](https://youtu.be/xwhNR8vk8yo) | baseline | 2026-09-12 – 2026-09-14 | pending |
-| [Centrus Energy at $162.93, Target Cut to $270](https://youtu.be/lGruFsABUC0) | baseline | 2026-09-12 – 2026-09-14 | pending |
-| [Centrus Energy: Northland Cut Its Target, Still +66%](https://youtu.be/udjJtcVhcjs) | baseline | 2026-09-12 – 2026-09-14 | pending |
-| [Booker Sold Amazon Aug 11. You Found Out Sept 9.](https://youtu.be/y21IkeHb0IE) | baseline | 2026-09-12 – 2026-09-14 | pending |
+| [Centrus Energy's Lowered Target Is Still $107 Away](https://youtu.be/xwhNR8vk8yo) | baseline | 2026-09-12 – 2026-09-14 | available |
+| [Centrus Energy at $162.93, Target Cut to $270](https://youtu.be/lGruFsABUC0) | baseline | 2026-09-12 – 2026-09-14 | available |
+| [Centrus Energy: Northland Cut Its Target, Still +66%](https://youtu.be/udjJtcVhcjs) | baseline | 2026-09-12 – 2026-09-14 | available |
+| [Booker Sold Amazon Aug 11. You Found Out Sept 9.](https://youtu.be/y21IkeHb0IE) | baseline | 2026-09-12 – 2026-09-14 | available |
 | [LEXX Raised $5.9M and Fell 38.6% the Same Day](https://youtu.be/ws301zBpIrw) | baseline | 2026-09-11 – 2026-09-13 | available |
 | [Uber's CEO Bought $10M as the VIX Rose 9.8%](https://youtu.be/h3SQQJSV35E) | baseline | 2026-09-11 – 2026-09-13 | available |
 | [DBGI's 46.7% Jump Isn't Growth. It's a Buyout.](https://youtu.be/fQbwjblQ8g8) | baseline | 2026-09-11 – 2026-09-13 | available |
 | [TNON Up 71.7% on a Day the VIX Rose 6.87%](https://youtu.be/DR3zvr7ocF4) | baseline | 2026-09-11 – 2026-09-13 | available |
 | [TTAN Fell 29.98%. Law Firms Called at 1:51pm](https://youtu.be/JS0Al5N7tME) | baseline | 2026-09-10 – 2026-09-12 | available |
 | [Microsoft: Gottheimer's Buy Disclosed 32 Days Later](https://youtu.be/QO_dGriCQ8Y) | experiment | 2026-09-17 – 2026-09-19 | pending |
+| [DataMEDS AI Up 279% on Cancer Lab Deal Report](https://youtu.be/pG8DUhCJnCw) | experiment | 2026-09-17 – 2026-09-19 | pending |
+| [Xenetic Biosciences Fell 50% on Santersus Deal Day](https://youtu.be/1GFK92U-zwU) | experiment | 2026-09-17 – 2026-09-19 | pending |
 
 Kaynak: yetkili YouTube Data/Analytics API. [Takvim günü tanımı](https://developers.google.com/youtube/analytics/dimensions).
