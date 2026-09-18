@@ -1,11 +1,11 @@
 {
   "experiment_id": "growth-20260916",
   "started_at": "2026-09-16T11:24:59Z",
-  "generated_at": "2026-09-17T15:01:30.662927+00:00",
+  "generated_at": "2026-09-18T14:32:18.335066+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
-  "unclassified_legacy_videos": 26,
+  "unclassified_legacy_videos": 25,
   "status": "collecting_insufficient_sample",
   "thin_sample": true,
   "cohorts": {
@@ -20,7 +20,7 @@
       "subscribers_per_1000_engaged": 0.0
     },
     "experiment": {
-      "selected": 3,
+      "selected": 6,
       "available": 0,
       "engaged_views": 0,
       "median_views": null,
@@ -212,6 +212,36 @@
       "published_at": "2026-09-16T19:53:03Z",
       "window_start": "2026-09-17",
       "window_end": "2026-09-19",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "umFLw35iWKY",
+      "title": "Aethlon Medical Up 336% on All-Stock Biotech Merger",
+      "published_at": "2026-09-17T17:14:09Z",
+      "window_start": "2026-09-18",
+      "window_end": "2026-09-20",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "v5FauOumDsA",
+      "title": "Star Bulk Director Buys $2.1M of SBLK Shares",
+      "published_at": "2026-09-17T17:46:33Z",
+      "window_start": "2026-09-18",
+      "window_end": "2026-09-20",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "g4w8mBYt9qg",
+      "title": "Travere CEO Sold $12.4M of TVTX — What Form 4 Omits",
+      "published_at": "2026-09-18T05:00:44Z",
+      "window_start": "2026-09-18",
+      "window_end": "2026-09-20",
       "status": "pending",
       "metrics": null
     }

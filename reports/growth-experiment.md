@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-17T15:01:30.662927+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-18T14:32:18.335066+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -9,7 +9,7 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 9 | 7 | 4 | 0 |
-| Yeni deney | 3 / 0 | — | — | — |
+| Yeni deney | 6 / 0 | — | — | — |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
@@ -32,5 +32,8 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [Microsoft: Gottheimer's Buy Disclosed 32 Days Later](https://youtu.be/QO_dGriCQ8Y) | experiment | 2026-09-17 – 2026-09-19 | pending |
 | [DataMEDS AI Up 279% on Cancer Lab Deal Report](https://youtu.be/pG8DUhCJnCw) | experiment | 2026-09-17 – 2026-09-19 | pending |
 | [Xenetic Biosciences Fell 50% on Santersus Deal Day](https://youtu.be/1GFK92U-zwU) | experiment | 2026-09-17 – 2026-09-19 | pending |
+| [Aethlon Medical Up 336% on All-Stock Biotech Merger](https://youtu.be/umFLw35iWKY) | experiment | 2026-09-18 – 2026-09-20 | pending |
+| [Star Bulk Director Buys $2.1M of SBLK Shares](https://youtu.be/v5FauOumDsA) | experiment | 2026-09-18 – 2026-09-20 | pending |
+| [Travere CEO Sold $12.4M of TVTX — What Form 4 Omits](https://youtu.be/g4w8mBYt9qg) | experiment | 2026-09-18 – 2026-09-20 | pending |
 
 Kaynak: yetkili YouTube Data/Analytics API. [Takvim günü tanımı](https://developers.google.com/youtube/analytics/dimensions).
