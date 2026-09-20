@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-19T13:55:59.911369+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-20T14:14:29.067324+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -8,7 +8,7 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
-| Önceki Shorts | 10 / 9 | 7 | 4 | 0 |
+| Önceki Shorts | 10 / 10 | 9.5 | 4.0 | 0 |
 | Yeni deney | 9 / 0 | — | — | — |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
@@ -19,7 +19,7 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 
 | Video | Grup | Ölçüm tarihleri (Pasifik) | Durum |
 |---|---|---|---|
-| [SPY #1 on WSB: Retail Bought the Index, Not Stocks](https://youtu.be/azStJGo0tR4) | baseline | 2026-09-15 – 2026-09-17 | pending |
+| [SPY #1 on WSB: Retail Bought the Index, Not Stocks](https://youtu.be/azStJGo0tR4) | baseline | 2026-09-15 – 2026-09-17 | available |
 | [Centrus Energy's Lowered Target Is Still $107 Away](https://youtu.be/xwhNR8vk8yo) | baseline | 2026-09-12 – 2026-09-14 | available |
 | [Centrus Energy at $162.93, Target Cut to $270](https://youtu.be/lGruFsABUC0) | baseline | 2026-09-12 – 2026-09-14 | available |
 | [Centrus Energy: Northland Cut Its Target, Still +66%](https://youtu.be/udjJtcVhcjs) | baseline | 2026-09-12 – 2026-09-14 | available |

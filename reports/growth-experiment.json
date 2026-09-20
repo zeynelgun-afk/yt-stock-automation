@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20260916",
   "started_at": "2026-09-16T11:24:59Z",
-  "generated_at": "2026-09-19T13:55:59.911369+00:00",
+  "generated_at": "2026-09-20T14:14:29.067324+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -11,11 +11,11 @@
   "cohorts": {
     "baseline": {
       "selected": 10,
-      "available": 9,
-      "engaged_views": 86,
-      "median_views": 7,
-      "median_engaged_views": 4,
-      "median_average_view_seconds": 24,
+      "available": 10,
+      "engaged_views": 89,
+      "median_views": 9.5,
+      "median_engaged_views": 4.0,
+      "median_average_view_seconds": 27.0,
       "subscribers_gained": 0,
       "subscribers_per_1000_engaged": 0.0
     },
@@ -38,8 +38,14 @@
       "published_at": "2026-09-14T18:11:05Z",
       "window_start": "2026-09-15",
       "window_end": "2026-09-17",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 12,
+        "engagedViews": 3,
+        "averageViewDuration": 30,
+        "averageViewPercentage": 83.16,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
