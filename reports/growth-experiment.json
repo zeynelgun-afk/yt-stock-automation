@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20260916",
   "started_at": "2026-09-16T11:24:59Z",
-  "generated_at": "2026-09-21T16:29:02.155317+00:00",
+  "generated_at": "2026-09-22T14:56:10.159487+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -20,14 +20,14 @@
       "subscribers_per_1000_engaged": 0.0
     },
     "experiment": {
-      "selected": 9,
-      "available": 0,
-      "engaged_views": 0,
-      "median_views": null,
-      "median_engaged_views": null,
-      "median_average_view_seconds": null,
+      "selected": 10,
+      "available": 3,
+      "engaged_views": 16,
+      "median_views": 22,
+      "median_engaged_views": 7,
+      "median_average_view_seconds": 33,
       "subscribers_gained": 0,
-      "subscribers_per_1000_engaged": null
+      "subscribers_per_1000_engaged": 0.0
     }
   },
   "videos": [
@@ -198,8 +198,14 @@
       "published_at": "2026-09-16T11:40:54Z",
       "window_start": "2026-09-17",
       "window_end": "2026-09-19",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 22,
+        "engagedViews": 7,
+        "averageViewDuration": 16,
+        "averageViewPercentage": 54.620000000000005,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -208,8 +214,14 @@
       "published_at": "2026-09-16T17:46:23Z",
       "window_start": "2026-09-17",
       "window_end": "2026-09-19",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 25,
+        "engagedViews": 8,
+        "averageViewDuration": 39,
+        "averageViewPercentage": 112.33,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -218,8 +230,14 @@
       "published_at": "2026-09-16T19:53:03Z",
       "window_start": "2026-09-17",
       "window_end": "2026-09-19",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 3,
+        "engagedViews": 1,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 105.63,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -278,6 +296,16 @@
       "published_at": "2026-09-19T04:52:42Z",
       "window_start": "2026-09-19",
       "window_end": "2026-09-21",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "LZNbC4Rgpr8",
+      "title": "Greenland Mines Hits $9.74 on Sarfartoq Land Move",
+      "published_at": "2026-09-21T18:18:50Z",
+      "window_start": "2026-09-22",
+      "window_end": "2026-09-24",
       "status": "pending",
       "metrics": null
     }
