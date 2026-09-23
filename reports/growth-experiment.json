@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20260916",
   "started_at": "2026-09-16T11:24:59Z",
-  "generated_at": "2026-09-22T14:56:10.159487+00:00",
+  "generated_at": "2026-09-23T15:02:27.850630+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -21,11 +21,11 @@
     },
     "experiment": {
       "selected": 10,
-      "available": 3,
-      "engaged_views": 16,
-      "median_views": 22,
-      "median_engaged_views": 7,
-      "median_average_view_seconds": 33,
+      "available": 6,
+      "engaged_views": 37,
+      "median_views": 23.5,
+      "median_engaged_views": 7.0,
+      "median_average_view_seconds": 32.0,
       "subscribers_gained": 0,
       "subscribers_per_1000_engaged": 0.0
     }
@@ -246,8 +246,14 @@
       "published_at": "2026-09-17T17:14:09Z",
       "window_start": "2026-09-18",
       "window_end": "2026-09-20",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 26,
+        "engagedViews": 10,
+        "averageViewDuration": 31,
+        "averageViewPercentage": 92.34,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -256,8 +262,14 @@
       "published_at": "2026-09-17T17:46:33Z",
       "window_start": "2026-09-18",
       "window_end": "2026-09-20",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 9,
+        "engagedViews": 4,
+        "averageViewDuration": 36,
+        "averageViewPercentage": 114.55,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -266,8 +278,14 @@
       "published_at": "2026-09-18T05:00:44Z",
       "window_start": "2026-09-18",
       "window_end": "2026-09-20",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 25,
+        "engagedViews": 7,
+        "averageViewDuration": 10,
+        "averageViewPercentage": 29.99,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
