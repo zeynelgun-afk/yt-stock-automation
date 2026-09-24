@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-23T15:02:27.850630+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-24T15:08:18.691549+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -9,7 +9,7 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 10 | 9.5 | 4.0 | 0 |
-| Yeni deney | 10 / 6 | 23.5 | 7.0 | 0 |
+| Yeni deney | 10 / 9 | 14 | 4 | 0 |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
@@ -35,9 +35,9 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [Aethlon Medical Up 336% on All-Stock Biotech Merger](https://youtu.be/umFLw35iWKY) | experiment | 2026-09-18 – 2026-09-20 | available |
 | [Star Bulk Director Buys $2.1M of SBLK Shares](https://youtu.be/v5FauOumDsA) | experiment | 2026-09-18 – 2026-09-20 | available |
 | [Travere CEO Sold $12.4M of TVTX — What Form 4 Omits](https://youtu.be/g4w8mBYt9qg) | experiment | 2026-09-18 – 2026-09-20 | available |
-| [Gottheimer Sold Up to $1M of Microsoft — 32-Day Lag](https://youtu.be/Z3gSMld--kA) | experiment | 2026-09-19 – 2026-09-21 | pending |
-| [John Rose's Alphabet Sale, Disclosed 15 Months Later](https://youtu.be/5fHksRfrS8E) | experiment | 2026-09-19 – 2026-09-21 | pending |
-| [Talen Energy Target Nudged to $514 — Not a Forecast](https://youtu.be/xHJbTGw7lFQ) | experiment | 2026-09-19 – 2026-09-21 | pending |
+| [Gottheimer Sold Up to $1M of Microsoft — 32-Day Lag](https://youtu.be/Z3gSMld--kA) | experiment | 2026-09-19 – 2026-09-21 | available |
+| [John Rose's Alphabet Sale, Disclosed 15 Months Later](https://youtu.be/5fHksRfrS8E) | experiment | 2026-09-19 – 2026-09-21 | available |
+| [Talen Energy Target Nudged to $514 — Not a Forecast](https://youtu.be/xHJbTGw7lFQ) | experiment | 2026-09-19 – 2026-09-21 | available |
 | [Greenland Mines Hits $9.74 on Sarfartoq Land Move](https://youtu.be/LZNbC4Rgpr8) | experiment | 2026-09-22 – 2026-09-24 | pending |
 
 Kaynak: yetkili YouTube Data/Analytics API. [Takvim günü tanımı](https://developers.google.com/youtube/analytics/dimensions).
