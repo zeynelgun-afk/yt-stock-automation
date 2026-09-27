@@ -1,15 +1,15 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-26T14:30:58.327588+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-27T18:23:09.595674+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
-Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
+Durum: Betimsel karşılaştırma için 10 + 10 video verisi var; nedensellik veya başarı kanıtı değildir.
 
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 10 | 9.5 | 4.0 | 0 |
-| Yeni deney | 10 / 9 | 14 | 4 | 0 |
+| Yeni deney | 10 / 10 | 18.0 | 5.5 | 0 |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
@@ -38,6 +38,6 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [Gottheimer Sold Up to $1M of Microsoft — 32-Day Lag](https://youtu.be/Z3gSMld--kA) | experiment | 2026-09-19 – 2026-09-21 | available |
 | [John Rose's Alphabet Sale, Disclosed 15 Months Later](https://youtu.be/5fHksRfrS8E) | experiment | 2026-09-19 – 2026-09-21 | available |
 | [Talen Energy Target Nudged to $514 — Not a Forecast](https://youtu.be/xHJbTGw7lFQ) | experiment | 2026-09-19 – 2026-09-21 | available |
-| [Greenland Mines Hits $9.74 on Sarfartoq Land Move](https://youtu.be/LZNbC4Rgpr8) | experiment | 2026-09-22 – 2026-09-24 | pending |
+| [Greenland Mines Hits $9.74 on Sarfartoq Land Move](https://youtu.be/LZNbC4Rgpr8) | experiment | 2026-09-22 – 2026-09-24 | available |
 
 Kaynak: yetkili YouTube Data/Analytics API. [Takvim günü tanımı](https://developers.google.com/youtube/analytics/dimensions).
