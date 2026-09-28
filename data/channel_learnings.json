@@ -1,136 +1,121 @@
 {
  "market_patterns": {
   "title_patterns": [
-   "[TICKER/COMPANY]: why are insiders buying [TICKER] stock? — question-form title naming a single verifiable filing event",
-   "Insiders just bought $[unrounded dollar total] of these [N] stocks — one stands out (aggregate number + finite list + one implied focal pick)",
-   "[N] [category] stock trades you need to see — small odd count (3/5/8) framing a screenable dataset, no directional prediction",
-   "[TICKER] stock: the [insider/institutional/filing] move most people missed — 'overlooked data point' framing on a mega-cap name",
-   "[EVENT] panel: [TICKER] — event-tagged, ultra-short label title that indexes on the ticker + calendar catalyst",
-   "[REGULATOR/INSTITUTION] didn't need [expected gatekeeper]. [Structural change] is now happening. — two-sentence title: fact, then consequence",
-   "What actually happened to [index/sector] this week — [N] numbers that explain it (curiosity framed as explanation, not alarm)",
-   "[Well-known market figure]'s latest disclosed position — what the filing actually says vs. the headline"
+   "[Insider group / named executive] just bought [specific unrounded dollar amount] of [N] stocks — what the filings actually show",
+   "Why insiders are [buying/selling] [SECTOR] stocks right now (the Form 4 data)",
+   "[TICKER] insider activity: [specific number] of transactions nobody covered",
+   "[N] congressional trades filed this month, ranked by size",
+   "What [specific dataset, e.g. 'every Form 4 since January'] says about [current market question]",
+   "[TICKER] earnings preview: the [N] numbers that decide the reaction",
+   "My [N]-month framework for [specific allocation decision] (with the math)",
+   "[Regulatory body] just changed [specific rule] — the mechanics for ordinary investors"
   ],
   "hook_patterns": [
-   "Open with the single hardest number and its source date: 'On [date], [insider/filer] disclosed [exact unrounded amount] in [TICKER]. Here's the filing.' (hypothesis)",
-   "State the misconception, then the data correction: 'The headline says X. The actual disclosure says Y — and the difference matters for these three reasons.' (hypothesis)",
-   "Scope-and-contract opener: 'I pulled every [filing type] above [threshold] from the last [N] days. Eight qualified. One is unusual — here's the criteria I used.' (hypothesis)",
-   "Catalyst timestamp opener: '[Company] reported [N] minutes ago. Three lines from the release actually changed the model — revenue, guidance, and margin.' (hypothesis)",
-   "Define the mechanism before the opinion: 'Before the reaction, here's what this rule/filing literally permits — then we'll look at what it doesn't.' (hypothesis)"
+   "Open with the single unrounded figure that motivates the whole video, then state where it came from (filing, 10-Q, exchange data).",
+   "State the common assumption in one sentence, then say which data point contradicts it — no adjectives.",
+   "Name the exact source and date window up front ('these are all Form 4s filed between X and Y'), establishing that everything following is verifiable.",
+   "Lead with the question a viewer actually typed into search, then promise the answer's location in the video ('the number is at minute four').",
+   "Start by disclosing what the data cannot tell you, then what it can — credibility framing before analysis."
   ],
   "packaging_notes": [
-   "Two duration clusters appear: 6–12 min for single-name/single-filing stories and 19–30 min for multi-stock screens or event panels. Sub-3-min list videos exist but function as list-scan content, not analysis.",
-   "Insider- and disclosure-driven framing (insider buys, congressional/public-figure filings, institutional moves) recurs across multiple independent channels — it is verifiable-document territory, which fits a no-hype channel better than macro prediction.",
-   "Numbers that travel are aggregate totals with a dollar sign and a finite count ('$500M+ of these 8 stocks'). Odd, unrounded counts and totals read as screen output rather than marketing.",
-   "Event-tagged titles (earnings panel, post-report reaction) get lift purely from ticker + calendar proximity, so publishing inside hours of a catalyst matters more than title cleverness.",
-   "The high-view macro entries in this set lean on vague-alarm framing ('unthinkable', 'WTF'), which is explicitly off-brand here. The transferable structure is the two-part title — declarative fact, then stated consequence — without the emotional adjective.",
-   "Question-form titles ('why are insiders buying X?') work when the question is answerable from public data; avoid question titles whose only answer is a forecast."
+   "Two duration clusters are performing: 12–22 minutes for single-topic data breakdowns, and 3–7 minutes for fast, one-question explainers. 29–33 minute long-forms only work when the topic is inherently narrative/collection-based (multiple cases stitched together).",
+   "Insider and congressional transaction data is the dominant subject cluster this cycle — it is inherently numeric and filing-backed, which suits a no-hype channel without needing sensational framing.",
+   "Specificity beats magnitude: titles naming a concrete actor, ticker or dollar figure travel further than abstract market-direction titles. Prefer unrounded numbers over adjectives.",
+   "Curiosity can be built from asymmetric information ('what the filing shows that the headline didn't') rather than from threat. Avoid the collapse/unthinkable framing visible in some outliers — it is off-positioning and unrepeatable.",
+   "Collection formats ('N stocks', 'N trades') give a clear content promise and support natural chaptering; pair with a ranked or scored structure so the payoff is explicit."
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-09-20T17:57:06",
+ "updated_at": "2026-09-28T07:07:24",
  "franchise_weights": {
-  "market_close": 0.97,
-  "reddit_radar": 1.03
+  "market_close": 1.3,
+  "congress_trade": 0.7
  },
  "own_patterns": {
   "winning_patterns": [
    {
-    "pattern": "Shorts that pair one ticker's move with a second, contrasting market number (index or volatility move) in the same line",
-    "structure": "[TICKER] [direction + exact %] + [index/VIX moved X%]",
-    "why_it_holds": "The two-number contrast creates an unresolved question (why did this diverge?) that the first seconds can pay off. These titles clustered at hook_hold above 1.10 and 70-89% average view.",
-    "sample_basis": "3 shorts, 81-228 views",
+    "pattern": "Short-form, single-clause title: [named company/asset] + [directional move expressed as one hard number] + [short causal tag]",
+    "structure": "Entity → quantified move (% or price level) → 2-5 word catalyst phrase",
+    "why_it_holds": "The hook window has nothing to resolve except the cause, so the first seconds can pay off the number immediately. All six of our top-retaining videos were Shorts built this way, with hook-hold at or above ~1.0 and avg_view_pct clustering 66–88%.",
+    "format": "shorts",
     "confidence": "medium"
    },
    {
-    "pattern": "Named human actor plus a concrete dollar figure, rather than a percentage",
-    "structure": "[Company/role] [took a specific action] for [$ amount] + [market context number]",
-    "why_it_holds": "Our single highest engaged-view share among mid-view shorts (about 40% of views engaged) and hook_hold above 1.10. A dollar amount with a named decision-maker appears to read as an event, not a price print.",
-    "sample_basis": "1 short, 176 views",
-    "confidence": "low"
-   },
-   {
-    "pattern": "Small, precise, unusual counts beat large percentage spikes inside the same franchise",
-    "structure": "[Ticker] [rank position] on [small post/mention count] + [market context]",
-    "why_it_holds": "Within our social-sentiment franchise, the version built on a rank and a two-digit count retained far better (89% APV, 1.19 hook_hold) than the version built on a three-digit percentage jump in mentions (56% APV, 0.93). Large percentages seem to read as noise; small exact counts read as verifiable.",
-    "sample_basis": "2 shorts, same franchise",
+    "pattern": "Exactly one number in the title, placed mid-title, never two competing numbers",
+    "structure": "One metric (either a % gain or an absolute price), not both",
+    "why_it_holds": "Our best-retaining Shorts each carry a single quantity; the viewer arrives with one open question. Multi-number or number-plus-qualifier titles in our set sat in the lower retention band.",
+    "format": "shorts",
     "confidence": "medium"
    },
    {
-    "pattern": "One ticker, one move, one named catalyst, nothing else",
-    "structure": "[Ticker] up [X%] on [short concrete catalyst phrase]",
-    "why_it_holds": "Tight three-element shorts titles with a specific catalyst noun held above 80% APV even at low view counts, suggesting the viewers who do click stay for the explanation.",
-    "sample_basis": "1-2 shorts, 47-63 views",
+    "pattern": "Congress franchise titles as [legislator name] + [buy/sell action] + [disclosure-timing clause]",
+    "structure": "Person → trade action → lag framing ('disclosed N days later')",
+    "why_it_holds": "Both congress_trade entries retained in the 66–72% range with hook-hold above 1.0 despite very small view counts. The timing clause creates a concrete, closeable question rather than a vague accusation.",
+    "format": "shorts",
     "confidence": "low"
    },
    {
-    "pattern": "Reframe/correction structure that denies the obvious read of a move",
-    "structure": "[Move] isn't [assumed cause]. It's [actual mechanism].",
-    "why_it_holds": "Highest hook_hold values in the set came from titles that set up a contradiction the video resolves. Caveat: both such videos had APV above 100%, which is replay behavior on very low view counts, not proof of demand — treat this as a hook-craft signal only, not a distribution signal.",
-    "sample_basis": "2 shorts, 47-57 views",
-    "confidence": "low"
+    "pattern": "Catalyst named as a concrete, checkable event (a deal, a merger, a land/permit move, a named counterparty)",
+    "structure": "Specific noun catalyst, not a category or sentiment word",
+    "why_it_holds": "Our higher-retention Shorts name a verifiable event type, which matches a data-first delivery and keeps the hook promise narrow enough to satisfy in under 15 seconds.",
+    "format": "shorts",
+    "confidence": "medium"
    }
   ],
   "losing_patterns": [
    {
-    "pattern": "Titles that disclose the caveat and thereby resolve the story before the click",
-    "structure": "[Huge move] on [event] — but [the disqualifying detail]",
-    "why_it_hurts": "Both of our long videos used a qualifier clause after a dash and both posted the weakest hook_hold in the sample (0.72 and 0.79). If the title already delivers the 'catch,' the first 30% has nothing left to promise.",
-    "sample_basis": "2 long videos",
-    "confidence": "medium"
+    "pattern": "Two-clause 'skeptic twist' titles joined by a dash or 'but' that pre-deliver the debunk",
+    "structure": "[big move] — [caveat that undercuts it]",
+    "why_it_hurts": "Both of our long videos used this shape and had the two weakest hooks in the set (hook-hold ~0.69 and ~0.74) and the only avg_view_pct figures below 60%. Giving away the punchline in the title removes the reason to stay through the hook.",
+    "format": "long",
+    "confidence": "low-medium"
    },
    {
-    "pattern": "Oversized multipliers and three-to-four-digit percentages as the lead number",
-    "structure": "[+400%+ or +700%+] ...",
-    "why_it_hurts": "Our two most inflated headline numbers had the two lowest hook_hold values among their formats and below-average APV. Extreme numbers appear to trigger skepticism rather than curiosity with this audience.",
-    "sample_basis": "2 videos across 2 franchises",
-    "confidence": "medium"
-   },
-   {
-    "pattern": "Decline stories loaded with process detail (legal/procedural nouns, clock times)",
-    "structure": "[Ticker] fell [X%]. [Procedural actor] [did something] at [timestamp].",
-    "why_it_hurts": "Lowest APV in the shorts set (51%) with sub-0.9 hook_hold. The second clause adds a new subject the viewer has no stake in, so the hook has to restart.",
-    "sample_basis": "1 short, 117 views",
+    "pattern": "Appending a generic recap/date suffix after a pipe or separator",
+    "structure": "[specific story] | [Market Recap + date]",
+    "why_it_hurts": "The suffix dilutes the specific promise and signals a broad roundup, which appears to weaken the front-loaded hook rather than help it. Seen only on a low-retention long video.",
+    "format": "long",
     "confidence": "low"
    },
    {
-    "pattern": "Generic recap suffix appended after the specific hook",
-    "structure": "[Specific claim] | Market Recap [date]",
-    "why_it_hurts": "The one title carrying a dated recap tag had the lowest views in the set and weak hook_hold. The suffix consumes title real estate with information that dates the video and specifies nothing.",
-    "sample_basis": "1 long video, 31 views",
+    "pattern": "Negation phrasing ('no dollar value disclosed', 'not a signed deal') carrying the title's payload",
+    "structure": "Title resolves to an absence rather than a fact",
+    "why_it_hurts": "An absence is hard to visualise in the first seconds and leaves the hook with nothing concrete to show. Our lowest hook-hold values both sit on negation-led titles.",
+    "format": "long",
     "confidence": "low"
    }
   ],
   "notes": [
-   "Two shorts show APV above 100% at 47-57 views; that is replay/loop behavior on a tiny base, not evidence of broad demand. Read their hook_hold as craft signal and ignore their APV ranking.",
-   "market_close is our volume container, not a hook: it spans 51% to 143% APV. Retention inside it tracks the title's framing (contrast, reframe, named catalyst) far more than the franchise itself.",
-   "Only 2 long videos, both with weak hook_hold but unusually high engaged-view share (61% and 77% of views). Long-form is currently reaching a small self-selected audience — don't conclude the title shape failed on distribution from this sample."
+   "Only two long videos in this window, both sub-60% avg_view_pct with sub-0.75 hook-hold — treat the long-form read as a flag to test, not a proven pattern. Shorts and longs cannot be compared on avg_view_pct directly because of duration.",
+   "Our top video's hook-hold above 1.0 (up to ~1.25) is replay/loop-driven within the hook window, not evidence of broad demand; its 467 views versus 145 for a structurally near-identical Short shows distribution moved independently of title shape.",
+   "market_close Shorts dominate the sample; congress_trade has only two entries at 45–66 views, so franchise-level conclusions there are provisional. These are correlations within a thin, low-view sample, not evidence that a title shape increases distribution."
   ],
   "title": "own-channel lessons"
  },
  "section_status": {
   "weights": "ok (2 franchise)",
-  "narration": "ok (2.171 w/s, 59 video)",
+  "narration": "ok (2.235 w/s, 67 video)",
   "own_patterns": "ok",
-  "market_patterns": "ok (12 outlier)"
+  "market_patterns": "ok (14 outlier)"
  },
  "narration": {
-  "wps": 2.171,
+  "wps": 2.235,
   "engine": "11l",
-  "samples": 59,
+  "samples": 67,
   "shorts_word_range": [
-   69,
-   82
+   72,
+   85
   ],
   "long_word_range": [
-   326,
-   456
+   335,
+   469
   ]
  },
  "weights_version": 2,
  "section_updated_at": {
-  "franchise_weights": "2026-09-20T17:57:06",
-  "narration": "2026-09-20T17:57:06",
-  "own_patterns": "2026-09-20T17:57:06",
-  "market_patterns": "2026-09-20T17:57:06"
+  "franchise_weights": "2026-09-28T07:07:24",
+  "narration": "2026-09-28T07:07:24",
+  "own_patterns": "2026-09-28T07:07:24",
+  "market_patterns": "2026-09-28T07:07:24"
  }
 }
