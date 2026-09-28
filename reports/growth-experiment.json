@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20260916",
   "started_at": "2026-09-16T11:24:59Z",
-  "generated_at": "2026-09-27T18:23:09.595674+00:00",
+  "generated_at": "2026-09-28T07:15:03.002499+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
