@@ -46,4 +46,4 @@ jobs:
           # github.event.schedule survives and "Resolve pipeline mode" still
           # picks the right MODE for this slot.
           echo "Run died before the pipeline started — retrying once."
-          gh run rerun "$RUN_ID"
+          gh run rerun "$RUN_ID" --repo "$REPO"
