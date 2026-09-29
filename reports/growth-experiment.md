@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20260916` · Güncelleme: 2026-09-28T18:10:43.483626+00:00
+Deney: `growth-20260916` · Güncelleme: 2026-09-29T16:31:50.134916+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
