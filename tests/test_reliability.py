@@ -106,7 +106,7 @@ class ScriptTests(unittest.TestCase):
 
 
 class PipelineTests(unittest.TestCase):
-    def run_mock_pipeline(self, uploaded, prepare_presenter=False):
+    def run_mock_pipeline(self, uploaded, prepare_presenter=False, rejected_drafts=0):
         import main_scheduler as main
         events = []
         story = dict(ticker='TEST', headline='Test', score=80, facts={'value_usd': 1000000},
@@ -124,6 +124,10 @@ class PipelineTests(unittest.TestCase):
             mocked['StorySelector'].return_value.select.return_value = story
             mocked['ScriptGenerator'].return_value.generate_shorts_script.return_value = {
                 'title': 'Test', 'full_script': 'Test script', 'hero_number': '$1M'}
+            if rejected_drafts:
+                valid = {'title': 'Test', 'full_script': 'Test script', 'hero_number': '$1M'}
+                invalid = {'title': 'Test vs Nasdaq', 'full_script': 'Test script', 'hero_number': '$1M'}
+                mocked['ScriptGenerator'].return_value.generate_shorts_script.side_effect = [invalid] * rejected_drafts + [valid]
             mocked['FMPDataFetcher'].return_value.get_intraday_chart.return_value = [
                 {'open': 10, 'close': 10}, {'open': 10, 'close': 11}]
             mocked['VoiceGenerator'].return_value.generate_audio.return_value = ('a.mp3', 's.srt')
@@ -142,6 +146,11 @@ class PipelineTests(unittest.TestCase):
                 mocked['YouTubePublisher'].assert_not_called()
                 mocked['TelegramApprovalBot'].assert_not_called()
                 self.assertFalse(mocked['VoiceGenerator'].return_value.generate_audio.call_args.kwargs['allow_fallback'])
+            elif rejected_drafts == 2:
+                with self.assertRaises(SystemExit):
+                    main.run_pipeline()
+                mocked['VoiceGenerator'].assert_not_called()
+                mocked['YouTubePublisher'].assert_not_called()
             elif uploaded:
                 main.run_pipeline()
             else:
@@ -149,6 +158,12 @@ class PipelineTests(unittest.TestCase):
                     main.run_pipeline()
                 self.assertEqual(error.exception.code, 1)
         return events
+
+    def test_editorial_correction_can_recover_before_publication(self):
+        self.assertEqual(self.run_mock_pipeline(True, rejected_drafts=1), ['upload', 'preview'])
+
+    def test_repeated_editorial_rejection_stops_before_voice_or_upload(self):
+        self.assertEqual(self.run_mock_pipeline(False, rejected_drafts=2), [])
 
     def test_upload_failure_is_a_failed_process(self):
         self.assertEqual(self.run_mock_pipeline(False), ['upload'])

@@ -126,3 +126,13 @@ Temel piyasa verisi yoksa yayın durur. Karttaki büyük sayı kaynak alanlarıy
 Insider işlemleri kişi, hisse, yön **ve işlem tarihi** bazında gruplanır; farklı günler tek işlem gibi sunulmaz. Toplu alım sinyali son yedi gündeki en az üç farklı, adı bilinen alıcıdan hesaplanır. Trend taramasının OAuth yedeği, henüz `token.json` olmayan CI ortamında `YOUTUBE_TOKEN_JSON` üzerinden de çalışır. Telegram bağlantı hataları token içerebilen URL veya yanıt gövdesini loglamaz.
 
 `ROADMAP.md` ve `FMP_SKILL.md` geçmiş plan/referans belgeleridir; güncel davranış için kod ve bu README esas alınmalıdır.
+
+### Ekim büyüme deneyi ve haftalık bakım
+
+`growth-20261003` yeni 10 Shorts grubudur. İlk deney `reports/archive/growth-20260916/` içinde korunur. Yeni grup kısa özgün başlıklar, bilgi veren doğal mizah ve küçük kanal ilgisi paketini izler; tek değişkenin etkisini kanıtlamaz.
+
+Günlük rapor workflow'u `growth-experiment.*` yanında `channel-status.*` dosyalarını üretir: son mevcut Analytics gününe göre iki yedi günlük dönem, Shorts/uzun/belirsiz format ayrımı, eksik veri açıklamaları. Haftalık öğrenme pazar 18.00 Türkiye saati çalışır.
+
+Küçük kanal örnekleri `small-channel-breakouts.*` dosyalarında saklanır. Eşikler: en fazla 50 bin abone, son 30 günde 3 bin izlenme, önceki en az 5 benzer süreli videonun medyanının 3 katı. İzlenmeler eşit yaşlı değildir; süre grubu Shorts sınıflaması değildir. Günlük ilgi taraması 14 günlük pencere kullanır. Rakip videolar finansal olgu kaynağı veya kopyalanacak senaryo değildir.
+
+Senaryo editoryal kontrolden geçmezse aynı olgularla bir düzeltme denemesi yapılır; yeniden başarısızsa yayın durur. Hesap reddinde aynı sağlayıcının diğer modelleri atlanır ve yalnızca yapılandırılmış bağımsız sağlayıcı denenir. Yedek için `GEMINI_API_KEY` veya `GROQ_API_KEY` GitHub Secret gerekir; kod desteği tek başına aktif yedek değildir.

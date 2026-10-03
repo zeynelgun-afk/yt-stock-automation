@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/market_trends.json
-          key: finance-trends-v1-${{ steps.mode.outputs.trend_date }}
+          key: finance-trends-v2-${{ steps.mode.outputs.trend_date }}
 
       - name: Run Pipeline
         env:
@@ -120,6 +120,7 @@ jobs:
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
               git add data/channel_learnings.json
+              git add reports/small-channel-breakouts.* 2>/dev/null || true
               if ! git diff --cached --quiet; then
                 git commit -m "chore: weekly channel learnings refresh"
                 # Rebase first: a push that landed after our checkout would

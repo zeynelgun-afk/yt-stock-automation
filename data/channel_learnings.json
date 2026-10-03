@@ -1,32 +1,33 @@
 {
  "market_patterns": {
   "title_patterns": [
-   "[Insider group / named executive] just bought [specific unrounded dollar amount] of [N] stocks — what the filings actually show",
-   "Why insiders are [buying/selling] [SECTOR] stocks right now (the Form 4 data)",
-   "[TICKER] insider activity: [specific number] of transactions nobody covered",
-   "[N] congressional trades filed this month, ranked by size",
-   "What [specific dataset, e.g. 'every Form 4 since January'] says about [current market question]",
-   "[TICKER] earnings preview: the [N] numbers that decide the reaction",
-   "My [N]-month framework for [specific allocation decision] (with the math)",
-   "[Regulatory body] just changed [specific rule] — the mechanics for ordinary investors"
+   "[WELL-KNOWN TICKER] hits a [specific multi-year extreme] after [scheduled event]: is the [specific yield/metric] still covered?",
+   "[TICKER] reports [event] tonight — the one number that decides it",
+   "[TICKER] could beat [specific expectation]... but [one concrete offsetting constraint]",
+   "[TICKER]: the [insider / institutional / buyback] move that didn't make headlines",
+   "What [specific unrounded figure] of [revenue / FCF / backlog] actually tells you about [TICKER]",
+   "[TICKER] at [price or valuation multiple]: what has to be true for the math to work",
+   "[TICKER] vs [peer TICKER] — same sector, two completely different cash flow profiles",
+   "[TICKER] after [event]: three numbers that changed and two that didn't"
   ],
   "hook_patterns": [
-   "Open with the single unrounded figure that motivates the whole video, then state where it came from (filing, 10-Q, exchange data).",
-   "State the common assumption in one sentence, then say which data point contradicts it — no adjectives.",
-   "Name the exact source and date window up front ('these are all Form 4s filed between X and Y'), establishing that everything following is verifiable.",
-   "Lead with the question a viewer actually typed into search, then promise the answer's location in the video ('the number is at minute four').",
-   "Start by disclosing what the data cannot tell you, then what it can — credibility framing before analysis."
+   "Open with the single hardest number ('the dividend costs them $X billion a year; operating cash flow was $Y') before naming any opinion.",
+   "Name the event and its exact timing, then state the one variable you'll judge it on — no suspense padding.",
+   "State the popular take in one sentence, then say which line item you checked to test it.",
+   "Start from the chart extreme ('this price was last seen in [year]') and immediately pivot to whether fundamentals match that price.",
+   "Lead with the disclosure or filing detail most viewers skipped, then explain what it implies about management's own expectations."
   ],
   "packaging_notes": [
-   "Two duration clusters are performing: 12–22 minutes for single-topic data breakdowns, and 3–7 minutes for fast, one-question explainers. 29–33 minute long-forms only work when the topic is inherently narrative/collection-based (multiple cases stitched together).",
-   "Insider and congressional transaction data is the dominant subject cluster this cycle — it is inherently numeric and filing-backed, which suits a no-hype channel without needing sensational framing.",
-   "Specificity beats magnitude: titles naming a concrete actor, ticker or dollar figure travel further than abstract market-direction titles. Prefer unrounded numbers over adjectives.",
-   "Curiosity can be built from asymmetric information ('what the filing shows that the headline didn't') rather than from threat. Avoid the collapse/unthinkable framing visible in some outliers — it is off-positioning and unrepeatable.",
-   "Collection formats ('N stocks', 'N trades') give a clear content promise and support natural chaptering; pair with a ranked or scored structure so the payoff is explicit."
+   "All three outliers sit in a tight 6-10 minute window — long enough for a full cash-flow or guidance walkthrough, short enough to be one question answered, not a market roundup.",
+   "Every title anchors to a single mega-cap-recognizable ticker plus a concrete, checkable catalyst (earnings date, multi-year low, insider filing) rather than 'the market' or macro panic.",
+   "Specific unrounded numbers and named percentages in the title outperform vague superlatives; keep the number in the title and resolve it early in the video so the promise is paid off.",
+   "A question or tension framing ('is it safe?', 'but there's a problem') works as curiosity without doom — the tension is about a measurable risk, not collapse; keep thumbnails to a clean chart, a filing excerpt, or the number itself.",
+   "The 'move you missed' / overlooked-disclosure angle is highly transferable: positions you as the one who reads the 10-Q, which fits a no-hype brand better than prediction titles.",
+   "Timing matters more than production: event-adjacent uploads (earnings eve, day-after reaction) captured most of the velocity, so pre-build a template for the two or three companies you cover closest."
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-09-28T07:07:24",
+ "updated_at": "2026-10-03T22:44:41",
  "franchise_weights": {
   "market_close": 1.3,
   "congress_trade": 0.7
@@ -96,7 +97,7 @@
   "weights": "ok (2 franchise)",
   "narration": "ok (2.235 w/s, 67 video)",
   "own_patterns": "ok",
-  "market_patterns": "ok (14 outlier)"
+  "market_patterns": "ok (3 small-channel breakout)"
  },
  "narration": {
   "wps": 2.235,
@@ -116,6 +117,6 @@
   "franchise_weights": "2026-09-28T07:07:24",
   "narration": "2026-09-28T07:07:24",
   "own_patterns": "2026-09-28T07:07:24",
-  "market_patterns": "2026-09-28T07:07:24"
+  "market_patterns": "2026-10-03T22:44:41"
  }
 }

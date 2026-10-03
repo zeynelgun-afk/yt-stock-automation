@@ -137,14 +137,14 @@ class HistoryTests(unittest.TestCase):
 
 
 class AccountTests(unittest.TestCase):
-    def test_account_limit_stops_before_other_provider_or_second_generation(self):
+    def test_account_limit_stops_repeated_calls_to_dead_accounts(self):
         sg = ScriptGenerator(openrouter_key='test', gemini_key='other', groq_key='')
         sg.last_error = 'openrouter: HTTP 403 account rejected'
         with patch.object(sg, '_chat', return_value=_PROVIDER_DEAD) as chat:
             for _ in range(2):
                 with self.assertRaises(ProviderAccountError):
                     sg._call_llm('prompt', 'title')
-        self.assertEqual(chat.call_count, 1)
+        self.assertEqual(chat.call_count, 2)
 
     def test_http_error_body_is_not_logged(self):
         sg = ScriptGenerator(openrouter_key='test')
@@ -186,6 +186,11 @@ class PipelineSkipTests(unittest.TestCase):
             self.assertTrue((Path(directory) / 'editorial_decision.json').exists())
 
 class ReportIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.start_patch = patch('growth_experiment.STARTED_AT', '2026-09-16T11:24:59Z')
+        self.start_patch.start()
+        self.addCleanup(self.start_patch.stop)
+
     def test_frozen_baseline_and_pending_experiment_do_not_get_replaced(self):
         from growth_experiment import build_report, STARTED_AT
         from editorial_policy import EXPERIMENT_ID
@@ -250,6 +255,11 @@ class ProviderProbeTests(unittest.TestCase):
         self.assertEqual(resolve_mode('workflow_dispatch', {'inputs': {'mode': 'audit'}}), 'audit')
 
 class CompletedLowSampleTests(unittest.TestCase):
+    def setUp(self):
+        self.start_patch = patch('growth_experiment.STARTED_AT', '2026-09-16T11:24:59Z')
+        self.start_patch.start()
+        self.addCleanup(self.start_patch.stop)
+
     def test_fixed_low_view_baseline_does_not_wait_forever_for_more_views(self):
         from growth_experiment import build_report, METRICS
         from editorial_policy import EXPERIMENT_ID

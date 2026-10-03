@@ -5,7 +5,7 @@ import re
 from datetime import date, datetime
 from urllib.parse import urlsplit
 
-EXPERIMENT_ID = 'growth-20260916'
+EXPERIMENT_ID = 'growth-20261003'
 
 
 def source_date(value):

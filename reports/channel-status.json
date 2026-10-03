@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-10-03T19:42:39.857298+00:00",
+  "latest_analytics_date": "2026-10-01",
+  "requested_through": "2026-10-02",
+  "periods": {
+    "current": {
+      "start": "2026-09-25",
+      "end": "2026-10-01",
+      "missing_dates": [],
+      "totals": {
+        "views": 1652,
+        "engagedViews": 662,
+        "estimatedMinutesWatched": 382,
+        "subscribersGained": 4,
+        "subscribersLost": 1,
+        "netSubscribers": 3
+      },
+      "formats": {
+        "shorts": {
+          "creatorContentType": "shorts",
+          "views": 1529,
+          "engagedViews": 592,
+          "estimatedMinutesWatched": 297,
+          "subscribersGained": 2,
+          "subscribersLost": 0
+        },
+        "videoondemand": {
+          "creatorContentType": "videoOnDemand",
+          "views": 127,
+          "engagedViews": 70,
+          "estimatedMinutesWatched": 86,
+          "subscribersGained": 0,
+          "subscribersLost": 0
+        },
+        "unspecified": {
+          "creatorContentType": "creatorContentTypeUnspecified",
+          "views": 0,
+          "engagedViews": 0,
+          "estimatedMinutesWatched": 0,
+          "subscribersGained": 2,
+          "subscribersLost": 1
+        }
+      }
+    },
+    "previous": {
+      "start": "2026-09-18",
+      "end": "2026-09-24",
+      "missing_dates": [],
+      "totals": {
+        "views": 1223,
+        "engagedViews": 527,
+        "estimatedMinutesWatched": 524,
+        "subscribersGained": 0,
+        "subscribersLost": 0,
+        "netSubscribers": 0
+      },
+      "formats": {
+        "shorts": {
+          "creatorContentType": "shorts",
+          "views": 1040,
+          "engagedViews": 428,
+          "estimatedMinutesWatched": 407,
+          "subscribersGained": 0,
+          "subscribersLost": 0
+        },
+        "videoondemand": {
+          "creatorContentType": "videoOnDemand",
+          "views": 183,
+          "engagedViews": 99,
+          "estimatedMinutesWatched": 120,
+          "subscribersGained": 0,
+          "subscribersLost": 0
+        },
+        "unspecified": null
+      }
+    }
+  }
+}

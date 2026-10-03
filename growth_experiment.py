@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from editorial_policy import EXPERIMENT_ID
 from publication_history import fetch_upload_history, parse_time, youtube_credentials
 
-STARTED_AT = '2026-09-16T11:24:59Z'
+STARTED_AT = '2026-10-03T20:00:00Z'
 PACIFIC = ZoneInfo('America/Los_Angeles')
 METRICS = 'views,engagedViews,averageViewDuration,averageViewPercentage,subscribersGained'
 

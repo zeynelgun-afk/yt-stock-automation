@@ -1,0 +1,355 @@
+{
+  "experiment_id": "growth-20260916",
+  "started_at": "2026-09-16T11:24:59Z",
+  "generated_at": "2026-10-03T14:43:53.201385+00:00",
+  "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
+  "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
+  "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
+  "unclassified_legacy_videos": 25,
+  "status": "ready_for_comparison",
+  "thin_sample": true,
+  "cohorts": {
+    "baseline": {
+      "selected": 10,
+      "available": 10,
+      "engaged_views": 89,
+      "median_views": 9.5,
+      "median_engaged_views": 4.0,
+      "median_average_view_seconds": 27.0,
+      "subscribers_gained": 0,
+      "subscribers_per_1000_engaged": 0.0
+    },
+    "experiment": {
+      "selected": 10,
+      "available": 10,
+      "engaged_views": 174,
+      "median_views": 18.0,
+      "median_engaged_views": 5.5,
+      "median_average_view_seconds": 28.5,
+      "subscribers_gained": 0,
+      "subscribers_per_1000_engaged": 0.0
+    }
+  },
+  "videos": [
+    {
+      "cohort": "baseline",
+      "video_id": "azStJGo0tR4",
+      "title": "SPY #1 on WSB: Retail Bought the Index, Not Stocks",
+      "published_at": "2026-09-14T18:11:05Z",
+      "window_start": "2026-09-15",
+      "window_end": "2026-09-17",
+      "status": "available",
+      "metrics": {
+        "views": 12,
+        "engagedViews": 3,
+        "averageViewDuration": 30,
+        "averageViewPercentage": 83.16,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "xwhNR8vk8yo",
+      "title": "Centrus Energy's Lowered Target Is Still $107 Away",
+      "published_at": "2026-09-12T04:52:09Z",
+      "window_start": "2026-09-12",
+      "window_end": "2026-09-14",
+      "status": "available",
+      "metrics": {
+        "views": 13,
+        "engagedViews": 5,
+        "averageViewDuration": 43,
+        "averageViewPercentage": 129.3,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "lGruFsABUC0",
+      "title": "Centrus Energy at $162.93, Target Cut to $270",
+      "published_at": "2026-09-11T19:28:57Z",
+      "window_start": "2026-09-12",
+      "window_end": "2026-09-14",
+      "status": "available",
+      "metrics": {
+        "views": 5,
+        "engagedViews": 1,
+        "averageViewDuration": 35,
+        "averageViewPercentage": 100.90999999999998,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "udjJtcVhcjs",
+      "title": "Centrus Energy: Northland Cut Its Target, Still +66%",
+      "published_at": "2026-09-11T17:10:07Z",
+      "window_start": "2026-09-12",
+      "window_end": "2026-09-14",
+      "status": "available",
+      "metrics": {
+        "views": 7,
+        "engagedViews": 4,
+        "averageViewDuration": 17,
+        "averageViewPercentage": 47.94,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "y21IkeHb0IE",
+      "title": "Booker Sold Amazon Aug 11. You Found Out Sept 9.",
+      "published_at": "2026-09-11T16:42:14Z",
+      "window_start": "2026-09-12",
+      "window_end": "2026-09-14",
+      "status": "available",
+      "metrics": {
+        "views": 5,
+        "engagedViews": 2,
+        "averageViewDuration": 24,
+        "averageViewPercentage": 68.91,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "ws301zBpIrw",
+      "title": "LEXX Raised $5.9M and Fell 38.6% the Same Day",
+      "published_at": "2026-09-11T04:59:34Z",
+      "window_start": "2026-09-11",
+      "window_end": "2026-09-13",
+      "status": "available",
+      "metrics": {
+        "views": 5,
+        "engagedViews": 2,
+        "averageViewDuration": 41,
+        "averageViewPercentage": 106.85,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "h3SQQJSV35E",
+      "title": "Uber's CEO Bought $10M as the VIX Rose 9.8%",
+      "published_at": "2026-09-10T19:30:24Z",
+      "window_start": "2026-09-11",
+      "window_end": "2026-09-13",
+      "status": "available",
+      "metrics": {
+        "views": 69,
+        "engagedViews": 23,
+        "averageViewDuration": 35,
+        "averageViewPercentage": 95.24,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "fQbwjblQ8g8",
+      "title": "DBGI's 46.7% Jump Isn't Growth. It's a Buyout.",
+      "published_at": "2026-09-10T17:10:30Z",
+      "window_start": "2026-09-11",
+      "window_end": "2026-09-13",
+      "status": "available",
+      "metrics": {
+        "views": 7,
+        "engagedViews": 4,
+        "averageViewDuration": 19,
+        "averageViewPercentage": 52.23,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "DR3zvr7ocF4",
+      "title": "TNON Up 71.7% on a Day the VIX Rose 6.87%",
+      "published_at": "2026-09-10T16:37:13Z",
+      "window_start": "2026-09-11",
+      "window_end": "2026-09-13",
+      "status": "available",
+      "metrics": {
+        "views": 51,
+        "engagedViews": 18,
+        "averageViewDuration": 21,
+        "averageViewPercentage": 66.93,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "baseline",
+      "video_id": "JS0Al5N7tME",
+      "title": "TTAN Fell 29.98%. Law Firms Called at 1:51pm",
+      "published_at": "2026-09-10T05:02:24Z",
+      "window_start": "2026-09-10",
+      "window_end": "2026-09-12",
+      "status": "available",
+      "metrics": {
+        "views": 79,
+        "engagedViews": 27,
+        "averageViewDuration": 21,
+        "averageViewPercentage": 55.22,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "QO_dGriCQ8Y",
+      "title": "Microsoft: Gottheimer's Buy Disclosed 32 Days Later",
+      "published_at": "2026-09-16T11:40:54Z",
+      "window_start": "2026-09-17",
+      "window_end": "2026-09-19",
+      "status": "available",
+      "metrics": {
+        "views": 22,
+        "engagedViews": 7,
+        "averageViewDuration": 16,
+        "averageViewPercentage": 54.620000000000005,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "pG8DUhCJnCw",
+      "title": "DataMEDS AI Up 279% on Cancer Lab Deal Report",
+      "published_at": "2026-09-16T17:46:23Z",
+      "window_start": "2026-09-17",
+      "window_end": "2026-09-19",
+      "status": "available",
+      "metrics": {
+        "views": 25,
+        "engagedViews": 8,
+        "averageViewDuration": 39,
+        "averageViewPercentage": 112.33,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "1GFK92U-zwU",
+      "title": "Xenetic Biosciences Fell 50% on Santersus Deal Day",
+      "published_at": "2026-09-16T19:53:03Z",
+      "window_start": "2026-09-17",
+      "window_end": "2026-09-19",
+      "status": "available",
+      "metrics": {
+        "views": 3,
+        "engagedViews": 1,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 105.63,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "umFLw35iWKY",
+      "title": "Aethlon Medical Up 336% on All-Stock Biotech Merger",
+      "published_at": "2026-09-17T17:14:09Z",
+      "window_start": "2026-09-18",
+      "window_end": "2026-09-20",
+      "status": "available",
+      "metrics": {
+        "views": 26,
+        "engagedViews": 10,
+        "averageViewDuration": 31,
+        "averageViewPercentage": 92.34,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "v5FauOumDsA",
+      "title": "Star Bulk Director Buys $2.1M of SBLK Shares",
+      "published_at": "2026-09-17T17:46:33Z",
+      "window_start": "2026-09-18",
+      "window_end": "2026-09-20",
+      "status": "available",
+      "metrics": {
+        "views": 9,
+        "engagedViews": 4,
+        "averageViewDuration": 36,
+        "averageViewPercentage": 114.55,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "g4w8mBYt9qg",
+      "title": "Travere CEO Sold $12.4M of TVTX — What Form 4 Omits",
+      "published_at": "2026-09-18T05:00:44Z",
+      "window_start": "2026-09-18",
+      "window_end": "2026-09-20",
+      "status": "available",
+      "metrics": {
+        "views": 25,
+        "engagedViews": 7,
+        "averageViewDuration": 10,
+        "averageViewPercentage": 29.99,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "Z3gSMld--kA",
+      "title": "Gottheimer Sold Up to $1M of Microsoft — 32-Day Lag",
+      "published_at": "2026-09-18T16:39:12Z",
+      "window_start": "2026-09-19",
+      "window_end": "2026-09-21",
+      "status": "available",
+      "metrics": {
+        "views": 7,
+        "engagedViews": 1,
+        "averageViewDuration": 46,
+        "averageViewPercentage": 118.95,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "5fHksRfrS8E",
+      "title": "John Rose's Alphabet Sale, Disclosed 15 Months Later",
+      "published_at": "2026-09-18T19:29:08Z",
+      "window_start": "2026-09-19",
+      "window_end": "2026-09-21",
+      "status": "available",
+      "metrics": {
+        "views": 9,
+        "engagedViews": 4,
+        "averageViewDuration": 21,
+        "averageViewPercentage": 65.55,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "xHJbTGw7lFQ",
+      "title": "Talen Energy Target Nudged to $514 — Not a Forecast",
+      "published_at": "2026-09-19T04:52:42Z",
+      "window_start": "2026-09-19",
+      "window_end": "2026-09-21",
+      "status": "available",
+      "metrics": {
+        "views": 14,
+        "engagedViews": 3,
+        "averageViewDuration": 17,
+        "averageViewPercentage": 55.45,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "LZNbC4Rgpr8",
+      "title": "Greenland Mines Hits $9.74 on Sarfartoq Land Move",
+      "published_at": "2026-09-21T18:18:50Z",
+      "window_start": "2026-09-22",
+      "window_end": "2026-09-24",
+      "status": "available",
+      "metrics": {
+        "views": 309,
+        "engagedViews": 129,
+        "averageViewDuration": 26,
+        "averageViewPercentage": 78.31,
+        "subscribersGained": 0
+      }
+    }
+  ]
+}

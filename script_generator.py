@@ -15,7 +15,7 @@ class ScriptGenerationError(Exception):
 
 
 class ProviderAccountError(ScriptGenerationError):
-    """Account rejection stops the run; never evade a spending limit."""
+    """All configured independent provider accounts were rejected."""
 
 
 # Sentinel: the failure was account-level (bad key, monthly limit, no credits),
@@ -109,6 +109,7 @@ class ScriptGenerator:
         # "all providers failed" told the operator nothing about what to fix.
         self.last_error = ""
         self.account_error = ""
+        self.dead_providers = set()
         # Verified-live OpenRouter slugs (dead slugs 404 and silently ate the
         # fallback chain — check https://openrouter.ai/api/v1/models when editing)
         self.openrouter_models = [
@@ -165,10 +166,17 @@ An unknown company needs one brief identifying phrase only if provided in the fa
 Do not mention VIX, Nasdaq, Dow or S&P 500 in this single-company experiment.
 Explain why the event matters in plain language, based only on the selected facts.
 These rules override franchise guidance and learned packaging patterns below.
+VOICE: informative and lightly funny. After the opening fact, include at most one
+brief original dry joke or everyday analogy when it fits naturally. Joke about
+paperwork, market mechanics or everyday frustrations; never invent financial facts,
+accuse a person, mock losses or weaken an important caveat. No joke is better than
+a forced one. Keep the same word budget and return to the explanation immediately.
 If no cause is established, say that the supplied data does not establish a cause.
 
-TITLE: put the identifiable company name or actor near the beginning, with the actual
-news and a supported number when useful. A clear factual headline is allowed.
+TITLE: put the identifiable company name or actor near the beginning, followed by
+one concrete verified event. Use at most ONE supported numeric quantity in the title.
+Do not append a generic recap/date suffix. Keep caveats in the narration while
+ensuring the title remains accurate; never remove a qualifier needed for accuracy. A clear factual headline is allowed.
 Do not force a question mark, tease a missing company name, or invent tension.
 For disclosures, say "disclosed X days later", never "X days late", "overdue" or
 "hidden": transaction-to-disclosure lag alone does not establish a missed deadline.
@@ -235,9 +243,12 @@ RULES:
 - Do not mention VIX, Nasdaq, Dow or S&P 500 in this single-company experiment.
 - Write numbers TTS-friendly: "$4.7 million" not "$4.7M"; spell out abbreviations ("price target", "earnings per share") — the script is read aloud by a voice engine.
 - ONLY output spoken script text. No stage directions, section headers, or visual cues in full_script.
-- Tone: Professional, fast-paced, insightful Wall-Street level analysis with original interpretation.
+- Tone: clear, lively and informative, with up to two brief original dry jokes or
+  everyday analogies after factual payoffs. Humor should explain the mechanics,
+  never invent claims, accuse people or mock financial losses. Avoid forced jokes.
+  Keep the existing word budget and make factual limitations clear.
 - Return strictly valid JSON format with keys:
-   - "title": Lead with the main company/event and the verified consequence; optionally end with "| Market Recap {today_str}". Keep under 85 characters. Do not bury the actual story behind a generic date prefix.
+   - "title": Lead with the main company/event and the verified consequence; use at most one supported numeric quantity and omit generic recap/date suffixes. Keep under 85 characters. Do not bury the actual story behind a generic date prefix.
    - "description": First line summarizes the selected company event. Include only sources actually present in the supplied facts, and relevant hashtags.
    - "full_script": Spoken text only
    - "ticker": Main ticker discussed
@@ -368,16 +379,17 @@ RULES:
         min_words/max_words bound the full_script length — a recap that comes
         back at 600 words would produce a half-length video, so an off-target
         script gets corrective retries per model before falling through."""
-        if self.account_error:
-            raise ProviderAccountError(self.account_error)
         for provider, model_name in self._providers():
+            if provider in self.dead_providers:
+                continue
             retry_note = ""
             for attempt in range(3):
                 logger.info(f"Generating script using {provider}/{model_name}...")
                 content = self._chat(provider, model_name, prompt + retry_note)
                 if content is _PROVIDER_DEAD:
                     self.account_error = self.last_error or f"{provider}: account unavailable"
-                    raise ProviderAccountError(self.account_error)
+                    self.dead_providers.add(provider)
+                    break
                 if content is None:
                     break
                 try:
@@ -443,6 +455,8 @@ RULES:
                 return parsed
 
         configured = sorted({p for p, _ in self._providers()})
+        if configured and set(configured).issubset(self.dead_providers):
+            raise ProviderAccountError(self.account_error)
         raise ScriptGenerationError(
             f"All LLM providers failed to generate a script for '{default_title}'. "
             f"Aborting instead of publishing a canned template. "

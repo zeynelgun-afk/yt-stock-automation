@@ -110,30 +110,39 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
 
 
     # 3. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
-    try:
-        if is_shorts:
-            data_summary = (
-                f"SELECTED STORY ({story['franchise_name']}): {story['headline']}\n"
-                f"Why it matters: {story['why_it_matters']}\n"
-                f"Story facts: {json.dumps(story['facts'], default=str)}"
-            )
-            script_data = sg.generate_shorts_script(
-                topic=story["headline"],
-                data_summary=data_summary,
-                franchise_style=story["franchise_style"],
-                angle=story["angle"],
-                recent_titles=selector.recent_titles,
-            )
-        else:
-            script_data = sg.generate_long_script(market_data={
-                "selected_story": {k: story[k] for k in ("franchise_name", "headline", "angle", "facts")},
-            })
-    except ScriptGenerationError as e:
-        abort_pipeline(str(e))
+    correction = ""
+    for editorial_attempt in range(2):
+        try:
+            if is_shorts:
+                data_summary = (
+                    f"SELECTED STORY ({story['franchise_name']}): {story['headline']}\n"
+                    f"Why it matters: {story['why_it_matters']}\n"
+                    f"Story facts: {json.dumps(story['facts'], default=str)}"
+                )
+                script_data = sg.generate_shorts_script(
+                    topic=story["headline"],
+                    data_summary=data_summary + correction,
+                    franchise_style=story["franchise_style"],
+                    angle=story["angle"],
+                    recent_titles=selector.recent_titles,
+                )
+            else:
+                script_data = sg.generate_long_script(market_data={
+                    "selected_story": {k: story[k] for k in ("franchise_name", "headline", "angle", "facts")},
+                    "editorial_correction": correction,
+                })
+        except ScriptGenerationError as e:
+            abort_pipeline(str(e))
 
-    editorial_errors = validate_editorial_script(script_data, story)
-    if editorial_errors:
-        abort_pipeline('Editorial script check failed: ' + '; '.join(editorial_errors))
+        editorial_errors = validate_editorial_script(script_data, story)
+        if not editorial_errors:
+            break
+        if editorial_attempt == 1:
+            abort_pipeline('Editorial script check failed after correction: ' + '; '.join(editorial_errors))
+        logger.warning('Regenerating script after editorial rejection: %s', '; '.join(editorial_errors))
+        correction = ('\nEDITORIAL CORRECTION: The previous draft was rejected for: '
+                      + '; '.join(editorial_errors)
+                      + '. Rewrite using the same supplied story facts only. Do not introduce new claims.')
     (OUTPUT_DIR / 'editorial_story.json').write_text(json.dumps({
         'story': story, 'script': script_data,
     }, indent=2, default=str), encoding='utf-8')

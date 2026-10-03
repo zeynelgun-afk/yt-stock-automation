@@ -523,9 +523,9 @@ class StorySelector:
                 for term in terms)]
             if matches:
                 candidate["score"] = min(100, candidate["score"] + min(10, 5 * len(matches)))
-                candidate["reasons"].append("same company appears in recent popular finance videos")
+                candidate["reasons"].append("same company appears in recent finance breakout videos")
                 candidate["market_interest"] = [
-                    {k: v.get(k) for k in ("url", "title", "views", "views_per_hour", "publishedAt")}
+                    {k: v.get(k) for k in ("url", "title", "views", "views_per_hour", "publishedAt", "subscribers", "ratio", "baseline_samples")}
                     for v in matches[:2]
                 ]
 

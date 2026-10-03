@@ -22,12 +22,14 @@ jobs:
       - name: Read channel metrics (no generation or publication)
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
-        run: python growth_experiment.py
+        run: |
+          python growth_experiment.py
+          python channel_status.py
       - name: Persist report
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add reports/growth-experiment.json reports/growth-experiment.md
+          git add reports/growth-experiment.json reports/growth-experiment.md reports/channel-status.json reports/channel-status.md
           if ! git diff --cached --quiet; then
             git commit -m 'chore: refresh channel growth experiment report'
             git pull --rebase origin main
@@ -37,5 +39,7 @@ jobs:
         if: always()
         with:
           name: channel-growth-report
-          path: reports/growth-experiment.*
+          path: |
+            reports/*.json
+            reports/*.md
           retention-days: 30
