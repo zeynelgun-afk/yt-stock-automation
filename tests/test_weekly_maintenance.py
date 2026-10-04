@@ -1,3 +1,4 @@
+import tests  # enforce the no-real-inference unit-test boundary
 import json
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -5,18 +6,17 @@ from unittest.mock import MagicMock, patch
 
 from channel_status import build_status, METRICS
 from outlier_scanner import preceding_baseline
-from script_generator import ScriptGenerator, _PROVIDER_DEAD
+from script_generator import ScriptGenerator, ScriptGenerationError
 
 
 class MaintenanceTests(unittest.TestCase):
-    def test_independent_provider_survives_rejection_and_dead_account_stays_skipped(self):
-        writer = ScriptGenerator(openrouter_key='test', gemini_key='other', groq_key='')
-        writer.last_error = 'openrouter: HTTP 402 account rejected'
-        with patch.object(writer, '_chat', side_effect=[_PROVIDER_DEAD, json.dumps({'full_script': 'valid'}),
-                                                       json.dumps({'full_script': 'again'})]) as chat:
-            self.assertEqual(writer._call_llm('prompt', 'title')['full_script'], 'valid')
+    def test_local_failure_never_falls_back_and_next_call_is_fresh(self):
+        writer = ScriptGenerator(openrouter_key='ignored', gemini_key='ignored', groq_key='ignored')
+        with patch.object(writer, '_chat', side_effect=[None, json.dumps({'full_script': 'again'})]) as chat:
+            with self.assertRaises(ScriptGenerationError): writer._call_llm('prompt', 'title')
             self.assertEqual(writer._call_llm('prompt', 'title')['full_script'], 'again')
-        self.assertEqual([call.args[0] for call in chat.call_args_list], ['openrouter', 'gemini', 'gemini'])
+        self.assertEqual([call.args[:2] for call in chat.call_args_list],
+                         [('openai-codex', 'gpt-6-astra')]*2)
 
     def test_breakout_baseline_excludes_candidate_newer_uploads_streams_and_other_durations(self):
         def video(vid, published, duration='PT1M', **extra):

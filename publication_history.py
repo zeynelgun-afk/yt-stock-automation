@@ -17,8 +17,8 @@ def youtube_credentials():
     path = BASE_DIR / 'token.json'
     if path.exists():
         creds = Credentials.from_authorized_user_file(str(path))
-    elif os.getenv('YOUTUBE_TOKEN_JSON'):
-        creds = Credentials.from_authorized_user_info(json.loads(os.environ['YOUTUBE_TOKEN_JSON']))
+    elif os.getenv('YT_LOCAL_TOKEN_JSON'):
+        creds = Credentials.from_authorized_user_info(json.loads(os.environ['YT_LOCAL_TOKEN_JSON']))
     else:
         raise HistoryUnavailable('YouTube credentials unavailable')
     if 'https://www.googleapis.com/auth/youtube.readonly' not in (creds.scopes or []):

@@ -1,3 +1,4 @@
+import tests  # enforce the no-real-inference unit-test boundary
 import json
 import unittest
 from datetime import datetime, timedelta
@@ -99,7 +100,7 @@ class ScriptTests(unittest.TestCase):
         for payload in [dict(title=None, full_script='one two'),
                         dict(title='Title', full_script=['one', 'two']),
                         dict(title='Title', full_script='one two', tags='stocks')]:
-            with self.subTest(payload=payload), patch.object(sg, '_providers', return_value=[('test', 'model')]), \
+            with self.subTest(payload=payload), patch.object(sg, '_providers', return_value=[('openai-codex', 'gpt-6-astra')]), \
                     patch.object(sg, '_chat', return_value=json.dumps(payload)):
                 with self.assertRaises(ScriptGenerationError):
                     sg._call_llm('prompt', 'fallback', min_words=2, max_words=3)

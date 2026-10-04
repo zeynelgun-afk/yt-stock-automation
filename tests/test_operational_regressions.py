@@ -1,3 +1,4 @@
+import tests  # enforce the no-real-inference unit-test boundary
 import json
 import os
 import unittest
@@ -151,7 +152,7 @@ class TrendOAuthTests(unittest.TestCase):
                      scopes=['https://www.googleapis.com/auth/youtube.readonly'])
         with TemporaryDirectory() as directory, patch('outlier_scanner.BASE_DIR', Path(directory)), \
                 patch('outlier_scanner.YOUTUBE_API_KEY', ''), \
-                patch.dict(os.environ, {'YOUTUBE_TOKEN_JSON': json.dumps(token)}), \
+                patch.dict(os.environ, {'YT_LOCAL_TOKEN_JSON': json.dumps(token)}), \
                 patch('googleapiclient.discovery.build') as build:
             self.assertIs(_build_client(), build.return_value)
             creds = build.call_args.kwargs['credentials']
@@ -163,6 +164,6 @@ class TrendOAuthTests(unittest.TestCase):
         token = dict(client_id='test', client_secret='test', refresh_token='test', scopes=[])
         with TemporaryDirectory() as directory, patch('outlier_scanner.BASE_DIR', Path(directory)), \
                 patch('outlier_scanner.YOUTUBE_API_KEY', ''), \
-                patch.dict(os.environ, {'YOUTUBE_TOKEN_JSON': json.dumps(token)}):
+                patch.dict(os.environ, {'YT_LOCAL_TOKEN_JSON': json.dumps(token)}):
             with self.assertRaises(RuntimeError):
                 _build_client()

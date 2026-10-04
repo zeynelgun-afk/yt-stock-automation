@@ -2,6 +2,8 @@
 
 İngilizce finans videoları üreten Python otomasyonu. FMP verisiyle hikâye seçer, senaryo ve ses üretir, gerçek grafiklerle render alır ve **insan onayı beklemeden YouTube'a yükler**. Telegram yayın sonrası önizleme ve hata bildirimleri içindir.
 
+Yerel Hermes geçişi bu checkout içinde hazırlanmıştır; **aktivasyon doğrulanmadı**. Cutover ve runner sözleşmesi: [ops/LOCAL_HERMES.md](ops/LOCAL_HERMES.md), test kanıtları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Senaryo, seçim, öğrenme ve yorum inference işlemleri yalnızca `openai-codex/gpt-6-astra` kullanır; ücretli LLM yedeği yoktur.
+
 Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LLM → ElevenLabs Chris → FFmpeg → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
 
 Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses dili (`defaultAudioLanguage`) açıkça `en` olarak gönderilir. Kanalın varsayılan açıklaması İngilizcedir; 12 Eylül 2026'da Türkçe arayüzde eski açıklamayı gösteren `tr_TR` kanal çevirisi kaldırıldı. Bu tarihte taranan 160 videonun metin dili `en`; 138 eski videonun ses dili alanı boştu. Bu eski video alanları değiştirilmedi.
@@ -24,7 +26,7 @@ Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses
 - İlk deney videosu: [Microsoft / Gottheimer açıklaması](https://youtu.be/QO_dGriCQ8Y), 16 Eylül 2026, 31 saniye. YouTube yayın/işleme durumu, deney etiketi ve canlı tekrar engeli doğrulandı.
 - Yeni Shorts `exp:growth-20260916` etiketi taşır. [Deney raporu](reports/growth-experiment.md) her gün 10:15 UTC / 13:15 Türkiye saati için planlanır; GitHub gecikmeleri olabilir. Rapor LLM, ses üretimi veya yayın işlemi kullanmaz.
 - Ölçüm yayın gününden sonraki ilk üç **tam Pasifik takvim gününü** karşılaştırır; tam ilk 72 saat değildir. İki ek tam gün veri gecikmesi beklenir. Grupların üyeliği raporda korunur; silinen/özel videolar daha iyi videolarla değiştirilmez. Eksik veriler sıfır değildir, swipe oranı ve CTR türetilmez.
-- OpenRouter/diğer sağlayıcıların 401/402/403 hesap hatası aynı çalışmayı sonlandırır; limit engelinden sonra başka model/sağlayıcı denenmez. 16 Eylül canlı üretim geçmişinde OpenRouter aylık anahtar limiti nedeniyle yayın engeli doğrulandı. Aynı gün sonraki sunucu kontrolünde kota kullanılabilir bulundu ve ilk deney videosu başarıyla yayınlandı. Anahtar veya harcama limiti değiştirilmedi.
+- 16 Eylül kayıtları eski OpenRouter akışına aittir. Yeni inference akışı mevcut yerel Codex aboneliğini Hermes safe-mode üzerinden kullanır; process/protokol hatasında yayın durur.
 
 Salt okunur kontroller:
 
@@ -34,7 +36,7 @@ Salt okunur kontroller:
 ./venv/bin/python provider_status.py
 ```
 
-GitHub ana iş akışında `audit` modu canlı seçim kurallarını ve OpenRouter kota durumunu üretim/yayın yapmadan denetler.
+GitHub `audit` modu canlı seçim kurallarını üretim/yayın yapmadan denetler. `provider_status.py` yalnızca statik yerel transport sözleşmesini raporlar; auth, kota API veya inference testi yapmaz.
 
 Pipeline kararları, seçilen kaynaklar/senaryo ve başarılı yayın kimliği `output/editorial_*.json` dosyalarına yazılır. GitHub bunları 30 gün saklar. Ayrıntılı tasarım: [büyüme düzeltmesi](docs/superpowers/specs/2026-09-16-channel-growth-design.md).
 
@@ -103,7 +105,7 @@ Cron gecikmeleri mümkündür; tam dakikasında veya kapanıştan 15 dakika içi
 
 Kapanış modu, işin başladığı saate göre değil cron ve ilk çalıştırmanın GitHub `created_at` zamanına göre seçilir. Gecikme veya yeniden çalıştırma, doğru yaz/kış saati slotunu elemez. Bu seçim için workflow'un `actions: read` izni gerekir.
 
-Workflow'da listelenen API değişkenlerini GitHub Secrets'a ekleyin. YouTube için `YOUTUBE_CLIENT_SECRET_JSON` ve `YOUTUBE_TOKEN_JSON` gerekir. Token; `youtube.upload`, `youtube.readonly`, `yt-analytics.readonly` ve otomatik yorum yanıtları için `youtube.force-ssl` izinlerini içermelidir. Yetkilendirme yerelde tamamlanır; CI etkileşimli tarayıcı açmaz. Koda izin eklemek mevcut token'a yeni yetki kazandırmaz; eksikse yerelde yeniden yetkilendirip secret'ı güncelleyin.
+Workflow'da listelenen API değişkenlerini GitHub Secrets'a ekleyin. YouTube için `YT_LOCAL_CLIENT_SECRET_JSON` ve `YT_LOCAL_TOKEN_JSON` gerekir. Token; `youtube.upload`, `youtube.readonly`, `yt-analytics.readonly` ve otomatik yorum yanıtları için `youtube.force-ssl` izinlerini içermelidir. Yetkilendirme yerelde tamamlanır; CI etkileşimli tarayıcı açmaz. Koda izin eklemek mevcut token'a yeni yetki kazandırmaz; eksikse yerelde yeniden yetkilendirip secret'ı güncelleyin.
 
 ## Otomatik İngilizce yorum yanıtları
 
@@ -111,8 +113,8 @@ GitHub Actions, her normal Shorts çalışmasında ve etkinlik doğrulanan turbo
 
 - Son 14 gündeki yayınlanmış üst düzey yorumlar taranır: en fazla 300 yorum, 6 yanıt üretme denemesi ve çalıştırma başına 3 yanıt. Kontrol tüm kanal videolarını kapsar; yanıtların altına yeni sohbet zinciri başlatılmaz.
 - Yanıtlar kısa, İngilizce, nazik ve yoruma özeldir. Uygun yerde hafif espri veya doğal bir soru kullanılabilir; etkileşim artışı garanti değildir. Spam, reklam ve kişisel yatırım önerisi talepleri atlanır. Yorumlar modele talimat olarak değil güvenilmeyen veri olarak verilir.
-- Kanalın mevcut cevapları YouTube'dan tüm sayfalarıyla okunur; model yanıtından sonra göndermeden önce tekrar kontrol edilir. Çok büyük veya okunamayan yanıt dizisinde gönderim yapılmaz. Aynı çalışmada tekrar eden metinler atlanır. YouTube'dan silinen kanal yanıtları için ayrı kalıcı kayıt tutulmaz.
-- Yayın isteği otomatik yeniden denenmez; belirsiz hata o yorum turunu durdurur. Workflow eşzamanlı çalışmaları sıraya alır. Kontrol 240 saniyeyle sınırlıdır; hatası veya eksik yorum izni video üretimini engellemez ve Actions uyarısına yazılır.
+- Kanalın mevcut cevapları YouTube'dan tüm sayfalarıyla okunur; model yanıtından sonra göndermeden önce tekrar kontrol edilir. Çok büyük veya okunamayan yanıt dizisinde gönderim yapılmaz. Aynı çalışmada tekrar eden metinler atlanır. Checkout dışındaki SQLite claim/receipt kaydı, silinen veya listede henüz görünmeyen yanıtların otomatik yeniden gönderilmesini de engeller.
+- Upload ve yorum insert istekleri sıfır retry ile gönderilir. Belirsiz sonuç kalıcı pending claim bırakır; operatör uzlaştırması gerekir. Yorum turu 240 saniyeyle sınırlıdır; hata Actions uyarısıyla mevcut video adımına devam eder, fakat pending delivery varsa job başarı marker’ı ve sonraki yerel işler bloke olur.
 - Metin biçimi, uzunluk, bağlantı ve yabancı alfabe kontrolleri vardır; dilin anlamı, nezaket ve uygunluk değerlendirmesi model kalitesine bağlıdır.
 
 Yerel önizleme (yorum göndermez): `./venv/bin/python comment_responder.py`. Gerçek gönderim: `./venv/bin/python comment_responder.py --publish`. Actions'ta yalnızca yorumları çalıştırmak için manuel `comments` modu seçilebilir; bu mod video üretmez. Yerel gönderimi Actions çalışmasıyla aynı anda başlatmayın; yerel süreç workflow kilidine dahil değildir.
@@ -123,7 +125,7 @@ PR kontrolleri video yayınlamaz. Üretim workflow'u yayından önce aynı testl
 
 Temel piyasa verisi yoksa yayın durur. Karttaki büyük sayı kaynak alanlarıyla tutar ve birim düzeyinde karşılaştırılır; LLM metni kanıt sayılmaz. Bu kontrol tüm senaryonun semantik doğruluğunu garanti etmez. Kart/grafik yüzdesi ilk mum açılışına göre hesaplanır ve **SINCE SESSION OPEN** olarak etiketlenir; önceki kapanışa göre günlük değişim değildir.
 
-Insider işlemleri kişi, hisse, yön **ve işlem tarihi** bazında gruplanır; farklı günler tek işlem gibi sunulmaz. Toplu alım sinyali son yedi gündeki en az üç farklı, adı bilinen alıcıdan hesaplanır. Trend taramasının OAuth yedeği, henüz `token.json` olmayan CI ortamında `YOUTUBE_TOKEN_JSON` üzerinden de çalışır. Telegram bağlantı hataları token içerebilen URL veya yanıt gövdesini loglamaz.
+Insider işlemleri kişi, hisse, yön **ve işlem tarihi** bazında gruplanır; farklı günler tek işlem gibi sunulmaz. Toplu alım sinyali son yedi gündeki en az üç farklı, adı bilinen alıcıdan hesaplanır. Trend taramasının OAuth yedeği, henüz `token.json` olmayan CI ortamında `YT_LOCAL_TOKEN_JSON` üzerinden de çalışır. Telegram bağlantı hataları token içerebilen URL veya yanıt gövdesini loglamaz.
 
 `ROADMAP.md` ve `FMP_SKILL.md` geçmiş plan/referans belgeleridir; güncel davranış için kod ve bu README esas alınmalıdır.
 
@@ -135,4 +137,4 @@ Günlük rapor workflow'u `growth-experiment.*` yanında `channel-status.*` dosy
 
 Küçük kanal örnekleri `small-channel-breakouts.*` dosyalarında saklanır. Eşikler: en fazla 50 bin abone, son 30 günde 3 bin izlenme, önceki en az 5 benzer süreli videonun medyanının 3 katı. İzlenmeler eşit yaşlı değildir; süre grubu Shorts sınıflaması değildir. Günlük ilgi taraması 14 günlük pencere kullanır. Rakip videolar finansal olgu kaynağı veya kopyalanacak senaryo değildir.
 
-Senaryo editoryal kontrolden geçmezse aynı olgularla bir düzeltme denemesi yapılır; yeniden başarısızsa yayın durur. Hesap reddinde aynı sağlayıcının diğer modelleri atlanır ve yalnızca yapılandırılmış bağımsız sağlayıcı denenir. Yedek için `GEMINI_API_KEY` veya `GROQ_API_KEY` GitHub Secret gerekir; kod desteği tek başına aktif yedek değildir.
+Senaryo editoryal kontrolden geçmezse aynı olgularla bir düzeltme denemesi yapılır; yeniden başarısızsa yayın durur. Kelime bütçesi düzeltmeleri aynı sabit abonelik modeliyle en fazla üç fresh-context isteğidir. Yerel inference hataları API sağlayıcı yedeğine geçmez.

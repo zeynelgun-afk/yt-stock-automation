@@ -1,5 +1,6 @@
 name: Auto-retry pipeline on infra failure
 
+# Local ownership disables historical-SHA reruns; only the operator may reconcile.
 # GitHub Actions itself fails often enough to cost publishing slots (2026-08-06:
 # one run got "Failed to resolve action download info: Service Unavailable", the
 # next was cancelled with "job was not acquired by Runner of type hosted"). Both
@@ -18,6 +19,7 @@ jobs:
     # run_attempt == 1 caps this at a single retry, which also stops the rerun's
     # own completion event from looping back in here.
     if: >-
+      vars.YT_EXECUTOR != 'local-hermes' &&
       (github.event.workflow_run.conclusion == 'failure' ||
        github.event.workflow_run.conclusion == 'cancelled') &&
       github.event.workflow_run.run_attempt == 1

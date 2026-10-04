@@ -7,6 +7,8 @@ permissions:
   contents: read
 jobs:
   test:
+    env:
+      YT_OFFLINE_TESTS: '1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

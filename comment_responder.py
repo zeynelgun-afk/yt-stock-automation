@@ -6,7 +6,8 @@ import logging
 import re
 import time
 
-from script_generator import ScriptGenerator, _PROVIDER_DEAD
+from delivery_claims import DeliveryClaims
+from script_generator import ScriptGenerator
 
 logger = logging.getLogger(__name__)
 CHANNEL_ID = "UCuIeHEWGJoDhiGLNBrwscZw"
@@ -76,14 +77,14 @@ class ReplyWriter(ScriptGenerator):
             "video_description": video.get("description", "")[:3000],
             "avoid_repeating": recent_replies[-3:],
         }, ensure_ascii=False)
-        # Keep provider fallback bounded; no full video-script/schema machinery.
+        # Same fixed subscription adapter; retain bounded reply validation.
         seen = set()
         for provider, model in self._providers():
             if provider in seen:
                 continue
             seen.add(provider)
             raw = self._chat(provider, model, prompt)
-            if raw is None or raw is _PROVIDER_DEAD:
+            if raw is None:
                 continue
             return parse_reply(raw)  # A skip/malformed answer is never forced into a reply.
         raise RuntimeError("No comment reply provider available")
@@ -107,7 +108,7 @@ def has_channel_reply(youtube, parent_id, channel_id):
     return True
 
 
-def respond(youtube, writer, *, publish=False, now=None):
+def respond(youtube, writer, *, publish=False, now=None, claims=None):
     now = now or datetime.now(timezone.utc)
     cutoff = now - timedelta(days=LOOKBACK_DAYS)
     deadline = time.monotonic() + 210
@@ -159,13 +160,20 @@ def respond(youtube, writer, *, publish=False, now=None):
                 if has_channel_reply(youtube, parent, CHANNEL_ID):
                     stats["skipped"] += 1
                     continue
-                # No insert retries: timeout/5xx may already have created the reply.
-                # Abort this pass on ambiguity; the next run checks YouTube again.
+                # Durable attempt before any insert. Missing receipt blocks all
+                # later comment sends, even if remote list reads are stale.
+                if claims is None:
+                    claims = DeliveryClaims()
+                attempt, receipt = claims.start('comment', [f'{CHANNEL_ID}:{parent}'])
+                if receipt:
+                    stats['skipped'] += 1
+                    continue
                 result = youtube.comments().insert(part="snippet", body={
                     "snippet": {"parentId": parent, "textOriginal": reply}
                 }).execute(num_retries=0)
-                if not result.get("id"):
+                if not isinstance(result.get("id"), str) or not result["id"].strip():
                     raise RuntimeError("Ambiguous comment insert; stopping this pass")
+                claims.complete(attempt, result["id"])
                 stats["posted"] += 1
                 logger.info("Reply posted: %s", result["id"])
             else:

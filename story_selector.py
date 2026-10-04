@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
-from script_generator import ScriptGenerator, ScriptGenerationError, ProviderAccountError
+from script_generator import ScriptGenerator, ScriptGenerationError
 from editorial_policy import qualify, repeated_event
 from publication_history import fetch_upload_history, parse_time
 from config import MIN_SHORTS_STORY_SCORE
@@ -488,8 +488,6 @@ class StorySelector:
         chosen, llm = top[0], None
         try:
             llm = self._llm_pick(pool, top)
-        except ProviderAccountError:
-            raise
         except ScriptGenerationError as e:
             logger.warning(f"LLM angle selection failed, using top-scored candidate: {e}")
 
