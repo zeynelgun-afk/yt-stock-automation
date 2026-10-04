@@ -1,3 +1,4 @@
+import tests  # enforce the no-real-inference unit-test boundary
 import json
 import unittest
 from contextlib import ExitStack
@@ -9,7 +10,7 @@ from unittest.mock import MagicMock, Mock, patch
 from editorial_policy import qualify, repeated_event, publication_tags, validate_editorial_script
 from growth_experiment import measurement_window, summarize
 from publication_history import fetch_upload_history, HistoryUnavailable
-from script_generator import ScriptGenerator, ProviderAccountError, _PROVIDER_DEAD
+from script_generator import ScriptGenerator, ScriptGenerationError
 from story_selector import StorySelector
 
 TODAY = date(2026, 9, 16)
@@ -137,20 +138,18 @@ class HistoryTests(unittest.TestCase):
 
 
 class AccountTests(unittest.TestCase):
-    def test_account_limit_stops_repeated_calls_to_dead_accounts(self):
-        sg = ScriptGenerator(openrouter_key='test', gemini_key='other', groq_key='')
-        sg.last_error = 'openrouter: HTTP 403 account rejected'
-        with patch.object(sg, '_chat', return_value=_PROVIDER_DEAD) as chat:
-            for _ in range(2):
-                with self.assertRaises(ProviderAccountError):
-                    sg._call_llm('prompt', 'title')
-        self.assertEqual(chat.call_count, 2)
+    def test_local_inference_failure_stops_one_request_without_fallback(self):
+        sg = ScriptGenerator(openrouter_key='ignored', gemini_key='ignored', groq_key='ignored')
+        with patch.object(sg, '_chat', return_value=None) as chat:
+            with self.assertRaises(ScriptGenerationError): sg._call_llm('prompt', 'title')
+        chat.assert_called_once_with('openai-codex', 'gpt-6-astra', 'prompt')
 
-    def test_http_error_body_is_not_logged(self):
-        sg = ScriptGenerator(openrouter_key='test')
-        with patch('script_generator.requests.post', return_value=Mock(status_code=403, text='private-account-reference')), \
+    def test_local_error_diagnostics_are_not_logged(self):
+        import llm_transport
+        sg = ScriptGenerator(openrouter_key='ignored')
+        with patch('llm_transport.complete', side_effect=llm_transport.InferenceError('private-account-reference')), \
                 self.assertLogs('script_generator', level='WARNING') as logs:
-            self.assertIs(sg._chat('openrouter', 'model', 'prompt'), _PROVIDER_DEAD)
+            self.assertIsNone(sg._chat('openai-codex', 'gpt-6-astra', 'prompt'))
         self.assertNotIn('private-account-reference', '\n'.join(logs.output))
         self.assertNotIn('private-account-reference', sg.last_error)
 
@@ -239,15 +238,14 @@ class PrepublicationTests(unittest.TestCase):
         read.assert_called_once()
 
 class ProviderProbeTests(unittest.TestCase):
-    def test_quota_exhausted_without_leaking_key_metadata(self):
+    def test_local_status_does_not_probe_credentials_or_provider(self):
         import provider_status
-        response = Mock(status_code=200)
-        response.json.return_value = {'data': {'limit_remaining': 0, 'limit_reset': 'monthly', 'label': 'secret-label', 'hash': 'secret-hash'}}
-        with patch.object(provider_status, 'OPENROUTER_API_KEY', 'test'), \
-                patch('provider_status.requests.get', return_value=response):
-            result = provider_status.inspect_openrouter()
-        self.assertEqual(result['status'], 'quota_exhausted')
-        self.assertNotIn('secret', json.dumps(result))
+        with patch('requests.get', side_effect=AssertionError('No live status API')), \
+                patch('subprocess.run', side_effect=AssertionError('No inference probe')):
+            result = provider_status.inspect_local()
+        self.assertEqual(result['provider'], 'openai-codex')
+        self.assertEqual(result['model'], 'gpt-6-astra')
+        self.assertEqual(result['status'], 'not_live_verified')
         self.assertFalse(result['generation_tested'])
 
     def test_audit_mode_is_explicitly_read_only(self):

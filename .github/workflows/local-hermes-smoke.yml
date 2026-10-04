@@ -1,0 +1,35 @@
+name: YouTube Local Hermes Smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: yt-pipeline
+  cancel-in-progress: false
+jobs:
+  inference-smoke:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: [yt-hermes]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use independent local Python
+        run: |
+          test -x /home/zeynel/.local/share/yt-hermes-runner/venv/bin/python
+          echo /home/zeynel/.local/share/yt-hermes-runner/venv/bin >> "$GITHUB_PATH"
+      - run: uv pip install --python /home/zeynel/.local/share/yt-hermes-runner/venv/bin/python -r requirements.txt
+      - name: Offline complete regression suite
+        env:
+          YT_OFFLINE_TESTS: '1'
+        run: python -m unittest discover -s tests -v
+      - name: Real subscription synthetic script and reply
+        run: python smoke_llm.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: youtube-hermes-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/llm_smoke.json
+          if-no-files-found: error
+      - name: Mark guarded job successful
+        if: success()
+        run: /home/zeynel/.local/share/yt-hermes-runner/venv/bin/python /home/zeynel/.local/share/yt-hermes-runner/local_runner_guard.py mark-success

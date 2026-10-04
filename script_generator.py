@@ -1,9 +1,7 @@
-import requests
 import json
 import logging
-import time
 from typing import Any, Dict, List, Optional, Tuple
-from config import OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
+import llm_transport
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -12,16 +10,6 @@ logger = logging.getLogger(__name__)
 class ScriptGenerationError(Exception):
     """Raised when no LLM could produce a script. The pipeline must stop —
     publishing a canned template script would be fake content."""
-
-
-class ProviderAccountError(ScriptGenerationError):
-    """All configured independent provider accounts were rejected."""
-
-
-# Sentinel: the failure was account-level (bad key, monthly limit, no credits),
-# not model-level. Every other model behind the same key fails identically, so
-# the whole provider is abandoned at once instead of burning three more calls.
-_PROVIDER_DEAD = object()
 
 
 def _learnings() -> Dict[str, Any]:
@@ -101,23 +89,9 @@ def _recent_titles_block(titles: Optional[List[str]]) -> str:
 
 
 class ScriptGenerator:
-    def __init__(self, openrouter_key: str = OPENROUTER_API_KEY, gemini_key: str = GEMINI_API_KEY, groq_key: str = GROQ_API_KEY):
-        self.openrouter_key = openrouter_key
-        self.gemini_key = gemini_key
-        self.groq_key = groq_key
-        # Last provider-side failure text, surfaced in the abort alert — a bare
-        # "all providers failed" told the operator nothing about what to fix.
+    def __init__(self, openrouter_key: str = "", gemini_key: str = "", groq_key: str = ""):
+        # Legacy positional/keyword arguments accepted but never stored or used.
         self.last_error = ""
-        self.account_error = ""
-        self.dead_providers = set()
-        # Verified-live OpenRouter slugs (dead slugs 404 and silently ate the
-        # fallback chain — check https://openrouter.ai/api/v1/models when editing)
-        self.openrouter_models = [
-            "anthropic/claude-opus-5",      # strongest storyteller — scripts are cheap, quality compounds
-            "anthropic/claude-sonnet-5",    # first fallback, proven on this channel
-            "google/gemini-3.6-flash",      # fast + cheap, reliable long output
-            "deepseek/deepseek-v4-pro",     # cheap last resort
-        ]
 
     def generate_shorts_script(self, topic: str, data_summary: str,
                                franchise_style: str = "", angle: str = "",
@@ -271,135 +245,36 @@ RULES:
     SYSTEM_MSG = "You are a professional financial AI writer. Always respond with valid JSON only."
 
     def _providers(self) -> List[Tuple[str, str]]:
-        """(provider, model) attempts in order. The direct Gemini/Groq entries
-        exist because every 'fallback' used to route through the single
-        OpenRouter account — an account-level failure (the Jul-31 outage was a
-        monthly key limit) took down the entire chain at once."""
-        attempts: List[Tuple[str, str]] = []
-        if self.openrouter_key:
-            attempts += [("openrouter", m) for m in self.openrouter_models]
-        if self.gemini_key:
-            attempts.append(("gemini", "gemini-2.5-flash"))
-        if self.groq_key:
-            attempts.append(("groq", "llama-3.3-70b-versatile"))
-        # A single configured provider means an account-level failure (key
-        # limit, expired card) stops the channel outright — that is exactly
-        # what happened on Jul-31 and again on Aug-25.
-        if len({p for p, _ in attempts}) < 2:
-            logger.warning("Only one LLM provider is configured — there is no "
-                           "account-level fallback. Set GEMINI_API_KEY and/or "
-                           "GROQ_API_KEY (both have free tiers).")
-        return attempts
+        return [(llm_transport.PROVIDER, llm_transport.MODEL)]
 
     def _chat(self, provider: str, model: str, prompt: str) -> Optional[str]:
-        """One chat completion -> content string. None means 'try the next
-        model' (auth/4xx/malformed); transient 429/5xx retry in place first."""
-        for attempt in range(3):
-            try:
-                if provider == "openrouter":
-                    res = requests.post(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {self.openrouter_key}",
-                            "Content-Type": "application/json",
-                            "HTTP-Referer": "https://github.com/zeynelgun-afk/yt-stock-automation",
-                            "X-Title": "US Stock Market Daily Engine",
-                        },
-                        json={
-                            "model": model,
-                            "messages": [
-                                {"role": "system", "content": self.SYSTEM_MSG},
-                                {"role": "user", "content": prompt},
-                            ],
-                            "temperature": 0.7,
-                        },
-                        timeout=90,
-                    )
-                elif provider == "groq":
-                    res = requests.post(
-                        "https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {self.groq_key}",
-                                 "Content-Type": "application/json"},
-                        json={
-                            "model": model,
-                            "messages": [
-                                {"role": "system", "content": self.SYSTEM_MSG},
-                                {"role": "user", "content": prompt},
-                            ],
-                            "temperature": 0.7,
-                        },
-                        timeout=90,
-                    )
-                else:  # gemini — direct REST, no SDK dependency
-                    res = requests.post(
-                        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                        params={"key": self.gemini_key},
-                        json={
-                            "contents": [{"parts": [{"text": f"{self.SYSTEM_MSG}\n\n{prompt}"}]}],
-                            "generationConfig": {"temperature": 0.7,
-                                                 "responseMimeType": "application/json"},
-                        },
-                        timeout=90,
-                    )
-
-                if res.status_code == 429 or res.status_code >= 500:
-                    # Transient — a single 429 used to permanently abandon the model
-                    wait = 5 * (attempt + 1)
-                    logger.warning(f"{provider}/{model} HTTP {res.status_code}, "
-                                   f"retrying in {wait}s...")
-                    time.sleep(wait)
-                    continue
-                if res.status_code != 200:
-                    detail = ("account rejected; check configured account quota or authorization"
-                              if res.status_code in (401, 402, 403) else "request rejected")
-                    logger.warning(f"{provider}/{model} returned HTTP {res.status_code}: {detail}")
-                    self.last_error = f"{provider}: HTTP {res.status_code} {detail}"
-                    # 401 bad key / 402 out of credits / 403 key limit exceeded
-                    # are all properties of the KEY, not of this model.
-                    if res.status_code in (401, 402, 403):
-                        logger.warning(f"{provider} key rejected at account level — "
-                                       f"skipping its remaining models.")
-                        return _PROVIDER_DEAD
-                    return None
-
-                if provider == "gemini":
-                    return res.json()["candidates"][0]["content"]["parts"][0]["text"]
-                return res.json()["choices"][0]["message"]["content"]
-            except Exception as e:
-                logger.error(f"{provider}/{model} error: {e}")
-                self.last_error = f"{provider}/{model}: {e}"
-                return None
-        return None
+        # Compatibility routing arguments cannot override the fixed transport.
+        try:
+            return llm_transport.complete([
+                {"role": "system", "content": self.SYSTEM_MSG},
+                {"role": "user", "content": prompt},
+            ])
+        except llm_transport.InferenceError:
+            self.last_error = "Local Hermes unavailable or invalid structured output"
+            logger.warning(self.last_error)
+            return None
 
     def _call_llm(self, prompt: str, default_title: str,
                   min_words: int = 0, max_words: int = 0) -> Dict[str, Any]:
-        """Generates JSON via the provider chain (OpenRouter models, then
-        direct Gemini, then direct Groq).
+        """Bounded correction requests on the same subscription model.
 
-        min_words/max_words bound the full_script length — a recap that comes
-        back at 600 words would produce a half-length video, so an off-target
-        script gets corrective retries per model before falling through."""
+        Preserve script schema and length validation. Inference failures abort
+        immediately; at most three fresh contexts correct a word-count miss.
+        """
         for provider, model_name in self._providers():
-            if provider in self.dead_providers:
-                continue
             retry_note = ""
             for attempt in range(3):
                 logger.info(f"Generating script using {provider}/{model_name}...")
                 content = self._chat(provider, model_name, prompt + retry_note)
-                if content is _PROVIDER_DEAD:
-                    self.account_error = self.last_error or f"{provider}: account unavailable"
-                    self.dead_providers.add(provider)
-                    break
                 if content is None:
                     break
                 try:
-                    # Clean markdown wrappers if returned
-                    if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0].strip()
-                    elif "```" in content:
-                        content = content.split("```")[1].split("```")[0].strip()
-                    # strict=False: models embed literal newlines in JSON strings
-                    parsed = json.loads(content, strict=False)
+                    parsed = llm_transport.strict_json(content)
                 except Exception as e:
                     logger.warning(f"{provider}/{model_name} returned unparseable JSON: {e}")
                     break
@@ -407,7 +282,7 @@ RULES:
                 # later with an uncaught KeyError/AttributeError far from here
                 if not isinstance(parsed, dict):
                     logger.warning(f"{provider}/{model_name} returned non-object JSON "
-                                   f"({type(parsed).__name__}); trying next model.")
+                                   f"({type(parsed).__name__}); aborting.")
                     break
                 parsed.setdefault("title", default_title)
                 if min_words:
@@ -421,7 +296,7 @@ RULES:
                             or any(not isinstance(parsed[k], str) for k in
                                    ("description", "ticker", "hero_number", "hero_label", "thumbnail_hook")
                                    if k in parsed)):
-                        logger.warning("Invalid publication schema from %s; trying next model", model_name)
+                        logger.warning("Invalid publication schema from %s; aborting", model_name)
                         break
 
                 word_count = len(str(parsed.get("full_script", "")).split())
@@ -454,14 +329,9 @@ RULES:
                 logger.info(f"Successfully generated script via {provider}/{model_name} ({word_count} words)!")
                 return parsed
 
-        configured = sorted({p for p, _ in self._providers()})
-        if configured and set(configured).issubset(self.dead_providers):
-            raise ProviderAccountError(self.account_error)
         raise ScriptGenerationError(
-            f"All LLM providers failed to generate a script for '{default_title}'. "
-            f"Aborting instead of publishing a canned template. "
-            f"Configured providers: {', '.join(configured) or 'NONE — no API key is set'}. "
-            f"Last error: {self.last_error or 'n/a'}"
+            "Local Hermes failed to generate validated JSON; publishing aborted. "
+            + (self.last_error or "Invalid schema or word budget")
         )
 
 if __name__ == "__main__":

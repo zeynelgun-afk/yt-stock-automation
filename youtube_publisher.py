@@ -3,6 +3,8 @@ import sys
 import json
 import logging
 from pathlib import Path
+from delivery_claims import DeliveryClaims
+from comment_responder import CHANNEL_ID
 from config import YOUTUBE_CLIENT_SECRET_FILE, BASE_DIR
 
 logging.basicConfig(level=logging.INFO)
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 RECONSENT_RECIPE = (
     "token.json geçersiz — lokalde OAuth akışını yeniden çalıştırıp "
-    "`gh secret set YOUTUBE_TOKEN_JSON < token.json` ile secret'ı güncelle."
+    "`gh secret set YT_LOCAL_TOKEN_JSON < token.json` ile secret'ı güncelle."
 )
 
 
@@ -24,7 +26,7 @@ class YouTubePublisher:
     def _ensure_credentials(self):
         """Creates client_secret.json and token.json from environment variables if missing on disk."""
         if not self.client_secret_path.exists():
-            env_secret = os.getenv("YOUTUBE_CLIENT_SECRET_JSON", "")
+            env_secret = os.getenv("YT_LOCAL_CLIENT_SECRET_JSON", "")
             if env_secret:
                 try:
                     with open(self.client_secret_path, "w", encoding="utf-8") as f:
@@ -34,7 +36,7 @@ class YouTubePublisher:
                     logger.error(f"Failed to write client_secret.json: {e}")
 
         if not self.token_path.exists():
-            env_token = os.getenv("YOUTUBE_TOKEN_JSON", "")
+            env_token = os.getenv("YT_LOCAL_TOKEN_JSON", "")
             if env_token:
                 try:
                     with open(self.token_path, "w", encoding="utf-8") as f:
@@ -60,7 +62,7 @@ class YouTubePublisher:
         self.last_error = ""
         if not self.client_secret_path.exists():
             self.last_error = (f"client_secret.json missing at {self.client_secret_path} "
-                               "(YOUTUBE_CLIENT_SECRET_JSON secret unset?)")
+                               "(YT_LOCAL_CLIENT_SECRET_JSON secret unset?)")
             logger.error(self.last_error)
             return ""
 
@@ -116,7 +118,10 @@ class YouTubePublisher:
                 with open(self.token_path, "w", encoding="utf-8") as token_file:
                     token_file.write(creds.to_json())
 
-            youtube = build("youtube", "v3", credentials=creds)
+            youtube = build("youtube", "v3", credentials=creds, cache_discovery=False)
+            channels = youtube.channels().list(part='id', mine=True).execute(num_retries=2).get('items', [])
+            if len(channels) != 1 or channels[0].get('id') != CHANNEL_ID:
+                raise RuntimeError('Unexpected YouTube channel; no upload sent')
 
             body = {
                 "snippet": {
@@ -137,15 +142,25 @@ class YouTubePublisher:
                 }
             }
 
+            # Business-event identities survive regenerated media/title and
+            # checkout changes. Reject missing identity rather than hash a draft.
+            identities = [f'{CHANNEL_ID}:{tag}' for tag in (extra_tags or [])
+                          if isinstance(tag, str) and tag.startswith('ev:') and len(tag) > 3]
+            claims = DeliveryClaims()
+            attempt, receipt = claims.start('upload', identities)
+            if receipt:
+                return receipt
             media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
             request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
-            
             logger.info("Uploading video to YouTube channel...")
-            # num_retries: exponential-backoff retries on transient 5xx/socket
-            # errors — a single blip used to forfeit the publishing slot
-            response = request.execute(num_retries=5)
+            # Even a timeout/5xx can mean a video was created. Never retry the
+            # insertion or reconstruct a resumable request after ambiguity.
+            response = request.execute(num_retries=0)
             video_id = response.get("id")
-            logger.info(f"Successfully uploaded! Video URL: https://youtu.be/{video_id}")
+            if not isinstance(video_id, str) or not video_id.strip():
+                raise RuntimeError('Ambiguous upload; operator reconciliation required')
+            claims.complete(attempt, video_id)  # durable before thumbnails/alerts
+            logger.info("Successfully uploaded video %s", video_id)
 
             if thumbnail_path and Path(thumbnail_path).exists():
                 try:
@@ -160,8 +175,8 @@ class YouTubePublisher:
 
             return video_id
         except Exception as e:
-            self.last_error = str(e)
-            logger.error(f"YouTube Upload Failed: {e}")
+            self.last_error = f"YouTube upload stopped ({type(e).__name__}); inspect durable delivery claims"
+            logger.error(self.last_error)
             return ""
 
 if __name__ == "__main__":

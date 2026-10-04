@@ -1,3 +1,4 @@
+import tests  # enforce the no-real-inference unit-test boundary
 import copy
 from datetime import datetime, timezone
 import json
@@ -5,7 +6,8 @@ from pathlib import Path
 import subprocess
 import textwrap
 import unittest
-from unittest.mock import MagicMock
+from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, patch
 
 from comment_responder import CHANNEL_ID, has_channel_reply, parse_reply, respond
 from pipeline_schedule import resolve_mode
@@ -39,6 +41,12 @@ def owner_reply():
 
 
 class CommentResponderTests(unittest.TestCase):
+    def setUp(self):
+        from delivery_claims import DeliveryClaims
+        tmp = self.enterContext(TemporaryDirectory())
+        self.enterContext(patch('comment_responder.DeliveryClaims',
+                               return_value=DeliveryClaims(Path(tmp)/'claims.sqlite')))
+
     def test_dry_run_never_posts(self):
         yt, writer = service(), MagicMock()
         writer.draft.return_value = REPLY

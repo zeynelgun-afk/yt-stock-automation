@@ -54,7 +54,7 @@ def _build_client():
         return build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
     token_path = BASE_DIR / "token.json"
-    env_token = os.getenv("YOUTUBE_TOKEN_JSON", "")
+    env_token = os.getenv("YT_LOCAL_TOKEN_JSON", "")
     if token_path.exists() or env_token:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request

@@ -1,0 +1,19 @@
+# TEMPLATE ONLY. Operator provisions and installs; never started by migration.
+[Unit]
+Description=Dedicated guarded YouTube Actions runner
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/zeynel/.local/share/yt-hermes-runner/actions
+Environment=PATH=/home/zeynel/.local/share/yt-hermes-runner/venv/bin:/home/zeynel/.local/bin:/usr/local/bin:/usr/bin
+Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/zeynel/.local/share/yt-hermes-runner/runner-pre-job.sh
+Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/home/zeynel/.local/share/yt-hermes-runner/runner-post-job.sh
+UMask=0077
+ExecStart=/usr/bin/flock --nonblock /home/zeynel/.local/state/yt-hermes-runner/listener.lock /home/zeynel/.local/share/yt-hermes-runner/actions/run.sh
+# A hook failure must be inspected, not hidden behind an automatic service loop.
+Restart=no
+TimeoutStopSec=300
+
+[Install]
+WantedBy=default.target

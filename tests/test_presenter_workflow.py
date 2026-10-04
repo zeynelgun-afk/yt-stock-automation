@@ -1,3 +1,4 @@
+import tests  # enforce the no-real-inference unit-test boundary
 import json
 import shutil
 import tempfile
