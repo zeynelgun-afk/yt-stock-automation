@@ -1,6 +1,6 @@
 # Haftalık kanal durumu
 
-Güncelleme: 2026-10-03T19:45:40.508439+00:00
+Güncelleme: 2026-10-04T15:23:11.637961+00:00
 
 Son Analytics günü: **2026-10-01**. Tarihler Pasifik saat dilimindedir.
 API gecikmesi nedeniyle dönemler veri gelen son tarihe göre kaydırılır. Eksik günler sıfır sayılmaz.
