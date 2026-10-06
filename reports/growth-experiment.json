@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20261003",
   "started_at": "2026-10-03T20:00:00Z",
-  "generated_at": "2026-10-05T19:18:37.830189+00:00",
+  "generated_at": "2026-10-06T16:49:58.675887+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -11,16 +11,16 @@
   "cohorts": {
     "baseline": {
       "selected": 10,
-      "available": 0,
-      "engaged_views": 0,
-      "median_views": null,
-      "median_engaged_views": null,
-      "median_average_view_seconds": null,
+      "available": 3,
+      "engaged_views": 12,
+      "median_views": 10,
+      "median_engaged_views": 5,
+      "median_average_view_seconds": 20,
       "subscribers_gained": 0,
-      "subscribers_per_1000_engaged": null
+      "subscribers_per_1000_engaged": 0.0
     },
     "experiment": {
-      "selected": 0,
+      "selected": 4,
       "available": 0,
       "engaged_views": 0,
       "median_views": null,
@@ -108,8 +108,14 @@
       "published_at": "2026-10-01T06:19:47Z",
       "window_start": "2026-10-01",
       "window_end": "2026-10-03",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 12,
+        "engagedViews": 5,
+        "averageViewDuration": 20,
+        "averageViewPercentage": 60.28,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -118,8 +124,14 @@
       "published_at": "2026-09-30T21:14:40Z",
       "window_start": "2026-10-01",
       "window_end": "2026-10-03",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 5,
+        "engagedViews": 2,
+        "averageViewDuration": 8,
+        "averageViewPercentage": 19.56,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -128,6 +140,52 @@
       "published_at": "2026-09-30T18:35:03Z",
       "window_start": "2026-10-01",
       "window_end": "2026-10-03",
+      "status": "available",
+      "metrics": {
+        "views": 10,
+        "engagedViews": 5,
+        "averageViewDuration": 33,
+        "averageViewPercentage": 97.24,
+        "subscribersGained": 0
+      }
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "AY4lfQ3nt5A",
+      "title": "PTC Stock: RBC Downgrades to Sector Perform",
+      "published_at": "2026-10-05T20:39:34Z",
+      "window_start": "2026-10-06",
+      "window_end": "2026-10-08",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "ZZbJq91n7CE",
+      "title": "Devon Energy Sale Was Disclosed 28 Days Later",
+      "published_at": "2026-10-05T21:15:09Z",
+      "window_start": "2026-10-06",
+      "window_end": "2026-10-08",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "THSiGBWVFuQ",
+      "title": "Apple Stock: Tim Cook's $63.85M Insider Sale",
+      "published_at": "2026-10-05T23:07:04Z",
+      "window_start": "2026-10-06",
+      "window_end": "2026-10-08",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "QHhK7dYEjGg",
+      "title": "General Motors Gets a $9 Target Raise From Goldman",
+      "published_at": "2026-10-06T06:44:49Z",
+      "window_start": "2026-10-06",
+      "window_end": "2026-10-08",
       "status": "pending",
       "metrics": null
     }
