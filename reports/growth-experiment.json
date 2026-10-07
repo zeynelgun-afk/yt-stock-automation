@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20261003",
   "started_at": "2026-10-03T20:00:00Z",
-  "generated_at": "2026-10-06T16:49:58.675887+00:00",
+  "generated_at": "2026-10-07T17:26:27.876930+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -11,16 +11,16 @@
   "cohorts": {
     "baseline": {
       "selected": 10,
-      "available": 3,
-      "engaged_views": 12,
-      "median_views": 10,
-      "median_engaged_views": 5,
-      "median_average_view_seconds": 20,
+      "available": 6,
+      "engaged_views": 113,
+      "median_views": 11.0,
+      "median_engaged_views": 5.0,
+      "median_average_view_seconds": 21.5,
       "subscribers_gained": 0,
       "subscribers_per_1000_engaged": 0.0
     },
     "experiment": {
-      "selected": 4,
+      "selected": 7,
       "available": 0,
       "engaged_views": 0,
       "median_views": null,
@@ -78,8 +78,14 @@
       "published_at": "2026-10-01T21:35:58Z",
       "window_start": "2026-10-02",
       "window_end": "2026-10-04",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 192,
+        "engagedViews": 85,
+        "averageViewDuration": 28,
+        "averageViewPercentage": 92.97,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -88,8 +94,14 @@
       "published_at": "2026-10-01T19:18:03Z",
       "window_start": "2026-10-02",
       "window_end": "2026-10-04",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 26,
+        "engagedViews": 12,
+        "averageViewDuration": 23,
+        "averageViewPercentage": 75.05,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -98,8 +110,14 @@
       "published_at": "2026-10-01T18:42:48Z",
       "window_start": "2026-10-02",
       "window_end": "2026-10-04",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 8,
+        "engagedViews": 4,
+        "averageViewDuration": 8,
+        "averageViewPercentage": 19.67,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "baseline",
@@ -186,6 +204,36 @@
       "published_at": "2026-10-06T06:44:49Z",
       "window_start": "2026-10-06",
       "window_end": "2026-10-08",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "Kmq_fLvFCeI",
+      "title": "ArriVent BioPharma Falls 50.1% Amid Trial Report",
+      "published_at": "2026-10-06T18:33:09Z",
+      "window_start": "2026-10-07",
+      "window_end": "2026-10-09",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "oqxOh244vtc",
+      "title": "Voyager Technologies Target Cut to $55 at Jefferies",
+      "published_at": "2026-10-06T21:30:18Z",
+      "window_start": "2026-10-07",
+      "window_end": "2026-10-09",
+      "status": "pending",
+      "metrics": null
+    },
+    {
+      "cohort": "experiment",
+      "video_id": "eKERZfUsLt4",
+      "title": "GRRRW Reports 36-Cent Loss Per Share, Missing Estimates",
+      "published_at": "2026-10-07T06:21:24Z",
+      "window_start": "2026-10-07",
+      "window_end": "2026-10-09",
       "status": "pending",
       "metrics": null
     }
