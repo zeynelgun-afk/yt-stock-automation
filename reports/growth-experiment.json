@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20261003",
   "started_at": "2026-10-03T20:00:00Z",
-  "generated_at": "2026-10-08T17:25:13.427955+00:00",
+  "generated_at": "2026-10-09T17:00:33.095612+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -12,12 +12,12 @@
     "baseline": {
       "selected": 10,
       "available": 10,
-      "engaged_views": 274,
+      "engaged_views": 275,
       "median_views": 11.0,
       "median_engaged_views": 5.0,
       "median_average_view_seconds": 21.5,
       "subscribers_gained": 2,
-      "subscribers_per_1000_engaged": 7.3
+      "subscribers_per_1000_engaged": 7.27
     },
     "experiment": {
       "selected": 10,
@@ -89,9 +89,9 @@
       "status": "available",
       "metrics": {
         "views": 345,
-        "engagedViews": 140,
+        "engagedViews": 141,
         "averageViewDuration": 35,
-        "averageViewPercentage": 95.5,
+        "averageViewPercentage": 94.97,
         "subscribersGained": 2
       }
     },
