@@ -158,3 +158,15 @@ olarak doldurulmaz. `reports/weekly-run.json` rapor ve öğrenme adımlarının 
 kaydeder. Telegram API kabulü mesaj kimliğiyle loglanır. Rapor/öğrenme/Telegram
 başarısızlığı varsa başarılı öğrenme bölümleri kaydedildikten sonra workflow
 başarısız olur. Mesajın API tarafından kabulü, kullanıcının okuduğu anlamına gelmez.
+
+## Videoya özel kanal yorumu
+
+Yayın sonrası yalnızca ek bağlam sağlayan videolara en fazla bir İngilizce kanal
+yorumu eklenir: kaynak verideki güvenli HTTPS haber bağlantısı, en az yedi günlük
+kongre açıklaması gecikmesi, tarihli insider işlemi veya bilanço/fiyat çelişkisi.
+Genel beğeni/abone çağrısı yoktur; senaryodan yeni finansal iddia veya otomatik
+düzeltme uydurulmaz. Başarılı yayın sonrasında çalışır; mevcut kanal yorumu ve
+kalıcı gönderim kaydı tekrarı engeller. Belirsiz gönderim otomatik yeniden denenmez.
+Sonuç `output/editorial_creator_comment.json` dosyasına yazılır; hata Telegram'a
+bildirilir. YouTube Data API sabitleme işlemi sunmadığından yorum otomatik
+sabitlenmez; yeni yorumun doğrudan bağlantısı Telegram'a sabitleme notuyla gider.

@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import time
 from content_checks import validate_hero_number
+from creator_comment import publish_for_story
 from editorial_policy import publication_tags, validate_editorial_script
 from datetime import datetime
 
@@ -295,6 +296,18 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
             'event_ids': story.get('event_ids', []), 'tags': publication_tags(story, is_shorts),
         }, indent=2), encoding='utf-8')
         logger.info(f"Published to YouTube! Video ID: {video_id}")
+        try:
+            creator_comment = publish_for_story(video_id, story)
+            if creator_comment.get('status') == 'posted':
+                bot.send_text('💬 Videoya özel yorum paylaşıldı. Sabitleme arayüzden yapılmalı:\n'
+                              + creator_comment['url'])
+        except Exception as exc:
+            creator_comment = {'status': 'failed', 'error_type': type(exc).__name__}
+            logger.error('Creator comment failed (%s)', type(exc).__name__)
+            bot.send_text('🚨 Video yayında; videoya özel yorum gönderilemedi ('
+                          + type(exc).__name__ + '). Yeniden video yüklenmeyecek.\nhttps://youtu.be/' + video_id)
+        (OUTPUT_DIR / 'editorial_creator_comment.json').write_text(
+            json.dumps({'video_id': video_id, **creator_comment}, indent=2), encoding='utf-8')
         bot.send_text(f"✅ Yayında ({audio_dur:.0f}sn): https://youtu.be/{video_id}")
         # Preview conversion/upload must not delay publication of market news.
         bot.send_video_notification(
