@@ -1,50 +1,47 @@
 {
  "market_patterns": {
   "title_patterns": [
-   "[WELL-KNOWN TICKER] hits a [specific multi-year extreme] after [scheduled event]: is the [specific yield/metric] still covered?",
-   "[TICKER] reports [event] tonight — the one number that decides it",
-   "[TICKER] could beat [specific expectation]... but [one concrete offsetting constraint]",
-   "[TICKER]: the [insider / institutional / buyback] move that didn't make headlines",
-   "What [specific unrounded figure] of [revenue / FCF / backlog] actually tells you about [TICKER]",
-   "[TICKER] at [price or valuation multiple]: what has to be true for the math to work",
-   "[TICKER] vs [peer TICKER] — same sector, two completely different cash flow profiles",
-   "[TICKER] after [event]: three numbers that changed and two that didn't"
+   "[COMPANY] at [VALUATION SCENARIO]: what must happen to justify it?",
+   "[NAMED ANALYST]'s [COMPANY OR SECTOR] thesis — the assumptions to test",
+   "[NUMBER] [SECTOR] stocks compared on [FINANCIAL METRIC] and [RISK METRIC]",
+   "When does [COMPANY OR SECTOR] become attractive? A [VALUATION METRIC] checklist",
+   "[COMPANY]'s [REPORTED RESULT] versus [SHARE-PRICE REACTION]: what explains the gap?",
+   "[COMPANY] insider purchases: [VERIFIED AMOUNT] in context",
+   "Beyond [FAMILIAR STOCK GROUP]: [NUMBER] smaller companies screened for [MEASURABLE CRITERION]"
   ],
   "hook_patterns": [
-   "Open with the single hardest number ('the dividend costs them $X billion a year; operating cash flow was $Y') before naming any opinion.",
-   "Name the event and its exact timing, then state the one variable you'll judge it on — no suspense padding.",
-   "State the popular take in one sentence, then say which line item you checked to test it.",
-   "Start from the chart extreme ('this price was last seen in [year]') and immediately pivot to whether fundamentals match that price.",
-   "Lead with the disclosure or filing detail most viewers skipped, then explain what it implies about management's own expectations."
+   "Start with [sourced valuation scenario], identify its largest assumption, and preview the calculation that would test it.",
+   "Place [reported operating result] beside [verified price reaction], then ask which expectation could explain the difference.",
+   "Compare [two companies] using the same [financial metric]; preview why the lower share price need not mean the cheaper business.",
+   "Put [verified insider purchase] beside [existing ownership or compensation] before discussing its significance. Optional original analogy hypothesis: measure the purchase against the wallet, not just the receipt."
   ],
   "packaging_notes": [
-   "All three outliers sit in a tight 6-10 minute window — long enough for a full cash-flow or guidance walkthrough, short enough to be one question answered, not a market roundup.",
-   "Every title anchors to a single mega-cap-recognizable ticker plus a concrete, checkable catalyst (earnings date, multi-year low, insider filing) rather than 'the market' or macro panic.",
-   "Specific unrounded numbers and named percentages in the title outperform vague superlatives; keep the number in the title and resolve it early in the video so the promise is paid off.",
-   "A question or tension framing ('is it safe?', 'but there's a problem') works as curiosity without doom — the tension is about a measurable risk, not collapse; keep thumbnails to a clean chart, a filing excerpt, or the number itself.",
-   "The 'move you missed' / overlooked-disclosure angle is highly transferable: positions you as the one who reads the 10-Q, which fits a no-hype brand better than prediction titles.",
-   "Timing matters more than production: event-adjacent uploads (earnings eve, day-after reaction) captured most of the velocity, so pre-build a template for the two or three companies you cover closest."
+   "AI selection and valuation framing has repeated strong signals: 9.6x and 8.6x baseline on one channel, plus 6.1x on another. The first two share a channel and overlapping baselines, so they are not independent replications. This supports testing specific comparisons, not claiming stocks are bargains.",
+   "Named authorities and quantified scenarios accompany strong signals, including SpaceX at 86.0x, a tech/AI analyst discussion at 37.1x, and Tesla at 24.4x. Treat source-title forecasts as unverified claims; transfer the assumption-testing structure, not guaranteed upside or borrowed authority.",
+   "No duration sweet spot is established. Strong AI examples include 54–60 seconds, 5:41 and 15:56; strong Tesla/SpaceX examples run 9:29–15:45. Analyze short-duration and longer formats separately; the <=180-second bucket does not establish Shorts distribution.",
+   "Result-versus-price contradictions and insider-purchase context are exploratory: APLD is emerging at 7.9x with 1,832 views; Celsius at 5.4x with 2,002; SoFi at 2.9x with 1,105. Nike remains emerging despite 79.5x because its 83,300 subscribers exceed the strong-tier limit. Verify the underlying events before using these frames.",
+   "These are packaging associations from September 10–October 9 uploads, not proof of what caused performance this week. Baselines are not equal-age comparisons; no thumbnails, transcripts or retention curves were supplied. All opening shapes and humor are hypotheses. Reject panic, urgency and unsupported return promises; use numbers for comparisons and explicit scenarios."
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-10-10T15:46:26",
+ "updated_at": "2026-10-10T16:06:34",
  "franchise_weights": {
   "market_close": 1.3,
   "insider_watch": 0.7
  },
  "own_patterns": {
   "winning_patterns": [
-   "Shorts: Company + quantified price move + specific catalyst is a promising structure. Three market-close examples pairing percentage moves with merger, spinoff or patent developments recorded 88.8–99.8% average viewed and reported hook-hold values of 1.194–1.357. This is a retention association, not evidence that the title caused distribution.",
-   "Shorts: Company or named executive + buy/sell action + dollar amount provides a compact insider-news structure. The purchase example retained 82.7% on average; one CFO-sale example retained 77.7%. Treat this as a modest signal, not a general advantage for insider coverage or large dollar figures."
+   "Among Shorts, company or ticker + quantified move + named catalyst is a promising structure: three examples retained 88.8–99.8% APV with hook-window readings of 1.194–1.357. Frame the opening around the move and its explanation; actual opening scripts were not supplied.",
+   "For insider Shorts, executive role + transaction direction + dollar amount provides a compact factual frame. The purchase example held 82.7% APV and a 1.177 hook reading, while one sale example held 77.7% and 1.185. Treat this as a format to test, not evidence that purchases outperform sales."
   ],
   "losing_patterns": [
-   "Shorts: Avoid relying on an unquantified excitement verb as the main framing. The example combining 'soars' with a disclosure catalyst had 68.0% average viewed, the lowest among these Shorts. One example supports testing more concrete wording, not declaring that wording the cause.",
-   "Long videos: Do not assume a large transaction amount plus filing or transaction-count detail is enough to sustain attention. Both long insider-sale videos used that structure but recorded only 38.1–44.9% average viewed and 0.633–0.661 reported hook hold. With only two long videos and no stronger long-form comparator, no winning long-form structure is established."
+   "In the two long videos, transaction summaries carrying dollar amounts plus filing or transaction-count detail coincided with 38.1–44.9% APV and 0.633–0.661 hook readings. Avoid assuming administrative detail is a strong opening payoff; this sample cannot separate packaging from duration effects.",
+   "Within Shorts, a generic upward-move verb plus a disclosure catalyst, without a quantified move, appeared in the weakest APV example at 68.0%, with a 1.053 hook reading. Avoid relying on excitement language alone, but treat this single example as a weak signal rather than a rule."
   ],
   "notes": [
-   "Market-close Shorts contain the three strongest non-replay APV results, but the 178% price-move example retained less than the 78% example. Bigger headline numbers are not a reliable retention ranking.",
-   "The insider-sale Short with 156.1% average viewed and 1.815 hook hold had just 88 views and 24 engaged views. Replay-influenced retention is not proof of broad demand; APV also does not measure swipe-away or feed conversion.",
-   "Actual opening scripts were not supplied, so hook wording cannot be evaluated directly. These are tentative title-framing correlations from 10 Shorts and two long videos, not causal findings or a clean format comparison."
+   "The sample contains only 10 Shorts and two long videos, with 41–726 views each. Title structures correlate with performance here; opening scripts, impressions and distribution evidence are absent.",
+   "Market-close Shorts span 68.0–99.8% APV; insider Shorts span 69.9–156.1%. The 156.1% insider result had only 88 views and 24 engaged views, so replay-influenced retention is not proof of broad demand or franchise superiority.",
+   "Keep Shorts and long-video baselines separate. APV measures viewing depth, not swipe-away or feed conversion; supplied hook readings above 1 should not be interpreted as percentages of unique viewers retained."
   ],
   "title": "own-channel lessons"
  },
@@ -52,7 +49,7 @@
   "weights": "ok (2 franchise)",
   "narration": "ok (2.235 w/s, 85 video)",
   "own_patterns": "ok",
-  "market_patterns": "no outliers found"
+  "market_patterns": "ok (40 outlier)"
  },
  "narration": {
   "wps": 2.235,
@@ -69,9 +66,9 @@
  },
  "weights_version": 2,
  "section_updated_at": {
-  "franchise_weights": "2026-10-10T15:46:26",
-  "narration": "2026-10-10T15:46:26",
-  "own_patterns": "2026-10-10T15:46:26",
-  "market_patterns": "2026-10-03T22:44:41"
+  "franchise_weights": "2026-10-10T16:06:34",
+  "narration": "2026-10-10T16:06:34",
+  "own_patterns": "2026-10-10T16:06:34",
+  "market_patterns": "2026-10-10T16:06:34"
  }
 }
