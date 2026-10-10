@@ -24,6 +24,7 @@ import re
 import statistics
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
+from collections import Counter
 
 from config import YOUTUBE_API_KEY, BASE_DIR, DATA_DIR
 from script_generator import ScriptGenerator
@@ -38,13 +39,23 @@ SEARCH_QUERIES = [
     "congress stock trading",
     "insider buying stocks",
     "fear and greed index",
+    "AI stocks analysis",
+    "Nvidia stock earnings",
+    "Tesla stock analysis",
+    "small cap stocks",
 ]
 FINANCE_TITLE = re.compile(r"\b(stock|stocks|market|markets|earnings|shares|insider|trading|nasdaq|treasury|fed|inflation|investing|dividend)\b|S&P", re.I)
-OUTLIER_RATIO = 3.0       # video views vs channel average
+OUTSIDE_US_STOCK_NICHE = re.compile(r'\b(pok[eé]mon|cricket|crypto|bitcoin|ethereum|nifty|sensex|nse|bse|bollywood)\b|₹', re.I)
+OUTLIER_RATIO = 3.0       # strong signal vs preceding median
 MIN_VIEWS = 3_000
 MAX_SUBSCRIBERS = 50_000
 MIN_BASELINE_VIDEOS = 5
 LOOKBACK_DAYS = 30
+DISCOVERY_MAX_SUBSCRIBERS = 100_000
+DISCOVERY_MIN_VIEWS = 1_000
+DISCOVERY_MIN_RATIO = 2.0
+DISCOVERY_MIN_BASELINE = 3
+BASELINE_MAX_PAGES = 4
 
 
 def _build_client():
@@ -96,25 +107,55 @@ def preceding_baseline(video, uploads):
     return sorted(previous, key=lambda r: r['snippet']['publishedAt'], reverse=True)[:20]
 
 
-def persist_breakouts(videos):
+def finance_context(video):
+    snippet = video.get('snippet', {})
+    # Company/ticker-only titles may omit "stock". Use the author's description
+    # as niche context, never as evidence for financial claims.
+    return bool(FINANCE_TITLE.search(snippet.get('title', '') + ' ' +
+                                    snippet.get('description', '')[:1500]))
+
+
+def fetch_baseline_uploads(yt, channel, candidate, diagnostics):
+    playlist = channel.get('contentDetails', {}).get('relatedPlaylists', {}).get('uploads')
+    if not playlist:
+        return []
+    uploads, page = [], None
+    for _ in range(BASELINE_MAX_PAGES):
+        res = yt.playlistItems().list(part='contentDetails', playlistId=playlist,
+                                     maxResults=50, **({'pageToken': page} if page else {})).execute()
+        diagnostics['baseline_pages'] += 1
+        ids = [r['contentDetails']['videoId'] for r in res.get('items', [])]
+        if ids:
+            uploads.extend(yt.videos().list(part='snippet,statistics,contentDetails,liveStreamingDetails',
+                                           id=','.join(ids)).execute().get('items', []))
+        page = res.get('nextPageToken')
+        # Earlier candidates on a prolific channel can sit beyond page one.
+        if not page or len(preceding_baseline(candidate, uploads)) >= 20:
+            break
+    return uploads
+
+
+def persist_breakouts(videos, diagnostics=None):
     from pathlib import Path
     target = Path('reports'); target.mkdir(exist_ok=True)
     stamp = datetime.now(timezone.utc).isoformat()
     evidence = dict(generated_at=stamp, max_subscribers=MAX_SUBSCRIBERS,
                     min_views=MIN_VIEWS, min_ratio=OUTLIER_RATIO,
-                    baseline='Median current views of 5–20 earlier videos in the same duration bucket; not equal age.',
-                    videos=videos)
+                    baseline='Median current views of 3–20 earlier videos in the same duration bucket; not equal age.',
+                    discovery_thresholds=dict(max_subscribers=DISCOVERY_MAX_SUBSCRIBERS, min_views=DISCOVERY_MIN_VIEWS, min_ratio=DISCOVERY_MIN_RATIO, min_baseline=DISCOVERY_MIN_BASELINE),
+                    diagnostics=diagnostics or {}, videos=videos)
     (target / 'small-channel-breakouts.json').write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + '\n')
     lines = ['# Küçük kanallarda öne çıkan videolar', '', f'Güncelleme: {stamp}', '',
-             'Eşikler: en fazla 50.000 abone, en az 3.000 izlenme ve önceki 5–20 benzer süreli videonun medyanının en az 3 katı.',
+             'Güçlü sinyal: ≤50.000 abone, ≥3.000 izlenme, ≥3× medyan ve ≥5 geçmiş video. Erken sinyal: ≤100.000 abone, ≥1.000 izlenme, ≥2× medyan ve ≥3 geçmiş video.',
              'Abone sayıları yaklaşık olabilir. İzlenmeler eşit video yaşında ölçülmez. Süre grubu Shorts sınıflaması değildir.', '',
-             '| Video / kanal | Abone | İzlenme | Önceki medyan | Kat / örneklem |', '|---|---:|---:|---:|---:|']
+             '| Video / kanal | Sinyal | Abone | İzlenme | Önceki medyan | Kat / örneklem |', '|---|---|---:|---:|---:|---:|']
     for v in videos:
         title = v['title'].replace('|', '/').replace('\n', ' ')
         channel = v['channel'].replace('|', '/')
-        lines.append(f"| [{title}]({v['url']}) / {channel} | {v['subscribers']} | {v['views']} | {v['baseline_median_views']} | {v['ratio']}× / {v['baseline_samples']} |")
+        lines.append(f"| [{title}]({v['url']}) / {channel} | {v['signal_tier']} | {v['subscribers']} | {v['views']} | {v['baseline_median_views']} | {v['ratio']}× / {v['baseline_samples']} |")
     if not videos:
         lines += ['', 'Bu taramada eşiği geçen doğrulanmış örnek bulunamadı; büyük kanallar otomatik olarak yerine geçirilmedi.']
+    lines += ['', 'Tarama özeti: ' + json.dumps(diagnostics or {}, ensure_ascii=False), '']
     lines += ['', 'Bunlar izleyici ilgisi ve anlatım biçimi için adaylardır. Finansal olgular kendi kaynaklarımızla doğrulanır; başlık, senaryo ve espriler kopyalanmaz.', '']
     (target / 'small-channel-breakouts.md').write_text('\n'.join(lines))
 
@@ -127,21 +168,27 @@ def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS
     published_after = (datetime.now(timezone.utc) - timedelta(days=lookback_days)) \
         .strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    effective_views = min(min_views, DISCOVERY_MIN_VIEWS)
+    effective_subscribers = max(max_subscribers, DISCOVERY_MAX_SUBSCRIBERS)
+    effective_ratio = min(min_ratio, DISCOVERY_MIN_RATIO) if min_ratio else 0
+    diagnostics = Counter()
     video_ids: List[str] = []
-    for query_index, q in enumerate(SEARCH_QUERIES if queries is None else queries):
-        try:
-            res = yt.search().list(
-                q=q, part="id", type="video", maxResults=25,
-                publishedAfter=published_after, relevanceLanguage="en",
-                regionCode="US", order="viewCount" if query_index % 2 == 0 else "date",
-            ).execute()
-            video_ids += [it["id"]["videoId"] for it in res.get("items", [])]
-        except Exception as e:
-            raise RuntimeError("Breakout discovery failed; previous evidence retained") from None
+    for q in (SEARCH_QUERIES if queries is None else queries):
+        # View-count results favor established channels; relevance exposes niche
+        # channels. Date ordering previously spent half the scan on newborn clips.
+        for order in ('relevance', 'viewCount'):
+            try:
+                res = yt.search().list(
+                    q=q, part="id", type="video", maxResults=50,
+                    publishedAfter=published_after, relevanceLanguage="en",
+                    regionCode="US", order=order,
+                ).execute()
+                diagnostics['search_requests'] += 1
+                video_ids += [it["id"]["videoId"] for it in res.get("items", [])]
+            except Exception:
+                raise RuntimeError("Breakout discovery failed; previous evidence retained") from None
     video_ids = list(dict.fromkeys(video_ids))
-    if not video_ids:
-        return []
-
+    diagnostics['discovered_videos'] = len(video_ids)
     videos: List[Dict[str, Any]] = []
     for i in range(0, len(video_ids), 50):
         res = yt.videos().list(
@@ -153,9 +200,14 @@ def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS
     channel_ids = list({v["snippet"]["channelId"] for v in videos})
     channels = {}
     for i in range(0, len(channel_ids), 50):
-        res = yt.channels().list(part="statistics,contentDetails", id=",".join(channel_ids[i:i + 50])).execute()
+        res = yt.channels().list(part="statistics,contentDetails,snippet", id=",".join(channel_ids[i:i + 50])).execute()
         channels.update({ch['id']: ch for ch in res.get('items', [])})
     prior_cache = {}
+    oldest_candidates = {}
+    for video in videos:
+        cid = video['snippet']['channelId']
+        if cid not in oldest_candidates or video['snippet']['publishedAt'] < oldest_candidates[cid]['snippet']['publishedAt']:
+            oldest_candidates[cid] = video
 
     outliers = []
     per_channel: Dict[str, int] = {}
@@ -164,45 +216,59 @@ def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS
         channel = channels.get(v['snippet']['channelId'], {})
         stats = channel.get('statistics', {})
         if stats.get('hiddenSubscriberCount') or 'subscriberCount' not in stats:
+            diagnostics['unknown_subscribers'] += 1
             continue
         subscribers = int(stats['subscriberCount'])
-        if views < min_views or subscribers > max_subscribers:
+        if views < effective_views:
+            diagnostics['below_views'] += 1
+            continue
+        if subscribers > effective_subscribers:
+            diagnostics['above_subscribers'] += 1
             continue
         # Live-stream VODs (Zee Business "First Trade" etc.) rack up views as
         # recurring broadcasts, not packaging — nothing transferable to model
         if "liveStreamingDetails" in v:
+            diagnostics['livestream'] += 1
             continue
         title = v["snippet"]["title"]
         language = v["snippet"].get("defaultAudioLanguage") or v["snippet"].get("defaultLanguage", "")
         if language and not language.lower().startswith("en"):
+            diagnostics['non_english'] += 1
             continue
         # Search relevance is only a hint: political speeches and general
         # geopolitical videos can dominate a financial query's raw view count.
-        if not re.search(r"\b(stock|stocks|market|markets|earnings|shares|insider|trading|nasdaq|treasury|fed|inflation|investing)\b|S&P", title, re.I):
+        if OUTSIDE_US_STOCK_NICHE.search(title):
+            diagnostics['outside_us_stock_niche'] += 1
+            continue
+        if not finance_context(v):
+            diagnostics['non_finance_video'] += 1
             continue
         # Model the US/English niche only
         if sum(ord(c) > 127 for c in title) > len(title) * 0.2:
+            diagnostics['non_english_title'] += 1
             continue
         channel_id = v['snippet']['channelId']
         if channel_id not in prior_cache:
-            playlist = channel.get('contentDetails', {}).get('relatedPlaylists', {}).get('uploads')
-            if not playlist:
-                continue
-            ids = [r['contentDetails']['videoId'] for r in yt.playlistItems().list(
-                part='contentDetails', playlistId=playlist, maxResults=50).execute().get('items', [])]
-            prior_cache[channel_id] = yt.videos().list(
-                part='snippet,statistics,contentDetails,liveStreamingDetails',
-                id=','.join(ids)).execute().get('items', []) if ids else []
+            prior_cache[channel_id] = fetch_baseline_uploads(yt, channel, oldest_candidates[channel_id], diagnostics)
         baseline = preceding_baseline(v, prior_cache[channel_id])
-        if len(baseline) < MIN_BASELINE_VIDEOS:
+        if len(baseline) < DISCOVERY_MIN_BASELINE:
+            diagnostics['insufficient_baseline'] += 1
             continue
-        # A gaming/political clip mentioning trading is not a finance-channel signal.
-        finance_count = sum(bool(FINANCE_TITLE.search(r.get('snippet', {}).get('title', ''))) for r in baseline)
-        if finance_count < max(3, len(baseline) / 2):
+        finance_count = sum(finance_context(r) for r in baseline)
+        channel_context = channel.get('snippet', {})
+        is_finance_channel = bool(FINANCE_TITLE.search(
+            channel_context.get('title', '') + ' ' + channel_context.get('description', '')))
+        if not is_finance_channel and finance_count < max(2, len(baseline) / 2):
+            diagnostics['non_finance_channel'] += 1
             continue
         avg = statistics.median(int(r.get('statistics', {}).get('viewCount', 0)) for r in baseline)
-        if avg <= 0 or (min_ratio and views < min_ratio * avg):
+        if avg <= 0 or (effective_ratio and views < effective_ratio * avg):
+            diagnostics['below_ratio'] += 1
             continue
+        strong = (views >= min_views and subscribers <= max_subscribers
+                  and len(baseline) >= MIN_BASELINE_VIDEOS and views >= min_ratio * avg)
+        tier = 'strong' if strong else 'emerging'
+        diagnostics[tier] += 1
         # A channel with many simultaneous "outliers" is just a big channel
         # burying the signal — cap so patterns stay diverse
         ch = v["snippet"]["channelId"]
@@ -211,6 +277,7 @@ def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS
         per_channel[ch] = per_channel.get(ch, 0) + 1
         outliers.append({
             "video_id": v["id"],
+            "signal_tier": tier,
             "url": f"https://www.youtube.com/watch?v={v['id']}",
             "title": v["snippet"]["title"],
             "views": views,
@@ -230,17 +297,18 @@ def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS
         age_hours = max(1, (datetime.now(timezone.utc) - published).total_seconds() / 3600)
         o["views_per_hour"] = round(o["views"] / age_hours, 1)
     outliers.sort(key=lambda o: o["ratio"] or 0 if min_ratio else o["views_per_hour"], reverse=True)
+    logger.info("Discovery diagnostics: %s", dict(diagnostics))
     logger.info("Found %d %s videos", len(outliers), "outlier" if min_ratio else "recent popular finance")
     result = outliers[:40]
     if queries is None:
-        persist_breakouts(result)
+        persist_breakouts(result, dict(diagnostics))
     return result
 
 
 def recent_market_trends() -> List[Dict[str, Any]]:
     """Recent small-channel finance breakouts, cached daily.
 
-    Three searches per cache miss. These are audience-interest signals only;
+    Six searches per cache miss. These are audience-interest signals only;
     FMP remains the source for every published financial claim.
     """
     path = DATA_DIR / "market_trends.json"
@@ -248,14 +316,14 @@ def recent_market_trends() -> List[Dict[str, Any]]:
     try:
         cached = json.loads(path.read_text())
         updated = datetime.fromisoformat(cached["updated_at"])
-        if cached.get('strategy') == 'small-channel-breakouts-v1' and 0 <= (now - updated).total_seconds() < 86400:
+        if cached.get('strategy') == 'small-channel-breakouts-v2' and 0 <= (now - updated).total_seconds() < 86400:
             return cached["videos"]
     except (OSError, ValueError, KeyError, TypeError):
         pass
     videos = scan_outliers(lookback_days=14, min_views=MIN_VIEWS, min_ratio=OUTLIER_RATIO, queries=[
         "US stock market news", "stock earnings reaction", "US insider buying stocks",
     ])[:15]
-    path.write_text(json.dumps({"updated_at": now.isoformat(), "strategy": "small-channel-breakouts-v1", "videos": videos}, indent=2))
+    path.write_text(json.dumps({"updated_at": now.isoformat(), "strategy": "small-channel-breakouts-v2", "videos": videos}, indent=2))
     return videos
 
 
@@ -264,8 +332,10 @@ def extract_patterns(outliers: List[Dict[str, Any]]) -> Dict[str, Any]:
     sg = ScriptGenerator()
     prompt = f"""You are a YouTube growth analyst for a data-first, no-hype US stock market channel.
 
-Here are finance-niche OUTLIER videos from the last 30 days from channels with at most {MAX_SUBSCRIBERS} subscribers (at least {OUTLIER_RATIO}x the
-median views of 5–20 earlier public videos in the same duration bucket):
+Here are recent finance-niche candidates. Strong signals: <=50,000 subscribers,
+>=3,000 views, >=3x the median of 5–20 prior similar-duration uploads. Emerging
+signals: <=100,000 subscribers, >=1,000 views, >=2x median and 3–20 prior uploads.
+Keep signal tiers distinct; do not present emerging evidence as a strong outlier:
 {json.dumps(outliers, indent=1)}
 
 Extract the PACKAGING PATTERNS that are working this week. Patterns must be structural

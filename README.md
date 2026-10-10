@@ -138,3 +138,16 @@ Günlük rapor workflow'u `growth-experiment.*` yanında `channel-status.*` dosy
 Küçük kanal örnekleri `small-channel-breakouts.*` dosyalarında saklanır. Eşikler: en fazla 50 bin abone, son 30 günde 3 bin izlenme, önceki en az 5 benzer süreli videonun medyanının 3 katı. İzlenmeler eşit yaşlı değildir; süre grubu Shorts sınıflaması değildir. Günlük ilgi taraması 14 günlük pencere kullanır. Rakip videolar finansal olgu kaynağı veya kopyalanacak senaryo değildir.
 
 Senaryo editoryal kontrolden geçmezse aynı olgularla bir düzeltme denemesi yapılır; yeniden başarısızsa yayın durur. Kelime bütçesi düzeltmeleri aynı sabit abonelik modeliyle en fazla üç fresh-context isteğidir. Yerel inference hataları API sağlayıcı yedeğine geçmez.
+
+## Dış kanal keşfinin kapsamı
+
+Tarama sorguları hem ilgililik hem izlenme sırasıyla 50'şer sonuç alır; şirket ve
+küçük şirket sorguları da kapsanır. Güçlü sinyal eşiği 50.000 abone / 3.000 izlenme /
+3× medyan / en az 5 geçmiş videodur. Daha erken adaylar 100.000 abone / 1.000
+izlenme / 2× medyan / en az 3 geçmiş video eşiğiyle `emerging` olarak ayrı işaretlenir.
+Geçmiş karşılaştırması aynı süre grubunda en fazla 20 önceki video kullanır;
+yoğun yayın yapan kanallarda en fazla dört yükleme sayfası okunur. Bu karşılaştırma
+eşit video yaşında değildir ve büyüme garantisi oluşturmaz. Başlık yanında video
+ve kanal açıklaması finans bağlamı için kullanılır. API hatası boş sonuç gibi
+kaydedilmez; önceki kanıt korunur. Eleme nedenleri
+`reports/small-channel-breakouts.json` içindeki `diagnostics` alanına yazılır.
