@@ -115,6 +115,30 @@ def finance_context(video):
                                     snippet.get('description', '')[:1500]))
 
 
+US_EQUITY = re.compile(r'\b(nasdaq|nyse|s&p|dow jones|us stocks?|u\.s\.|american stocks?|nvidia|nvda|tesla|tsla|apple|aapl|microsoft|msft|amazon|amzn|meta|palantir|pltr|gamestop|gme|nike|nke|micron|mu|sofi|uber|apld|celsius|spacex|wall street)\b', re.I)
+FOREIGN_MARKET = re.compile(r'\b(india|indian|nifty|sensex|nse|bse|sip|lakh|crore|multibagger|ftse|dax|bist)\b|₹', re.I)
+CRYPTO_MARKET = re.compile(r'\b(crypto\w*|bitcoin|ethereum|solana|xrp|defi|altcoins?)\b', re.I)
+
+
+def outside_stock_niche(video, channel):
+    snippet = video.get('snippet', {})
+    title = snippet.get('title', '')
+    if OUTSIDE_US_STOCK_NICHE.search(title) or FOREIGN_MARKET.search(title):
+        return True
+    # Search region is a ranking hint, not a market/language filter. Channels
+    # based elsewhere may cover US equities; retain explicit US-stock subjects.
+    context = channel.get('snippet', {})
+    channel_text = context.get('title', '') + ' ' + context.get('description', '')
+    explicit_us = bool(US_EQUITY.search(title + ' ' + snippet.get('description', '')[:500]))
+    if CRYPTO_MARKET.search(channel_text) and not US_EQUITY.search(title):
+        return True
+    if context.get('country') == 'IN' and not explicit_us:
+        return True
+    if FOREIGN_MARKET.search(channel_text) and not explicit_us:
+        return True
+    return False
+
+
 def fetch_baseline_uploads(yt, channel, candidate, diagnostics):
     playlist = channel.get('contentDetails', {}).get('relatedPlaylists', {}).get('uploads')
     if not playlist:
@@ -237,7 +261,7 @@ def scan_outliers(lookback_days: int = LOOKBACK_DAYS, min_views: int = MIN_VIEWS
             continue
         # Search relevance is only a hint: political speeches and general
         # geopolitical videos can dominate a financial query's raw view count.
-        if OUTSIDE_US_STOCK_NICHE.search(title):
+        if outside_stock_niche(v, channel):
             diagnostics['outside_us_stock_niche'] += 1
             continue
         if not finance_context(v):

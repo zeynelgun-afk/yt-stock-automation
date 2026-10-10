@@ -109,16 +109,16 @@ jobs:
               ;;
             analytics)
               python -c "from youtube_publisher import YouTubePublisher; YouTubePublisher()"  # materialize token.json from env
-              python -c "from analytics_reporter import send_weekly_report; send_weekly_report()"
+              python weekly_runner.py
               # Unified weekly learning: franchise weights + narration
               # calibration + own-channel lessons + market outlier patterns,
               # all persisted into one artifact
-              python -c "from learning_engine import run_weekly_learning; run_weekly_learning()"
+              # weekly_runner runs both sections and records delivery/failure status.
               # Persist this week's learnings — without this commit the output
               # dies with the runner and the pipeline never sees it
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
-              git add data/channel_learnings.json
+              git add data/channel_learnings.json reports/weekly-run.json
               git add reports/small-channel-breakouts.* 2>/dev/null || true
               if ! git diff --cached --quiet; then
                 git commit -m "chore: weekly channel learnings refresh"
@@ -127,6 +127,8 @@ jobs:
                 git pull --rebase origin main
                 git push
               fi
+              # Fail only after saving successful sections and their evidence.
+              python weekly_runner.py --check-status
               ;;
             audit)
               python main_scheduler.py shorts --selection-only

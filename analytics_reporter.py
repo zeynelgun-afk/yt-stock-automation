@@ -18,7 +18,8 @@ Cron: run weekly (see README) — `python analytics_reporter.py`.
 """
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -72,6 +73,24 @@ def _get_credentials():
     return creds
 
 
+def analytics_window(api, days, now=None):
+    """Use the most recent observed Pacific date; missing dates remain explicit."""
+    now = now or datetime.now(timezone.utc)
+    requested = now.astimezone(ZoneInfo('America/Los_Angeles')).date() - timedelta(days=1)
+    response = api.reports().query(ids='channel==MINE',
+        startDate=str(requested - timedelta(days=max(35, days + 14))), endDate=str(requested),
+        dimensions='day', metrics='views').execute()
+    headers = [c['name'] for c in response.get('columnHeaders', [])]
+    rows = [dict(zip(headers, r)) for r in response.get('rows', [])]
+    if not rows:
+        raise RuntimeError('No daily Analytics data; measurement window unavailable')
+    observed = {r['day'] for r in rows}
+    end = datetime.fromisoformat(max(observed)).date()
+    start = end - timedelta(days=days - 1)
+    missing = sorted({str(start + timedelta(days=i)) for i in range(days)} - observed)
+    return dict(start=str(start), end=str(end), requested_through=str(requested), missing_dates=missing)
+
+
 def fetch_video_stats(days: int = 7):
     """Per-video analytics rows for the last `days` days, most-viewed first."""
     from googleapiclient.discovery import build
@@ -80,8 +99,8 @@ def fetch_video_stats(days: int = 7):
     yt_analytics = build("youtubeAnalytics", "v2", credentials=creds)
     yt_data = build("youtube", "v3", credentials=creds)
 
-    end = datetime.now().date() - timedelta(days=1)
-    start = end - timedelta(days=days - 1)
+    window = analytics_window(yt_analytics, days)
+    start, end = [datetime.fromisoformat(window[k]).date() for k in ('start', 'end')]
     resp = yt_analytics.reports().query(
         ids="channel==MINE",
         startDate=start.isoformat(),
@@ -142,6 +161,7 @@ def fetch_video_stats(days: int = 7):
         content_type = "shorts" if vid in short_ids else "videoondemand"
         result.append({
             "video_id": vid,
+            "analytics_window": window,
             "title": titles.get(vid, vid),
             "published_at": published.get(vid, ""),
             "views": int(r["views"]),
@@ -218,11 +238,16 @@ def build_report(days: int = 7) -> str:
 
     total_views = sum(s["views"] for s in stats)
     total_subs = sum(s["subs_gained"] for s in stats)
+    window = stats[0]['analytics_window']
     lines = [
-        f"📊 HAFTALIK PERFORMANS ({days} gün)",
+        f"📊 HAFTALIK PERFORMANS ({days} günlük pencere)",
+        f"Dönem: {window['start']} – {window['end']} (Pasifik)",
+        f"Son veri günü: {window['end']}; eksik günler sıfır sayılmaz.",
         f"Toplam izlenme: {total_views:,} | Yeni abone: {total_subs:+d}",
         "",
     ]
+    if window['missing_dates']:
+        lines.append('Eksik günler: ' + ', '.join(window['missing_dates']) + '; toplamlar eksik olabilir.')
     for s in stats[:10]:
         target = TARGET_AVG_VIEW_PCT_LONG if s.get("is_long") else TARGET_AVG_VIEW_PCT_SHORTS
         kind = "📺" if s.get("is_long") else "📱"
@@ -259,8 +284,10 @@ def send_weekly_report(days: int = 7) -> bool:
     try:
         report = build_report(days)
     except Exception as e:
-        report = f"🚨 Analytics raporu üretilemedi: {e}"
+        report = f"🚨 Analytics raporu üretilemedi ({type(e).__name__})"
         logger.error(report)
+        TelegramApprovalBot().send_text(report)
+        return False
     return TelegramApprovalBot().send_text(report)
 
 

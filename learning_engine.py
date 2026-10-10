@@ -114,8 +114,11 @@ def _fetch_hook_holds(stats: List[Dict[str, Any]], days: int) -> None:
 
     creds = _get_credentials()
     yta = build("youtubeAnalytics", "v2", credentials=creds)
-    end = datetime.now().date()
-    start = end - timedelta(days=days)
+    window = stats[0].get('analytics_window') if stats else None
+    if not window:
+        from analytics_reporter import analytics_window
+        window = analytics_window(yta, days)
+    start, end = [datetime.fromisoformat(window[k]).date() for k in ('start', 'end')]
 
     for s in stats[:MAX_RETENTION_QUERIES]:
         if s["views"] < 10:   # curve is noise below this
@@ -276,7 +279,8 @@ def run_weekly_learning(days: int = 14) -> bool:
         from script_generator import _pattern_text
         lines.append("\n🏆 Kendi verimizden bu haftanın kazanan kalıpları:")
         lines += [f"• {_pattern_text(p)[:200]}" for p in own[:3]]
-    return bot.send_text("\n".join(lines))
+    delivered = bot.send_text("\n".join(lines))
+    return delivered and not any(st.startswith("failed:") for st in status.values())
 
 
 if __name__ == "__main__":

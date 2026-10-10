@@ -151,3 +151,10 @@ eşit video yaşında değildir ve büyüme garantisi oluşturmaz. Başlık yan�
 ve kanal açıklaması finans bağlamı için kullanılır. API hatası boş sonuç gibi
 kaydedilmez; önceki kanıt korunur. Eleme nedenleri
 `reports/small-channel-breakouts.json` içindeki `diagnostics` alanına yazılır.
+
+Haftalık Telegram raporu ve öğrenme verileri, son mevcut Analytics gününden geriye
+ölçülür; tarih aralığı Pasifik takviminde açıkça gösterilir. Eksik günler sıfır
+olarak doldurulmaz. `reports/weekly-run.json` rapor ve öğrenme adımlarının sonucunu
+kaydeder. Telegram API kabulü mesaj kimliğiyle loglanır. Rapor/öğrenme/Telegram
+başarısızlığı varsa başarılı öğrenme bölümleri kaydedildikten sonra workflow
+başarısız olur. Mesajın API tarafından kabulü, kullanıcının okuduğu anlamına gelmez.

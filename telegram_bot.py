@@ -35,7 +35,16 @@ class TelegramApprovalBot:
                 json={"chat_id": self.chat_id, "text": message},
                 timeout=15,
             )
-            return res.status_code == 200
+            if res.status_code != 200:
+                logger.error("Telegram sendMessage failed (HTTP %s)", res.status_code)
+                return False
+            payload = res.json()
+            if payload.get('ok') is not True:
+                logger.error("Telegram sendMessage rejected (API success flag missing)")
+                return False
+            logger.info("Telegram text accepted (message_id=%s)",
+                        payload.get('result', {}).get('message_id', 'unknown'))
+            return True
         except Exception as e:
             logger.error("Telegram sendMessage failed (%s)", type(e).__name__)
             return False
