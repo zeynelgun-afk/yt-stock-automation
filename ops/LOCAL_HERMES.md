@@ -17,9 +17,9 @@ remains hosted and uses the renamed YouTube token secret. Its cron is unchanged.
   and bold), and the independent venv. Production/smoke workflows do not use apt
   or setup-python on Arch. Workflow dependency installation targets this venv.
 - All selection, script, learning, pattern extraction and ReplyWriter calls use
-  fixed `openai-codex/gpt-6-astra`. Legacy constructor keys are ignored.
+  fixed `openai-codex/gpt-6.1-sol`. Legacy constructor keys are ignored.
 - Hermes command: `chat --query-file - --oneshot --format stream-json --safe-mode
-  --provider openai-codex --model gpt-6-astra --toolsets none --max-turns 1
+  --provider openai-codex --model gpt-6.1-sol --toolsets none --max-turns 1
   --run-budget 180 --source tool`. Prompt is stdin, fresh empty temp cwd, parent
   timeout 195 seconds. No resume, tools or paid fallback. Subprocess environment
   allowlists HOME/PATH/locale/XDG/HERMES_HOME, excluding application/API secrets.

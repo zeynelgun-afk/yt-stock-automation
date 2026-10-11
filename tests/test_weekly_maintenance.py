@@ -16,7 +16,7 @@ class MaintenanceTests(unittest.TestCase):
             with self.assertRaises(ScriptGenerationError): writer._call_llm('prompt', 'title')
             self.assertEqual(writer._call_llm('prompt', 'title')['full_script'], 'again')
         self.assertEqual([call.args[:2] for call in chat.call_args_list],
-                         [('openai-codex', 'gpt-6-astra')]*2)
+                         [('openai-codex', 'gpt-6.1-sol')]*2)
 
     def test_breakout_baseline_excludes_candidate_newer_uploads_streams_and_other_durations(self):
         def video(vid, published, duration='PT1M', **extra):

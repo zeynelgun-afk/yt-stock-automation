@@ -35,7 +35,7 @@ def main():
     if not reply or parse_reply(json.dumps(dict(action='reply',language='en',text=reply))) != reply:
         raise RuntimeError('Smoke reply failed existing reply validation')
     output = Path(__file__).resolve().parent/'output'; output.mkdir(exist_ok=True)
-    report = dict(provider='openai-codex',model='gpt-6-astra',synthetic_facts=True,
+    report = dict(provider='openai-codex',model='gpt-6.1-sol',synthetic_facts=True,
                   real_inference=True,script=script,reply=reply,published=False)
     (output/'llm_smoke.json').write_text(json.dumps(report,indent=2)+'\n')
     print('Real subscription script and reply smoke passed; nothing published.')

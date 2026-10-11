@@ -2,7 +2,7 @@
 
 İngilizce finans videoları üreten Python otomasyonu. FMP verisiyle hikâye seçer, senaryo ve ses üretir, gerçek grafiklerle render alır ve **insan onayı beklemeden YouTube'a yükler**. Telegram yayın sonrası önizleme ve hata bildirimleri içindir.
 
-Yerel Hermes geçişi bu checkout içinde hazırlanmıştır; **aktivasyon doğrulanmadı**. Cutover ve runner sözleşmesi: [ops/LOCAL_HERMES.md](ops/LOCAL_HERMES.md), test kanıtları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Senaryo, seçim, öğrenme ve yorum inference işlemleri yalnızca `openai-codex/gpt-6-astra` kullanır; ücretli LLM yedeği yoktur.
+Yerel Hermes akışı aktiftir. Cutover ve runner sözleşmesi: [ops/LOCAL_HERMES.md](ops/LOCAL_HERMES.md), tarihsel uygulama kanıtları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Senaryo, seçim, öğrenme ve yorum inference işlemleri yalnızca `openai-codex/gpt-6.1-sol` kullanır; ücretli LLM yedeği yoktur.
 
 Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → yerel Hermes → kanala özel ElevenLabs Deniz Editorial sesi → Remotion video render → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
 

@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 
 PROVIDER = 'openai-codex'
-MODEL = 'gpt-6-astra'
+MODEL = 'gpt-6.1-sol'
 RUN_BUDGET = 180
 TIMEOUT = 195
 

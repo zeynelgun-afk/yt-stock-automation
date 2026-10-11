@@ -13,7 +13,7 @@ from comment_responder import ReplyWriter
 
 def protocol(payload=None):
     return '\n'.join(json.dumps(e) for e in [
-        {'type': 'system', 'subtype': 'init', 'model': 'gpt-6-astra', 'session_id': 'fresh'},
+        {'type': 'system', 'subtype': 'init', 'model': 'gpt-6.1-sol', 'session_id': 'fresh'},
         {'type': 'text', 'text': '{}'},
         {'type': 'result', 'exit_code': 0, 'session_id': 'fresh', 'text': json.dumps(payload or {'answer': 'ok'})}])
 
@@ -34,7 +34,7 @@ class TransportTests(unittest.TestCase):
             self.assertIn('viewer fact', kw['input'])
             self.assertEqual(command[1:], ['chat', '--query-file', '-', '--oneshot', '--format',
                 'stream-json', '--safe-mode', '--provider', 'openai-codex', '--model',
-                'gpt-6-astra', '--toolsets', 'none', '--max-turns', '1', '--run-budget', '180', '--source', 'tool'])
+                'gpt-6.1-sol', '--toolsets', 'none', '--max-turns', '1', '--run-budget', '180', '--source', 'tool'])
             self.assertEqual(kw['timeout'], 195)
             self.assertNotIn('OPENROUTER_API_KEY', kw['env'])
             self.assertNotIn('YT_LOCAL_TOKEN_JSON', kw['env'])
@@ -91,7 +91,7 @@ class TransportTests(unittest.TestCase):
     def test_all_callers_fixed_pair_and_old_keys_ignored(self):
         import llm_transport as t
         for writer in [ScriptGenerator('private', 'private', 'private'), ReplyWriter('private')]:
-            self.assertEqual(writer._providers(), [('openai-codex', 'gpt-6-astra')])
+            self.assertEqual(writer._providers(), [('openai-codex', 'gpt-6.1-sol')])
             self.assertNotIn('private', repr(vars(writer)))
             with patch('llm_transport.complete', return_value='{"answer":"ok"}') as complete:
                 self.assertEqual(writer._chat('openrouter', 'paid', 'facts'), '{"answer":"ok"}')

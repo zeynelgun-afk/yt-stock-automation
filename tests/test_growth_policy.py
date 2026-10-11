@@ -157,14 +157,14 @@ class AccountTests(unittest.TestCase):
         sg = ScriptGenerator(openrouter_key='ignored', gemini_key='ignored', groq_key='ignored')
         with patch.object(sg, '_chat', return_value=None) as chat:
             with self.assertRaises(ScriptGenerationError): sg._call_llm('prompt', 'title')
-        chat.assert_called_once_with('openai-codex', 'gpt-6-astra', 'prompt')
+        chat.assert_called_once_with('openai-codex', 'gpt-6.1-sol', 'prompt')
 
     def test_local_error_diagnostics_are_not_logged(self):
         import llm_transport
         sg = ScriptGenerator(openrouter_key='ignored')
         with patch('llm_transport.complete', side_effect=llm_transport.InferenceError('private-account-reference')), \
                 self.assertLogs('script_generator', level='WARNING') as logs:
-            self.assertIsNone(sg._chat('openai-codex', 'gpt-6-astra', 'prompt'))
+            self.assertIsNone(sg._chat('openai-codex', 'gpt-6.1-sol', 'prompt'))
         self.assertNotIn('private-account-reference', '\n'.join(logs.output))
         self.assertNotIn('private-account-reference', sg.last_error)
 
@@ -269,7 +269,7 @@ class ProviderProbeTests(unittest.TestCase):
                 patch('subprocess.run', side_effect=AssertionError('No inference probe')):
             result = provider_status.inspect_local()
         self.assertEqual(result['provider'], 'openai-codex')
-        self.assertEqual(result['model'], 'gpt-6-astra')
+        self.assertEqual(result['model'], 'gpt-6.1-sol')
         self.assertEqual(result['status'], 'not_live_verified')
         self.assertFalse(result['generation_tested'])
 
