@@ -99,7 +99,8 @@ def repeated_event(candidate, upload):
 
 def validate_editorial_script(script, story):
     """Catch concrete known distortions before voice/render; not a full fact check."""
-    text = f"{script.get('title', '')} {script.get('full_script', '')}"
+    headline = f"{script.get('title', '')} {script.get('thumbnail_hook', '')}"
+    text = f"{headline} {script.get('full_script', '')}"
     errors = []
     if story.get('ticker') and not story['ticker'].startswith('^') and re.search(
             r'\b(?:VIX|Nasdaq|Dow|S&P\s*500)\b', text, re.I):
@@ -107,7 +108,7 @@ def validate_editorial_script(script, story):
     if re.search(r'\b(?:what (?:do|does) .* know that|secret knowledge|before anyone else|guaranteed return)\b', text, re.I):
         errors.append('unsupported privileged-knowledge or return implication')
     if story['franchise'] == 'congress_trade' and re.search(
-            r'\b(?:\d+\s+days?\s+late|overdue|hid|hidden|concealed)\b', script.get('title', ''), re.I):
+            r'\b(?:\d+\s+days?\s+late|overdue|hid|hidden|concealed)\b', headline, re.I):
         errors.append('a disclosure lag does not establish a late filing or concealment')
     if story['franchise'] == 'reddit_radar' and re.search(r'\b(?:bought|buying|sold|selling)\b', text, re.I):
         errors.append('mention counts do not establish actual trades')

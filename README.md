@@ -4,7 +4,9 @@
 
 Yerel Hermes geçişi bu checkout içinde hazırlanmıştır; **aktivasyon doğrulanmadı**. Cutover ve runner sözleşmesi: [ops/LOCAL_HERMES.md](ops/LOCAL_HERMES.md), test kanıtları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Senaryo, seçim, öğrenme ve yorum inference işlemleri yalnızca `openai-codex/gpt-6-astra` kullanır; ücretli LLM yedeği yoktur.
 
-Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → LLM → ElevenLabs Chris → FFmpeg → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
+Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → yerel Hermes → kanala özel ElevenLabs Deniz Editorial sesi → FFmpeg → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
+
+Kapaklar dört haber ailesine göre farklı editoryal afiş kompozisyonları kullanır. Deniz'in özgün çizimli portresi uzun video kapaklarında uygun ailelerde, her iki formatın video kartında görünür. Büyük sayı yalnız yapılandırılmış veriye karşı doğrulandıktan sonra çizilir; doğrulanmazsa gerçek seans değişimi kullanılır. Shorts için özel kapak yüklemesi yapılmaz, video içi kart ilk görsel kimliği sağlar. Tekrarlanan borsa klişeleri yerine her bölümde kaynaklı olay, özgün çıkarım ve belirsizlik anlatılır. [Tasarım belgesi](docs/superpowers/specs/2026-10-11-original-video-identity-design.md).
 
 Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses dili (`defaultAudioLanguage`) açıkça `en` olarak gönderilir. Kanalın varsayılan açıklaması İngilizcedir; 12 Eylül 2026'da Türkçe arayüzde eski açıklamayı gösteren `tr_TR` kanal çevirisi kaldırıldı. Bu tarihte taranan 160 videonun metin dili `en`; 138 eski videonun ses dili alanı boştu. Bu eski video alanları değiştirilmedi.
 
@@ -67,7 +69,7 @@ Salt okunur performans raporu:
 
 ## Deniz: Creator planıyla kısa sunucu sahneleri
 
-Tüm anlatım varsayılan olarak Chris (`iP95p4xoKVk53GoZ742B`); `ELEVENLABS_VOICE_ID` ile değiştirilebilir. Deniz Shorts'ta en fazla 6 saniyelik açılışta, uzun videoda en fazla 8 saniyelik açılış ve 5 saniyelik tek geçişte kullanılır. Uzun geçiş yalnızca en az 45 saniyelik anlatımda, orta bölümde uygun cümle sınırı varsa seçilir. Kalan görüntü mevcut grafik videosudur. Ses tek kayıt olarak kesintisiz kalır.
+Tüm anlatım varsayılan olarak bu kanal için Voice Design ile oluşturulan Deniz Editorial (`4m8bONaoZ6iNcRiqEbI3`); `ELEVENLABS_VOICE_ID` ile değiştirilebilir. Sesin dünya çapında tek olduğu iddia edilmez. Haftalık hız kalibrasyonu eski Chris videolarının temposunu yeni sese karıştırmaz; yeni sesle üç yayın oluşana kadar geçici kelime aralıkları kullanılır. Deniz'in çizimli görseli otomatik kartta sabittir ve konuşuyormuş gibi dudak hareketi yapmaz. Konuşan gerçekçi avatar Shorts'ta en fazla 6 saniyelik açılışta, uzun videoda en fazla 8 saniyelik açılış ve 5 saniyelik tek geçişte yalnız ayrı Creator hazırlık akışıyla kullanılır. Uzun geçiş yalnızca en az 45 saniyelik anlatımda, orta bölümde uygun cümle sınırı varsa seçilir. Kalan görüntü mevcut grafik videosudur. Ses tek kayıt olarak kesintisiz kalır.
 
 Creator video klipleri web arayüzünde hazırlanır; bu yerel çalışma akışı otomatik video API çağrısı veya ek abonelik gerektirmez. Şu komutlar gerçek veri/senaryo/ses üretimi yapar ve sağlayıcı kredisi kullanabilir; **YouTube'a yüklemeden** hazırlık paketi çıkarır:
 
@@ -88,7 +90,7 @@ ElevenLabs Image & Video → Lip sync ekranında Deniz'i ve paketin WAV dosyası
 
 Birleştirme ana videonun sesini aynen kopyalar, avatar sahnelerinde zamanlamalı altyazıyı korur. Avatar kullanıldığında `publication.json` içindeki `contains_synthetic_media` true olur; bu komut yayın yapmaz. Hazır video YouTube'a yüklenirken bu işaret kullanılmalıdır.
 
-Zamanlanmış GitHub Actions akışı avatar beklemeden grafiklerle yayın yapar; `--prepare-presenter` yerel ve ayrı bir moddur. Değişiklikleri GitHub'a göndermek, Creator kliplerini hazırlamak ve avatarı canlı yayına dahil etmek ayrı adımlardır. İlk pilot ve kararlar: [Deniz karakter belgesi](docs/deniz-youtube-karakter.md).
+Zamanlanmış GitHub Actions akışı konuşan avatar beklemeden Deniz çizimi ve grafiklerle yayın yapar; `--prepare-presenter` yerel ve ayrı bir moddur. Eski Chris sesli pilot yeni sesle birleştirilemez. Değişiklikleri GitHub'a göndermek, Creator kliplerini hazırlamak ve avatarı canlı yayına dahil etmek ayrı adımlardır. İlk pilot ve kararlar: [Deniz karakter belgesi](docs/deniz-youtube-karakter.md).
 
 `event-check` makro/bilanço gününü kontrol eder; 0=etkinlik var, 1=sakin gün, 2=kontrol hatası. Pipeline hataları, YouTube yükleme hatası dahil, başarısız çıkış kodu üretir.
 

@@ -65,7 +65,9 @@ def _word_range(key: str, default: Tuple[int, int],
                 sane: Tuple[int, int]) -> Tuple[int, int]:
     """Auto-calibrated word budget from the measured narration rate, clamped
     to a sanity window so a bad calibration can't produce a 10-word Short."""
-    rng = (_learnings().get("narration") or {}).get(key)
+    from config import VOICE_TAG
+    narration = _learnings().get("narration") or {}
+    rng = narration.get(key) if narration.get("engine") == VOICE_TAG else None
     try:
         lo, hi = int(rng[0]), int(rng[1])
         if sane[0] <= lo < hi <= sane[1]:
@@ -96,7 +98,7 @@ class ScriptGenerator:
     def generate_shorts_script(self, topic: str, data_summary: str,
                                franchise_style: str = "", angle: str = "",
                                recent_titles: Optional[List[str]] = None) -> Dict[str, Any]:
-        """Generates a ~35-second (66-78 word) English YouTube Shorts script.
+        """Generates a short English YouTube script paced for the current voice.
 
         Length is set by retention data, not by how much there is to say. The
         channel's audience-retention curves flatten at ~22 seconds watched on
@@ -104,18 +106,11 @@ class ScriptGenerator:
         and YouTube stops distributing. The same 22 seconds inside a 35-second
         Short reads as ~63% and earns the feed.
 
-        Word budget comes from the production voice's MEASURED rate, taken from
-        CI logs against published durations: 130/131/150-word scripts rendered
-        as 64-76 second videos, i.e. ~2.05 words/sec (ElevenLabs, incl. pauses).
-        66-78 words therefore lands at 32-38 seconds. Re-measure before changing
-        this — a generic words-per-minute figure is roughly 40% too fast here.
-
-        NOTE 2026-08-16: word budgets are now AUTO-CALIBRATED weekly by the
-        learning engine from w:/v: machine tags on published videos (measured
-        words/sec x the 32-38s target). The 66-78 literal below is only the
-        cold-start default until enough tagged uploads exist.
+        The 78-92 word initial range is provisional from the new Deniz voice
+        sample. Weekly calibration uses only published videos carrying this
+        voice's identity tag; the older Chris pace cannot override it.
         """
-        lo, hi = _word_range("shorts_word_range", default=(66, 78), sane=(45, 110))
+        lo, hi = _word_range("shorts_word_range", default=(78, 92), sane=(45, 110))
         franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
         angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
         prompt = f"""You are an elite Wall Street financial analyst and viral YouTube creator for the channel "US Stock Market Daily".
@@ -132,6 +127,11 @@ such as company name + "stock". A bare dollar number gives a new viewer no subje
 3-8s: deliver the most useful fact or explanation immediately. No withheld payoff.
 8-30s: explain ONE supported reason and ONE material limitation.
 30-35s: finish the explanation cleanly; a natural loop is optional, never padding.
+
+Make this episode identifiable without its ticker: explain one specific implication
+of THIS event and one specific uncertainty. Do not recycle a generic market
+lesson, opening phrase, stock-footage narration, or joke from another episode.
+Dry humor is welcome only when it clarifies a sourced fact; never mock losses.
 
 Use plain English. Do not force a contradiction between unrelated events (an insider
 trade and an index change are not automatically connected). Do not imply privileged
@@ -192,7 +192,7 @@ RULES:
         September's live audit measured 76 seconds average watch on long
         videos. Use the weekly measured voice pace, with a shorter fallback.
         """
-        lo, hi = _word_range("long_word_range", default=(330, 462), sane=(250, 650))
+        lo, hi = _word_range("long_word_range", default=(365, 500), sane=(250, 650))
         mid = (lo + hi) // 2
         from data_fetcher import ny_now
         today_str = ny_now().strftime("%B %-d")  # e.g. "August 2"
@@ -209,6 +209,10 @@ STRUCTURE (total ~{mid} words; skip sections without substantive source facts):
 3. MARKET CONTEXT (~25%): only index/sector facts that help explain this story.
 4. NEXT CHECKPOINT (~20%): a sourced upcoming event and one uncertainty to watch.
 Do not fill a daily checklist with unrelated congressional trades or earnings.
+Vary the narrative order when the event warrants it. Include one original,
+source-grounded explanation or comparison that makes this episode different
+from a reading of the source article. State a material counterpoint or missing
+piece of evidence. Never invent a comparison to make the story feel larger.
 {_own_channel_block()}{_packaging_patterns_block()}
 RULES:
 - Word count: {lo} to {hi} words (2.5-3.5 minutes at the measured pace). This is a HARD requirement.
@@ -228,7 +232,9 @@ RULES:
    - "ticker": Main ticker discussed
    - "change_pct": Percent change string
    - "tags": Array of tags
-   - "thumbnail_hook": 3-5 word thumbnail text (e.g. "CONGRESS IS BUYING THIS")
+   - "thumbnail_hook": 3-5 word thumbnail text that complements the title and
+     is supported by the script and source facts. No new number, motive,
+     accusation, or promised return. Do not repeat the title verbatim.
    - "hero_number": the day's single most striking figure for the on-screen card, written
      for the EYE and under 12 characters ("-23K JOBS", "$28.2M", "+2.4%")
    - "hero_label": 2-4 words naming it ("JULY PAYROLLS", "CEO SOLD")

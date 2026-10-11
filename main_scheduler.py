@@ -18,7 +18,7 @@ from subtitle_generator import SubtitleGenerator
 from video_engine import VideoEngine, LONG_BG_CLIPS
 from telegram_bot import TelegramApprovalBot
 from youtube_publisher import YouTubePublisher
-from config import TEMP_DIR, OUTPUT_DIR, ELEVENLABS_VOICE_ID
+from config import TEMP_DIR, OUTPUT_DIR, ELEVENLABS_VOICE_ID, VOICE_TAG
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("YT_AUTO")
@@ -187,6 +187,9 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
     # 7. Render video: first-frame card + animated real chart + subtitles
     ve = VideoEngine()
     card_img_path = str(TEMP_DIR / f"card_{timestamp}.png")
+    checked_hero_number = validate_hero_number(
+        str(script_data.get("hero_number", "")).strip(),
+        story, script_data["full_script"], change_pct)
     ve.create_dashboard_overlay(
         title=script_data["title"],
         ticker=ticker,
@@ -194,11 +197,10 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         output_path=card_img_path,
         is_shorts=is_shorts,
         franchise_name=story["franchise_name"],
+        franchise=story["franchise"],
         # Empty strings fall the card back to its change%-led layout;
         # validation blanks a hero figure the story data can't back up
-        hero_number=validate_hero_number(
-            str(script_data.get("hero_number", "")).strip(),
-            story, script_data["full_script"], change_pct),
+        hero_number=checked_hero_number,
         hero_label=str(script_data.get("hero_label", "")).strip(),
     )
 
@@ -235,6 +237,9 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
             hook_words=script_data.get("thumbnail_hook", script_data["title"]),
             intraday=intraday,
             output_path=thumbnail_path,
+            franchise=story["franchise"],
+            hero_number=checked_hero_number,
+            hero_label=str(script_data.get("hero_label", "")).strip() if checked_hero_number else "",
         )
 
     rendered_video_path = ve.render_video(
@@ -286,7 +291,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         extra_tags=[
             f"fr:{story['franchise']}",
             f"w:{len(script_data['full_script'].split())}",
-            f"v:{vg.engine_used or 'unknown'}",
+            f"v:{VOICE_TAG if vg.engine_used == '11l' else vg.engine_used or 'unknown'}",
             f"fmt:{video_type}",
         ] + publication_tags(story, is_shorts),
     )

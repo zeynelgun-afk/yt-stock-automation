@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
+from thumbnail_design import DENIZ_ART, create_story_thumbnail
 
 from config import PEXELS_API_KEY, TEMP_DIR, OUTPUT_DIR, SHORTS_RES, LONG_RES, BASE_DIR
 
@@ -239,9 +240,9 @@ class VideoEngine:
     def create_dashboard_overlay(self, title: str, ticker: str, change_pct: str,
                                  output_path: str, is_shorts: bool = True,
                                  franchise_name: str = "", logo_path: Optional[str] = None,
-                                 hero_number: str = "", hero_label: str = "") -> str:
-        """Glassmorphism first-frame engineered stock card:
-        Translucent backdrop + glowing neon accents + high-contrast text overlay + HD Company Logo.
+                                 hero_number: str = "", hero_label: str = "",
+                                 franchise: str = "") -> str:
+        """Story card with Deniz and a source-checked figure beside the real chart.
 
         `hero_number` is the story's own headline figure ("$28.2M", "+290%",
         "6,297%") and gets the largest type on the card, with `hero_label`
@@ -255,8 +256,13 @@ class VideoEngine:
         """
         layout = _card_layout(is_shorts)
         width, height = layout["card_size"]
-        # Translucent RGBA dark slate background (80% opacity for glassmorphism overlay)
-        img = Image.new("RGBA", (width, height), (15, 23, 42, 205))
+        accent = {
+            'congress_trade': (216, 84, 50, 255),
+            'insider_watch': (216, 84, 50, 255),
+            'earnings_shock': (244, 180, 73, 255),
+            'analyst_shock': (40, 198, 214, 255),
+        }.get(franchise, (40, 198, 214, 255))
+        img = Image.new("RGBA", (width, height), (16, 25, 42, 225))
         draw = ImageDraw.Draw(img)
 
         pct = str(change_pct).lstrip("+")
@@ -264,26 +270,32 @@ class VideoEngine:
         change_color = (34, 197, 94, 255) if is_positive else (239, 68, 68, 255)
         change_text = f"{'+' if is_positive else ''}{pct}%"
 
-        # Glass shine highlight line near top edge
-        draw.rectangle([10, 10, width - 10, 24], fill=(255, 255, 255, 20))
-
-        # Double glowing border frame
-        draw.rectangle([0, 0, width - 1, height - 1], outline=(56, 189, 248, 230), width=5)
-        draw.rectangle([5, 5, width - 6, height - 6], outline=(30, 41, 59, 200), width=3)
+        # Screenprint-like editorial marks; the accent changes with the event.
+        draw.rectangle([0, 0, 12, height], fill=accent)
+        draw.polygon([(width - 132, 0), (width - 80, 0),
+                      (width - 230, height), (width - 282, height)],
+                     fill=(*accent[:3], 45))
+        draw.line((32, 25, width - 32, 25), fill=accent, width=6)
 
         # Header Badge
-        badge = "US STOCK MARKET DAILY" + (f"  •  {franchise_name.upper()}" if franchise_name else "")
-        draw.rectangle([36, 36, width - 36, 116], fill=(30, 41, 59, 220), outline=(56, 189, 248, 120), width=2)
+        badge = "DENIZ  /  US STOCK MARKET DAILY" + (f"  /  {franchise_name.upper()}" if franchise_name else "")
         badge_size = 30
         while badge_size > 16 and draw.textlength(badge, font=_font(badge_size)) > width - 112:
             badge_size -= 2
-        draw.text((56, 76 - badge_size // 2), badge, font=_font(badge_size), fill=(56, 189, 248, 255))
+        draw.text((48, 62 - badge_size // 2), badge, font=_font(badge_size), fill=accent)
+        draw.line((36, 112, width - 36, 112), fill=(*accent[:3], 120), width=2)
 
-        # Paste company logo if available
-        if not logo_path:
-            logo_path = self.fetch_company_logo(ticker)
-        
-        if logo_path and Path(logo_path).exists():
+        # The channel's original host is visible in both formats. Keep the
+        # ticker as the company identifier instead of fetching an online logo.
+        if DENIZ_ART.exists():
+            with Image.open(DENIZ_ART) as source:
+                host = source.convert('RGBA')
+                host.thumbnail((225, 310) if is_shorts else (155, 210),
+                               Image.Resampling.LANCZOS)
+                host_x = (width - host.width - 44 if is_shorts else
+                          layout['chart_box'][0] - host.width - 26)
+                img.alpha_composite(host, (host_x, 140))
+        elif logo_path and Path(logo_path).exists():
             try:
                 logo_img = Image.open(logo_path).convert("RGBA")
                 logo_size = (150, 150) if is_shorts else (120, 120)
@@ -310,13 +322,13 @@ class VideoEngine:
                 label_y, label_size = 292, 36
                 hero_y, hero_max = 336, 200
                 title_y, title_size, title_wrap, title_lines = 570, 42, 38, 3
-                avail = width - 96
+                avail = width - 96 - 225
             else:
                 tick_size, tick_y = 76, 150
                 label_y, label_size = 250, 30
                 hero_y, hero_max = 288, 140
                 title_y, title_size, title_wrap, title_lines = 470, 34, 34, 3
-                avail = layout["chart_box"][0] - 96
+                avail = layout["chart_box"][0] - 96 - 155
 
             draw.text((48, tick_y), ticker, font=_font(tick_size), fill=(248, 250, 252, 255))
             # Change chip sits on the ticker's baseline, right of the symbol
@@ -356,7 +368,7 @@ class VideoEngine:
         # Subtle frame marking where the animated chart lands
         cx, cy, cw, ch = layout["chart_box"]
         draw.rectangle([cx - 2, cy - 2, cx + cw + 2, cy + ch + 2],
-                       outline=(56, 189, 248, 180), width=2)
+                       outline=accent, width=2)
 
         img.save(output_path)
         return output_path
@@ -492,37 +504,14 @@ class VideoEngine:
     # ------------------------------------------------------------- thumbnail
 
     def create_thumbnail(self, ticker: str, change_pct: str, hook_words: str,
-                         intraday: List[Dict[str, Any]], output_path: str) -> str:
-        """1280x720 thumbnail for long videos: big number, direction arrow,
-        3-5 word hook, real chart as backdrop. High contrast, no clutter."""
-        width, height = 1280, 720
-        img = Image.new("RGB", (width, height), (15, 23, 42))
-
-        # Real chart as backdrop, right side
-        chart_path = self.create_stock_chart_image(ticker, intraday,
-                                                   str(TEMP_DIR / "thumb_chart.png"))
-        chart = Image.open(chart_path).convert("RGB").resize((820, 410))
-        img.paste(chart, (440, 290))
-
-        draw = ImageDraw.Draw(img)
-        pct = str(change_pct).lstrip("+")
-        is_positive = not pct.startswith("-")
-        color = (34, 197, 94) if is_positive else (239, 68, 68)
-        arrow = "▲" if is_positive else "▼"
-
-        draw.text((60, 50), ticker, font=_font(150), fill=(248, 250, 252),
-                  stroke_width=4, stroke_fill=(0, 0, 0))
-        draw.text((60, 240), f"{arrow} {'+' if is_positive else ''}{pct}%",
-                  font=_font(120), fill=color, stroke_width=4, stroke_fill=(0, 0, 0))
-        draw.text((60, 385), "SINCE SESSION OPEN", font=_font(26), fill=(148, 163, 184))
-        y = 430
-        for line in textwrap.wrap(hook_words, width=18)[:2]:
-            draw.text((60, y), line.upper(), font=_font(72), fill=(250, 204, 21),
-                      stroke_width=5, stroke_fill=(0, 0, 0))
-            y += 92
-
-        img.save(output_path, quality=92)
-        return output_path
+                         intraday: List[Dict[str, Any]], output_path: str,
+                         franchise: str = '', hero_number: str = '',
+                         hero_label: str = '') -> str:
+        return create_story_thumbnail(
+            ticker=ticker, change_pct=change_pct, hook_words=hook_words,
+            intraday=intraday, output_path=output_path, franchise=franchise,
+            hero_number=hero_number, hero_label=hero_label,
+        )
 
     # ---------------------------------------------------------------- render
 

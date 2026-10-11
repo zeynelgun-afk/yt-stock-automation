@@ -8,8 +8,8 @@ three separate loops:
 1. FRANCHISE WEIGHTS (own analytics): views x APV per franchise -> score
    multipliers for the story selector. Precomputed weekly here instead of a
    live Analytics API call on every video run.
-2. NARRATION CALIBRATION (own analytics): measured words/sec from the w:/v:
-   machine tags stamped on uploads + real video durations -> auto-tuned
+2. NARRATION CALIBRATION (own analytics): measured words/sec from the current
+   voice's w:/v: machine tags + real video durations -> auto-tuned
    word budgets for the 35s Shorts / 5-6min recap targets.
 3. OWN PACKAGING LESSONS (own analytics): retention curves (hook hold over
    the first 30%) + APV + views per video -> LLM-distilled winning/losing
@@ -27,7 +27,7 @@ import statistics
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from config import LEARNINGS_FILE
+from config import LEARNINGS_FILE, VOICE_TAG
 from telegram_bot import TelegramApprovalBot
 
 logging.basicConfig(level=logging.INFO)
@@ -71,8 +71,7 @@ def load_learnings() -> Dict[str, Any]:
 # ---------- Section 2: narration calibration ----------
 
 def _measure_narration(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """Median words/sec from uploads carrying w: tags, per dominant voice
-    engine — mixing ElevenLabs and Edge pacing would blur both."""
+    """Median words/sec from the current voice, never from the former host."""
     by_engine: Dict[str, List[float]] = {}
     for s in stats:
         w = s.get("machine", {}).get("w")
@@ -84,11 +83,13 @@ def _measure_narration(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         except (ValueError, ZeroDivisionError):
             continue
         if SANE_WPS[0] <= wps <= SANE_WPS[1]:
-            by_engine.setdefault(s.get("machine", {}).get("v", "?"), []).append(wps)
+            tag = s.get("machine", {}).get("v", "?")
+            if tag == VOICE_TAG:
+                by_engine.setdefault(tag, []).append(wps)
 
     if not by_engine:
         return None
-    engine, samples = max(by_engine.items(), key=lambda kv: len(kv[1]))
+    engine, samples = next(iter(by_engine.items()))
     if len(samples) < MIN_WPS_SAMPLES:
         return None
     wps = round(statistics.median(samples), 3)
@@ -193,8 +194,11 @@ def run_weekly_learning(days: int = 14) -> bool:
         pass
     learnings: Dict[str, Any] = {**previous}
     section_times = dict(previous.get("section_updated_at", {}))
+    if (learnings.get("narration") or {}).get("engine") != VOICE_TAG:
+        learnings.pop("narration", None)
+        section_times.pop("narration", None)
     for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
-        if section in previous:
+        if section in learnings:
             section_times.setdefault(section, previous.get("updated_at", "1970-01-01T00:00:00"))
     status: Dict[str, str] = {}
 

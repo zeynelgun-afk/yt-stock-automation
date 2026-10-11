@@ -46,7 +46,7 @@ class VoiceGenerator:
             return False
         try:
             logger.info("Generating studio-quality voice via ElevenLabs (multilingual_v2)...")
-            voice_id = ELEVENLABS_VOICE_ID  # Chris by default; American male presenter
+            voice_id = ELEVENLABS_VOICE_ID  # Channel-owned Deniz Editorial voice by default
             url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
                    f"/with-timestamps?output_format=mp3_44100_128")
             headers = {
