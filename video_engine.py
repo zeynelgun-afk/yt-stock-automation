@@ -116,11 +116,11 @@ class VideoEngine:
     # ------------------------------------------------------------------ background
 
     def fetch_background_videos(self, keywords: List[str], is_shorts: bool = True,
-                                count: int = 1) -> List[str]:
+                                count: int = 1, allow_stock: bool = True) -> List[str]:
         """Up to `count` visually distinct background clips, one per keyword.
 
         Source chain per clip: Higgsfield AI generation (if API keys are
-        configured, capped at HIGGSFIELD_MAX_CLIPS) -> Pexels stock footage.
+        configured, capped at HIGGSFIELD_MAX_CLIPS), then optional stock.
         Returns however many clips it managed to get — possibly fewer than
         `count`, possibly empty, in which case the renderer uses its gradient.
         """
@@ -140,16 +140,17 @@ class VideoEngine:
                         self.used_ai_video = True
                     else:
                         logger.warning(f"Higgsfield generation failed for '{theme}'; "
-                                       "Pexels will cover this scene.")
+                                       "using permitted fallback background.")
         except Exception as e:
-            logger.warning(f"Higgsfield unavailable ({e}); falling back to Pexels.")
+            logger.warning(f"Higgsfield unavailable ({e}); using permitted fallback background.")
 
-        for query in remaining:
-            if len(clips) >= count:
-                break
-            path = self._fetch_pexels_clip(query, is_shorts=is_shorts)
-            if path and path not in clips:
-                clips.append(path)
+        if allow_stock:
+            for query in remaining:
+                if len(clips) >= count:
+                    break
+                path = self._fetch_pexels_clip(query, is_shorts=is_shorts)
+                if path and path not in clips:
+                    clips.append(path)
 
         if not clips:
             logger.info("No background clips available; renderer will use the gradient.")
@@ -582,7 +583,8 @@ class VideoEngine:
     def render_video(self, audio_path: str, ass_sub_path: str, output_filename: str,
                      card_img_path: str, chart_video_path: Optional[str] = None,
                      is_shorts: bool = True,
-                     bg_video_path: Optional[str] | List[str] = None) -> str:
+                     bg_video_path: Optional[str] | List[str] = None,
+                     background_theme: str = '') -> str:
         """Final MP4: HD background (stock footage or animated gradient) +
         glassmorphism stock card + left-to-right chart animation + subtitles.
 
@@ -740,8 +742,15 @@ class VideoEngine:
         )
 
         # Gradient fallback
+        gradient_colors = {
+            'congress_trade': ('0x10192a', '0x744032'),
+            'insider_watch': ('0x10192a', '0x744032'),
+            'earnings_shock': ('0x10192a', '0x6b4b20'),
+            'analyst_shock': ('0x10192a', '0x145466'),
+        }
+        first, second = gradient_colors.get(background_theme, ('0x10192a', '0x1e3a5f'))
         gradient_src = (
-            f"gradients=s={width}x{height}:c0=0x0f172a:c1=0x1e3a5f:"
+            f"gradients=s={width}x{height}:c0={first}:c1={second}:"
             f"speed=0.08:rate=30"
         )
         result = _run_ffmpeg(build_cmd(["-f", "lavfi", "-i", gradient_src], plain_bg, 1),
@@ -751,7 +760,7 @@ class VideoEngine:
             return out_video
 
         # Solid fallback
-        solid_src = f"color=c=0x0f172a:s={width}x{height}:r=30"
+        solid_src = f"color=c={first}:s={width}x{height}:r=30"
         fb = _run_ffmpeg(build_cmd(["-f", "lavfi", "-i", solid_src], plain_bg, 1),
                          timeout_s=render_timeout)
         if fb.returncode != 0:

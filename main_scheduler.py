@@ -226,6 +226,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
     bg_clips = ve.fetch_background_videos(
         visual_keywords, is_shorts=is_shorts,
         count=1 if is_shorts else LONG_BG_CLIPS,
+        allow_stock=False,
     )
 
     thumbnail_path = ""
@@ -246,6 +247,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         audio_path, ass_path, f"render_{video_type}_{timestamp}.mp4",
         card_img_path=card_img_path, chart_video_path=chart_video_path,
         is_shorts=is_shorts, bg_video_path=bg_clips,
+        background_theme=story['franchise'],
     )
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")

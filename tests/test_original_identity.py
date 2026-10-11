@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image, ImageChops
 
@@ -8,6 +9,7 @@ from config import VOICE_TAG
 from editorial_policy import validate_editorial_script
 from learning_engine import _measure_narration
 from thumbnail_design import create_story_thumbnail
+from video_engine import VideoEngine
 
 
 class OriginalIdentityTests(unittest.TestCase):
@@ -45,6 +47,15 @@ class OriginalIdentityTests(unittest.TestCase):
         script = {'title': 'MSFT trade disclosed', 'full_script': 'The trade was disclosed.',
                   'thumbnail_hook': 'HIDDEN FOR 32 DAYS'}
         self.assertTrue(validate_editorial_script(script, story))
+
+    def test_original_background_path_never_fetches_stock(self):
+        with patch('higgsfield_client.HiggsfieldClient') as client, \
+                patch.object(VideoEngine, '_fetch_pexels_clip') as stock:
+            client.return_value.enabled = False
+            clips = VideoEngine(pexels_key='unused').fetch_background_videos(
+                ['office desk'], is_shorts=True, allow_stock=False)
+        self.assertEqual(clips, [])
+        stock.assert_not_called()
 
 
 if __name__ == '__main__':

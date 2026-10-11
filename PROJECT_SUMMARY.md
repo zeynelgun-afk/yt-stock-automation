@@ -9,7 +9,7 @@ Bu sistem YouTube'a **otomatik yayın** yapar; Telegram onay kapısı değildir.
 - İçerik: kaynaklı hikâye seçimi, güncel finans videosu konu ilgisi, LLM senaryosu.
 - Üretim: Kanala özel ElevenLabs Deniz Editorial sesi (ana pipeline'da başka sese geçmeden hata verir); gerçek mum verisi, ASS altyazı, FFmpeg.
 - Deniz: Çizimli portresi kapaklarda ve otomatik video kartında kullanılır. Creator arayüzü için `--prepare-presenter` kısa ses parçaları çıkarır; `presenter_workflow.py finish` indirilen konuşan avatar kliplerini grafik videosuna ekler. Bu yerel mod yayın yapmaz; zamanlanmış akış çizimli kart ve grafiklerle devam eder.
-- Görseller: yapılandırılmışsa Higgsfield, ardından Pexels/yerel grafik yedekleri.
+- Görseller: yapılandırılmışsa hikâyeye özel Higgsfield görüntüsü, ardından hareketli renk zemini ve gerçek grafik. Yeni yayın akışında Pexels stok klibi kullanılmaz.
 - Yayın: YouTube OAuth; yayın sonrası Telegram önizlemesi.
 - Öğrenme: YouTube Analytics, örneklem sınırı olan Shorts ağırlıkları, ölçülen ses hızı.
 - Çalıştırma: GitHub Actions; saatlerin asıl kaynağı workflow dosyasıdır.

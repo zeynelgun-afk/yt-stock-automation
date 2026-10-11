@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-10-11",
+  "provider": "ElevenLabs Voice Design",
+  "preview_model": "eleven_multilingual_ttv_v2",
+  "narration_model": "eleven_multilingual_v2",
+  "voice_name": "Deniz Editorial",
+  "voice_id": "4m8bONaoZ6iNcRiqEbI3",
+  "voice_description": "Original adult male English-language financial explainer. Warm mid-low baritone with a subtly textured, slightly smoky timbre, precise contemporary American pronunciation, calm confidence, lightly wry intelligence, natural conversational rhythm and controlled pauses. Energetic enough for short news analysis, never shouty, announcer-like, robotic, celebrity-like, or imitative. A distinctive gentle lift at the start of a thought and crisp understated endings.",
+  "verification": "Three previews transcribed correctly by Scribe v2. Preview 1 was selected for its slower pacing and clear transcription. A full narration sample with measured word-level timestamps was generated locally; subjective listening remains a separate review."
+}
