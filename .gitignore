@@ -1,5 +1,8 @@
 .env
 venv/
+remotion/node_modules/
+.remotion/
+.cache/
 temp/
 output/
 __pycache__/

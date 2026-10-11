@@ -11,9 +11,24 @@ from editorial_policy import qualify, repeated_event, publication_tags, validate
 from growth_experiment import measurement_window, summarize
 from publication_history import fetch_upload_history, HistoryUnavailable
 from script_generator import ScriptGenerator, ScriptGenerationError
+from humanaize_style import HUMANAIZE_NARRATION
 from story_selector import StorySelector
 
 TODAY = date(2026, 9, 16)
+
+
+class HumanAIzeStyleTests(unittest.TestCase):
+    def test_both_video_formats_use_factual_conversational_style(self):
+        sg = ScriptGenerator()
+        with patch.object(sg, '_call_llm', return_value={}) as call:
+            sg.generate_shorts_script('Company event', 'Source facts')
+            short_prompt = call.call_args.args[0]
+            sg.generate_long_script({'selected_story': {'facts': {}}})
+            long_prompt = call.call_args.args[0]
+        for prompt in (short_prompt, long_prompt):
+            self.assertIn(HUMANAIZE_NARRATION, prompt)
+            self.assertIn('Do not invent anecdotes', prompt)
+            self.assertIn('Preserve dates, attribution, uncertainty', prompt)
 
 
 def analyst(**changes):
@@ -196,6 +211,8 @@ class ReportIntegrationTests(unittest.TestCase):
         api = MagicMock()
         api.reports().query().execute.side_effect = [
             {'rows': [['newbaseline', 10]]},
+            {'columnHeaders': [{'name': 'ageGroup'}, {'name': 'viewerPercentage'}], 'rows': []},
+            {'columnHeaders': [{'name': 'ageGroup'}, {'name': 'viewerPercentage'}], 'rows': []},
         ]
         history = [dict(video_id='newbaseline', title='Should not replace missing baseline',
                         privacy='public', machine={'fmt': 'shorts'}, published_at='2026-09-10T12:00:00Z'),
@@ -208,14 +225,18 @@ class ReportIntegrationTests(unittest.TestCase):
         self.assertEqual([(r['video_id'], r['status']) for r in report['videos']],
                          [('deleted', 'unavailable_video'), ('experiment', 'pending')])
         self.assertEqual(report['status'], 'collecting_insufficient_sample')
-        self.assertEqual(api.reports().query().execute.call_count, 1)
+        self.assertEqual(api.reports().query().execute.call_count, 3)
 
     def test_measured_window_excludes_lifetime_counts(self):
         from growth_experiment import build_report, METRICS
         api = MagicMock()
         api.reports().query().execute.side_effect = [
             {'rows': [['old', 99999]]},
-            {'columnHeaders': [{'name': name} for name in METRICS.split(',')], 'rows': [[12, 7, 25, 70, 0]]}]
+            {'columnHeaders': [{'name': name} for name in METRICS.split(',')], 'rows': [[12, 7, 25, 70, 0]]},
+            {'columnHeaders': [{'name': 'ageGroup'}, {'name': 'viewerPercentage'}],
+             'rows': [['age35-44', 45.4], ['age55-64', 8.1]]},
+            {'columnHeaders': [{'name': 'ageGroup'}, {'name': 'viewerPercentage'}],
+             'rows': [['age35-44', 39.8], ['age55-64', 7.1]]}]
         history = [dict(video_id='old', title='Old', privacy='public', machine={'fmt': 'shorts'},
                         published_at='2026-09-01T12:00:00Z', views=99999)]
         report = build_report(history=history, analytics=api,
@@ -224,6 +245,10 @@ class ReportIntegrationTests(unittest.TestCase):
         calls = [c.kwargs for c in api.reports().query.call_args_list if c.kwargs.get('filters', '').startswith('video==')]
         self.assertEqual(calls[0]['startDate'], '2026-09-02')
         self.assertEqual(calls[0]['endDate'], '2026-09-04')
+        self.assertIsNone(report['age_demographics']['periods']['28']['viewer_percentages']['age65-'])
+        self.assertEqual(report['age_demographics']['periods']['28']['viewer_percentages']['age35-44'], 45.4)
+        from growth_experiment import markdown
+        self.assertIn('| 65+ | Raporlanmadı | Raporlanmadı |', markdown(report))
 
 
 class PrepublicationTests(unittest.TestCase):
@@ -265,7 +290,9 @@ class CompletedLowSampleTests(unittest.TestCase):
         api.reports().query().execute.side_effect = [
             {'rows': [[f'b{i}', 1] for i in range(10)]},
             *[{'columnHeaders': [{'name': name} for name in METRICS.split(',')],
-               'rows': [[1, 1, 20, 60, 0]]} for _ in range(20)]]
+               'rows': [[1, 1, 20, 60, 0]]} for _ in range(20)],
+            {'columnHeaders': [{'name': 'ageGroup'}, {'name': 'viewerPercentage'}], 'rows': []},
+            {'columnHeaders': [{'name': 'ageGroup'}, {'name': 'viewerPercentage'}], 'rows': []}]
         history = [dict(video_id=f'b{i}', title='Baseline', privacy='public', machine={'fmt': 'shorts'},
                         published_at=f'2026-09-{i+1:02d}T12:00:00Z') for i in range(10)]
         history += [dict(video_id=f'e{i}', title='Experiment', privacy='public',

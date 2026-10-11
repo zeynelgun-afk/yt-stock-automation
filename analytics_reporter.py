@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from audience_demographics import AGE_GROUPS, AGE_LABELS, fetch_age_demographics
 from config import BASE_DIR
 from telegram_bot import TelegramApprovalBot
 
@@ -231,10 +232,31 @@ def compute_franchise_weights(days: int = 14, min_videos: int = 2,
     return {f: round(min(hi, max(lo, perf / overall)), 2) for f, perf in scored.items()}
 
 
+def _local_age_lines() -> List[str]:
+    try:
+        from googleapiclient.discovery import build
+        from zoneinfo import ZoneInfo
+        demographics = fetch_age_demographics(
+            build('youtubeAnalytics', 'v2', credentials=_get_credentials(), cache_discovery=False),
+            datetime.now(ZoneInfo('America/Los_Angeles')).date(),
+        )
+        lines = ['', '👥 İzleyici yaşı (son 28 / 90 gün):']
+        lines.append(f"28 gün: {demographics['periods']['28']['start_date']}–{demographics['periods']['28']['end_date']}; "
+                     f"90 gün: {demographics['periods']['90']['start_date']}–{demographics['periods']['90']['end_date']}.")
+        for age, label in zip(AGE_GROUPS, AGE_LABELS):
+            values = [demographics['periods'][period]['viewer_percentages'][age] for period in ('28', '90')]
+            lines.append(f"  {label}: " + ' / '.join(f'%{value:g}' if value is not None else 'raporlanmadı' for value in values))
+        lines.append('Eksik yaş grubu sıfır değildir; YouTube veriyi sınırlamış olabilir.')
+    except Exception as e:
+        logger.warning('Could not append age demographics to report: %s', e)
+        lines = ['', '👥 İzleyici yaşı: Analytics verisi alınamadı.']
+    return lines
+
+
 def build_report(days: int = 7) -> str:
     stats = fetch_video_stats(days)
     if not stats:
-        return f"📊 Haftalık rapor: son {days} günde izlenme verisi yok."
+        return '\n'.join([f"📊 Haftalık rapor: son {days} günde izlenme verisi yok.", *_local_age_lines()])
 
     total_views = sum(s["views"] for s in stats)
     total_subs = sum(s["subs_gained"] for s in stats)
@@ -262,6 +284,7 @@ def build_report(days: int = 7) -> str:
     lines.append(f"Hedef: APV ≥ %{TARGET_AVG_VIEW_PCT_SHORTS:.0f} (📱 Shorts), "
                  f"≥ %{TARGET_AVG_VIEW_PCT_LONG:.0f} (📺 uzun). "
                  "⚠️ işaretli formatların hook/loop kurgusunu gözden geçir.")
+    lines += _local_age_lines()
 
     try:
         weights = compute_franchise_weights()

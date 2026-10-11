@@ -13,6 +13,22 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
+## İzleyici yaş dağılımı
+
+Son 28 gün: 2026-09-12 – 2026-10-09; son 90 gün: 2026-07-12 – 2026-10-09 (Pasifik takvimi; sorgu 2026-10-11).
+
+| Yaş | Son 28 gün | Son 90 gün |
+|---|---:|---:|
+| 13–17 | Raporlanmadı | Raporlanmadı |
+| 18–24 | Raporlanmadı | Raporlanmadı |
+| 25–34 | %26.2 | %35.3 |
+| 35–44 | %45.4 | %39.8 |
+| 45–54 | %20.3 | %17.8 |
+| 55–64 | %8.1 | %7.1 |
+| 65+ | Raporlanmadı | Raporlanmadı |
+
+Yüzdeler YouTube Analytics’in raporladığı oturum açmış izleyicilere dayanır. “Raporlanmadı” sıfır izleyici anlamına gelmez; düşük veri veya gizlilik sınırları nedeniyle yaş grubu gösterilmeyebilir.
+
 Her grubun 10 videosunda veri olduğunda betimsel karşılaştırma hazır sayılır. 200 engaged izlenmenin altındaki gruplar zayıf örneklem olarak işaretlenir; bu sayı istatistiksel anlamlılık eşiği değildir. Sabit geçmiş grubun düşük izlenmesi yeni veri toplanıyormuş gibi gösterilmez.
 
 Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz ve hiç etkinliği olmayan videolar sınıflanamayıp dışarıda kalabilir. API değerleri sonradan değişebilir. Eksik veriler sıfır sayılmaz. İzlemeyi seçme/kaydırma oranı ve CTR bu raporda yoktur.

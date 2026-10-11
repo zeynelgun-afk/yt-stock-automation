@@ -118,7 +118,7 @@ class PipelineTests(unittest.TestCase):
             stack.enter_context(patch.object(main, "OUTPUT_DIR", Path(directory)))
             mocked = {name: stack.enter_context(patch.object(main, name)) for name in [
                 'FMPDataFetcher', 'StoryPoolCollector', 'StorySelector', 'ScriptGenerator',
-                'VoiceGenerator', 'SubtitleGenerator', 'VideoEngine', 'TelegramApprovalBot',
+                'VoiceGenerator', 'VideoEngine', 'TelegramApprovalBot',
                 'YouTubePublisher', 'summarize_pool', 'cleanup_temp', 'get_audio_duration']}
             mocked['summarize_pool'].return_value = ''
             mocked['StoryPoolCollector'].return_value.collect.return_value = pool
@@ -132,7 +132,6 @@ class PipelineTests(unittest.TestCase):
             mocked['FMPDataFetcher'].return_value.get_intraday_chart.return_value = [
                 {'open': 10, 'close': 10}, {'open': 10, 'close': 11}]
             mocked['VoiceGenerator'].return_value.generate_audio.return_value = ('a.mp3', 's.srt')
-            mocked['SubtitleGenerator'].srt_to_ass.return_value = 's.ass'
             mocked['get_audio_duration'].return_value = 35
             mocked['VideoEngine'].return_value.render_video.return_value = 'video.mp4'
             def upload(**kwargs):
@@ -154,6 +153,11 @@ class PipelineTests(unittest.TestCase):
                 mocked['YouTubePublisher'].assert_not_called()
             elif uploaded:
                 main.run_pipeline()
+                rendered = mocked['VideoEngine'].return_value.render_video.call_args
+                self.assertEqual(rendered.args[1], 's.srt')
+                self.assertEqual(len(rendered.kwargs['intraday']), 2)
+                mocked['VideoEngine'].return_value.create_animated_chart.assert_not_called()
+                mocked['VideoEngine'].return_value.create_dashboard_overlay.assert_not_called()
             else:
                 with self.assertRaises(SystemExit) as error:
                     main.run_pipeline()

@@ -14,8 +14,8 @@ from story_pool import StoryPoolCollector, summarize_pool
 from story_selector import StorySelector
 from script_generator import ScriptGenerator, ScriptGenerationError
 from voice_generator import VoiceGenerator
-from subtitle_generator import SubtitleGenerator
-from video_engine import VideoEngine, LONG_BG_CLIPS
+from remotion_engine import RemotionVideoEngine as VideoEngine
+from video_engine import LONG_BG_CLIPS
 from telegram_bot import TelegramApprovalBot
 from youtube_publisher import YouTubePublisher
 from config import TEMP_DIR, OUTPUT_DIR, ELEVENLABS_VOICE_ID, VOICE_TAG
@@ -174,49 +174,15 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
     )
     if not audio_path:
         abort_pipeline("Audio generation failed.")
+    audio_dur = get_audio_duration(audio_path)
 
-    # 6. Generate Subtitles — an empty return here used to flow into the render
-    # as an empty ass= filter path, killing all three render attempts with a
-    # misleading "Video rendering failed" after burning asset credits
-    ass_path = str(SubtitleGenerator.srt_to_ass(
-        srt_path, srt_path.replace('.srt', '.ass'), is_shorts=is_shorts
-    ))
-    if not ass_path:
-        abort_pipeline("Subtitle conversion failed — SRT was empty or unparseable.")
-
-    # 7. Render video: first-frame card + animated real chart + subtitles
+    # 6. Remotion receives measured SRT words and real candles directly.
     ve = VideoEngine()
-    card_img_path = str(TEMP_DIR / f"card_{timestamp}.png")
     checked_hero_number = validate_hero_number(
         str(script_data.get("hero_number", "")).strip(),
         story, script_data["full_script"], change_pct)
-    ve.create_dashboard_overlay(
-        title=script_data["title"],
-        ticker=ticker,
-        change_pct=change_pct,
-        output_path=card_img_path,
-        is_shorts=is_shorts,
-        franchise_name=story["franchise_name"],
-        franchise=story["franchise"],
-        # Empty strings fall the card back to its change%-led layout;
-        # validation blanks a hero figure the story data can't back up
-        hero_number=checked_hero_number,
-        hero_label=str(script_data.get("hero_label", "")).strip(),
-    )
 
-    # Stretch the chart reveal over ~80% of the narration so the frame keeps
-    # moving for the whole video (user feedback: static frames aren't engaging)
-    audio_dur = get_audio_duration(audio_path)
-    chart_draw = max(3.0, min(audio_dur * 0.8, 60.0)) if audio_dur else 3.0
-    try:
-        chart_video_path = ve.create_animated_chart(
-            ticker, intraday, str(TEMP_DIR / f"chart_{timestamp}.mp4"),
-            draw_seconds=chart_draw, is_shorts=is_shorts,
-        )
-    except RuntimeError as e:
-        abort_pipeline(f"Animated chart rendering failed: {e}")
-
-    # 7.5 Fetch background clips: Higgsfield AI (if configured) -> Pexels fallback
+    # 7. Fetch story-specific AI clips; themed motion background otherwise.
     visual_keywords = script_data.get("visual_keywords", [])
     if not visual_keywords:
         visual_keywords = [f"{ticker} stock", "wall street trading", "stock market chart",
@@ -243,12 +209,18 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
             hero_label=str(script_data.get("hero_label", "")).strip() if checked_hero_number else "",
         )
 
-    rendered_video_path = ve.render_video(
-        audio_path, ass_path, f"render_{video_type}_{timestamp}.mp4",
-        card_img_path=card_img_path, chart_video_path=chart_video_path,
-        is_shorts=is_shorts, bg_video_path=bg_clips,
-        background_theme=story['franchise'],
-    )
+    try:
+        rendered_video_path = ve.render_video(
+            audio_path, srt_path, f"render_{video_type}_{timestamp}.mp4",
+            title=script_data["title"], ticker=ticker, change_pct=change_pct,
+            intraday=intraday, franchise=story["franchise"],
+            franchise_name=story["franchise_name"],
+            hero_number=checked_hero_number,
+            hero_label=str(script_data.get("hero_label", "")).strip() if checked_hero_number else "",
+            is_shorts=is_shorts, bg_video_path=bg_clips,
+        )
+    except (RuntimeError, ValueError, OSError) as e:
+        abort_pipeline(f"Remotion rendering failed: {e}")
     if not rendered_video_path:
         abort_pipeline("Video rendering failed.")
 

@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+from humanaize_style import HUMANAIZE_NARRATION
 import llm_transport
 
 logging.basicConfig(level=logging.INFO)
@@ -132,6 +133,7 @@ Make this episode identifiable without its ticker: explain one specific implicat
 of THIS event and one specific uncertainty. Do not recycle a generic market
 lesson, opening phrase, stock-footage narration, or joke from another episode.
 Dry humor is welcome only when it clarifies a sourced fact; never mock losses.
+{HUMANAIZE_NARRATION}
 
 Use plain English. Do not force a contradiction between unrelated events (an insider
 trade and an index change are not automatically connected). Do not imply privileged
@@ -213,6 +215,7 @@ Vary the narrative order when the event warrants it. Include one original,
 source-grounded explanation or comparison that makes this episode different
 from a reading of the source article. State a material counterpoint or missing
 piece of evidence. Never invent a comparison to make the story feel larger.
+{HUMANAIZE_NARRATION}
 {_own_channel_block()}{_packaging_patterns_block()}
 RULES:
 - Word count: {lo} to {hi} words (2.5-3.5 minutes at the measured pace). This is a HARD requirement.

@@ -4,7 +4,9 @@
 
 Yerel Hermes geçişi bu checkout içinde hazırlanmıştır; **aktivasyon doğrulanmadı**. Cutover ve runner sözleşmesi: [ops/LOCAL_HERMES.md](ops/LOCAL_HERMES.md), test kanıtları: [IMPLEMENTATION.md](IMPLEMENTATION.md). Senaryo, seçim, öğrenme ve yorum inference işlemleri yalnızca `openai-codex/gpt-6-astra` kullanır; ücretli LLM yedeği yoktur.
 
-Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → yerel Hermes → kanala özel ElevenLabs Deniz Editorial sesi → FFmpeg → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
+Akış: FMP → kaynaklı hikâye adayları + güncel YouTube konu ilgisi → yerel Hermes → kanala özel ElevenLabs Deniz Editorial sesi → Remotion video render → YouTube → Telegram. Ana pipeline, ElevenLabs ses üretimi başarısızsa farklı sese geçmeden durur. Bağımsız `VoiceGenerator` kullanımında Edge-TTS yedeği hâlâ isteğe bağlıdır.
+
+Senaryo istemi, [HumanAIze](https://github.com/yapsgg/humanaize) (Apache-2.0) yazım ilkelerinden uyarlanmış doğal konuşma, etkin fiil ve değişken cümle ritmi yönergelerini kullanır. Bunlar mevcut yerel Hermes üretiminde uygulanır; ayrı bir HumanAIze servisi veya AI/ML API anahtarı gerekmez. Finansal olgular, tarihler ve belirsizlikler korunur; kişisel anı veya kanıtsız neden eklenmez. Uygulanan yönergeler `humanaize_style.py` dosyasındadır.
 
 Kapaklar dört haber ailesine göre farklı editoryal afiş kompozisyonları kullanır. Deniz'in özgün çizimli portresi uzun video kapaklarında uygun ailelerde, her iki formatın video kartında görünür. Büyük sayı yalnız yapılandırılmış veriye karşı doğrulandıktan sonra çizilir; doğrulanmazsa gerçek seans değişimi kullanılır. Shorts için özel kapak yüklemesi yapılmaz, video içi kart ilk görsel kimliği sağlar. Yeni yayın akışı jenerik stok klip kullanmaz: yapılandırılmışsa hikâyeye özel üretilen görüntü, yoksa haber türüne göre hareketli renk zemini kullanır. Her bölümde kaynaklı olay, özgün çıkarım ve belirsizlik anlatılır. [Tasarım belgesi](docs/superpowers/specs/2026-10-11-original-video-identity-design.md).
 
@@ -27,6 +29,7 @@ Yeni YouTube yüklemelerinde başlık/açıklama dili (`defaultLanguage`) ve ses
 - Kaynakta bulunan işlem tutarı aralıkları (`$500K–$1M`) iki uç değer doğrulanarak ana kartta gösterilir; tek sayıya indirgenmez. Bu kart düzeltmesi ilk deney yayınının ardından uygulanmıştır ve sonraki renderlara etki eder.
 - İlk deney videosu: [Microsoft / Gottheimer açıklaması](https://youtu.be/QO_dGriCQ8Y), 16 Eylül 2026, 31 saniye. YouTube yayın/işleme durumu, deney etiketi ve canlı tekrar engeli doğrulandı.
 - Yeni Shorts `exp:growth-20260916` etiketi taşır. [Deney raporu](reports/growth-experiment.md) her gün 10:15 UTC / 13:15 Türkiye saati için planlanır; GitHub gecikmeleri olabilir. Rapor LLM, ses üretimi veya yayın işlemi kullanmaz.
+- Deney raporunun JSON ve Markdown çıktıları son 28 ve 90 gündeki kanal yaş dağılımını içerir. Yerel haftalık raporda da aynı kırılım görünür. YouTube'un göstermediği yaş grubu “raporlanmadı” olarak kalır; sıfır izleyici sayılmaz.
 - Ölçüm yayın gününden sonraki ilk üç **tam Pasifik takvim gününü** karşılaştırır; tam ilk 72 saat değildir. İki ek tam gün veri gecikmesi beklenir. Grupların üyeliği raporda korunur; silinen/özel videolar daha iyi videolarla değiştirilmez. Eksik veriler sıfır değildir, swipe oranı ve CTR türetilmez.
 - 16 Eylül kayıtları eski OpenRouter akışına aittir. Yeni inference akışı mevcut yerel Codex aboneliğini Hermes safe-mode üzerinden kullanır; process/protokol hatasında yayın durur.
 
@@ -44,11 +47,13 @@ Pipeline kararları, seçilen kaynaklar/senaryo ve başarılı yayın kimliği `
 
 ## Yerel kullanım
 
-Python 3.12, FFmpeg/ffprobe ve Liberation/DejaVu fontları gerekir.
+Python 3.12, Node.js 24, FFmpeg/ffprobe ve Liberation/DejaVu fontları gerekir. Video kompozisyonunu Remotion, uzun video kapağını Python/Pillow üretir.
 
 ```bash
 python -m venv venv
 ./venv/bin/pip install -r requirements.txt
+npm ci --prefix remotion
+remotion/node_modules/.bin/remotion browser ensure
 ./venv/bin/python -m unittest discover -s tests -v
 ```
 

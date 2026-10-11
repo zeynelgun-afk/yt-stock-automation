@@ -291,5 +291,37 @@
       "status": "pending",
       "metrics": null
     }
-  ]
+  ],
+  "age_demographics": {
+    "retrieved_on": "2026-10-11",
+    "periods": {
+      "28": {
+        "start_date": "2026-09-12",
+        "end_date": "2026-10-09",
+        "viewer_percentages": {
+          "age13-17": null,
+          "age18-24": null,
+          "age25-34": 26.2,
+          "age35-44": 45.4,
+          "age45-54": 20.3,
+          "age55-64": 8.1,
+          "age65-": null
+        }
+      },
+      "90": {
+        "start_date": "2026-07-12",
+        "end_date": "2026-10-09",
+        "viewer_percentages": {
+          "age13-17": null,
+          "age18-24": null,
+          "age25-34": 35.3,
+          "age35-44": 39.8,
+          "age45-54": 17.8,
+          "age55-64": 7.1,
+          "age65-": null
+        }
+      }
+    },
+    "note": "Missing age groups were not reported by YouTube; they are not zero. Age data covers the logged-in viewers represented in Analytics."
+  }
 }

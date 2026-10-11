@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from audience_demographics import age_markdown_lines, fetch_age_demographics
 from editorial_policy import EXPERIMENT_ID
 from publication_history import fetch_upload_history, parse_time, youtube_credentials
 
@@ -105,6 +106,7 @@ def build_report(*, history=None, analytics=None, now=None, previous=None):
     report_status = ('ready_for_comparison' if sufficient else
                      'measurement_windows_complete_missing_data' if windows_complete else
                      'collecting_insufficient_sample')
+    demographics = fetch_age_demographics(analytics, today)
     result = {'experiment_id': EXPERIMENT_ID, 'started_at': STARTED_AT, 'generated_at': now.isoformat(),
               'window_definition': 'First three complete Pacific calendar days after publication; not exact first 72 hours.',
               'metric_status': 'Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.',
@@ -112,7 +114,7 @@ def build_report(*, history=None, analytics=None, now=None, previous=None):
               'unclassified_legacy_videos': sum(r['video_id'] not in short_ids and not r['machine'].get('fmt') for r in before),
               'status': report_status,
               'thin_sample': any(c['engaged_views'] < 200 for c in cohorts.values()),
-              'cohorts': cohorts, 'videos': output}
+              'cohorts': cohorts, 'videos': output, 'age_demographics': demographics}
     return result
 
 
@@ -129,6 +131,8 @@ def markdown(report):
         lines.append(f"| {label} | {c['selected']} / {c['available']} | {c['median_views'] if c['median_views'] is not None else '—'} | {c['median_engaged_views'] if c['median_engaged_views'] is not None else '—'} | {c['subscribers_gained'] if c['available'] else '—'} |")
     if report.get('thin_sample'):
         lines += ['', '**Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.']
+    if report.get('age_demographics'):
+        lines += ['', *age_markdown_lines(report['age_demographics'])]
     lines += ['', 'Her grubun 10 videosunda veri olduğunda betimsel karşılaştırma hazır sayılır. 200 engaged izlenmenin altındaki gruplar zayıf örneklem olarak işaretlenir; bu sayı istatistiksel anlamlılık eşiği değildir. Sabit geçmiş grubun düşük izlenmesi yeni veri toplanıyormuş gibi gösterilmez.', '',
               'Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz ve hiç etkinliği olmayan videolar sınıflanamayıp dışarıda kalabilir. API değerleri sonradan değişebilir. Eksik veriler sıfır sayılmaz. İzlemeyi seçme/kaydırma oranı ve CTR bu raporda yoktur.', '',
               '| Video | Grup | Ölçüm tarihleri (Pasifik) | Durum |', '|---|---|---|---|']

@@ -75,6 +75,20 @@ jobs:
           fi
           python pipeline_schedule.py
 
+      - name: Set up Node for Remotion
+        if: steps.mode.outputs.mode == 'shorts' || steps.mode.outputs.mode == 'long' || steps.mode.outputs.mode == 'event-shorts'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: remotion/package-lock.json
+
+      - name: Install Remotion renderer
+        if: steps.mode.outputs.mode == 'shorts' || steps.mode.outputs.mode == 'long' || steps.mode.outputs.mode == 'event-shorts'
+        run: |
+          npm ci --prefix remotion
+          remotion/node_modules/.bin/remotion browser ensure --log error
+
       - name: Check pipeline reliability
         env:
           YT_OFFLINE_TESTS: '1'
