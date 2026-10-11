@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20261003` · Güncelleme: 2026-10-10T15:53:08.522366+00:00
+Deney: `growth-20261003` · Güncelleme: 2026-10-11T16:20:12.231943+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -9,7 +9,7 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 10 | 11.0 | 5.0 | 2 |
-| Yeni deney | 10 / 0 | — | — | — |
+| Yeni deney | 10 / 4 | 7.5 | 1.5 | 0 |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
@@ -45,10 +45,10 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [Group 1 Automotive: 10% Owner Buys $32.5M in Stock](https://youtu.be/SNcUHg2a1y8) | baseline | 2026-10-01 – 2026-10-03 | available |
 | [Nippon Life Buys $27.5M More Corebridge Stock](https://youtu.be/Y7iNJmJr47w) | baseline | 2026-10-01 – 2026-10-03 | available |
 | [Sable Offshore Price Target Cut to $10 at Roth Capital](https://youtu.be/nv0wvwokmJo) | baseline | 2026-10-01 – 2026-10-03 | available |
-| [PTC Stock: RBC Downgrades to Sector Perform](https://youtu.be/AY4lfQ3nt5A) | experiment | 2026-10-06 – 2026-10-08 | pending |
-| [Devon Energy Sale Was Disclosed 28 Days Later](https://youtu.be/ZZbJq91n7CE) | experiment | 2026-10-06 – 2026-10-08 | pending |
-| [Apple Stock: Tim Cook's $63.85M Insider Sale](https://youtu.be/THSiGBWVFuQ) | experiment | 2026-10-06 – 2026-10-08 | pending |
-| [General Motors Gets a $9 Target Raise From Goldman](https://youtu.be/QHhK7dYEjGg) | experiment | 2026-10-06 – 2026-10-08 | pending |
+| [PTC Stock: RBC Downgrades to Sector Perform](https://youtu.be/AY4lfQ3nt5A) | experiment | 2026-10-06 – 2026-10-08 | available |
+| [Devon Energy Sale Was Disclosed 28 Days Later](https://youtu.be/ZZbJq91n7CE) | experiment | 2026-10-06 – 2026-10-08 | available |
+| [Apple Stock: Tim Cook's $63.85M Insider Sale](https://youtu.be/THSiGBWVFuQ) | experiment | 2026-10-06 – 2026-10-08 | available |
+| [General Motors Gets a $9 Target Raise From Goldman](https://youtu.be/QHhK7dYEjGg) | experiment | 2026-10-06 – 2026-10-08 | available |
 | [ArriVent BioPharma Falls 50.1% Amid Trial Report](https://youtu.be/Kmq_fLvFCeI) | experiment | 2026-10-07 – 2026-10-09 | pending |
 | [Voyager Technologies Target Cut to $55 at Jefferies](https://youtu.be/oqxOh244vtc) | experiment | 2026-10-07 – 2026-10-09 | pending |
 | [GRRRW Reports 36-Cent Loss Per Share, Missing Estimates](https://youtu.be/eKERZfUsLt4) | experiment | 2026-10-07 – 2026-10-09 | pending |
