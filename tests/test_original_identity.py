@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from editorial_policy import validate_editorial_script
 from learning_engine import _measure_narration
 from thumbnail_design import create_story_thumbnail
 from video_engine import VideoEngine
+from voice_generator import VoiceGenerator
 
 
 class OriginalIdentityTests(unittest.TestCase):
@@ -56,6 +58,15 @@ class OriginalIdentityTests(unittest.TestCase):
                 ['office desk'], is_shorts=True, allow_stock=False)
         self.assertEqual(clips, [])
         stock.assert_not_called()
+
+    def test_stray_audio_after_last_subtitle_is_cut(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.mp3'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi',
+                            '-i', 'sine=frequency=440:duration=1', str(path)],
+                           check=True, capture_output=True)
+            self.assertTrue(VoiceGenerator._trim_unaligned_tail(str(path), .55))
+            self.assertLess(VoiceGenerator._audio_duration(str(path)), .7)
 
 
 if __name__ == '__main__':

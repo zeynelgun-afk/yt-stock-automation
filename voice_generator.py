@@ -93,6 +93,10 @@ class VoiceGenerator:
                                  "falling back so subtitles stay in sync.")
                     Path(output_path).unlink(missing_ok=True)
                     return False
+                if not self._trim_unaligned_tail(output_path, words[-1][2]):
+                    logger.error("ElevenLabs audio extends beyond measured speech and cannot be trimmed.")
+                    Path(output_path).unlink(missing_ok=True)
+                    return False
                 self._write_word_srt(words, subtitle_path)
 
             logger.info(f"ElevenLabs audio + measured word timings generated: {output_path}")
@@ -101,6 +105,39 @@ class VoiceGenerator:
             logger.warning(f"ElevenLabs TTS failed: {e}")
             Path(output_path).unlink(missing_ok=True)
         return False
+
+    @classmethod
+    def _trim_unaligned_tail(cls, output_path: str, last_word_end: float) -> bool:
+        """Remove stray synthesized speech after the final aligned word.
+
+        A Deniz voice sample appended an audible extra word after its last
+        measured SRT cue. Only a substantial tail is touched; a short natural
+        release is kept. Re-encoding gives a precise cut instead of an MP3
+        frame boundary that might retain the unwanted word.
+        """
+        duration = cls._audio_duration(output_path)
+        if duration <= 0 or last_word_end <= 0 or last_word_end > duration + .1:
+            return False
+        if duration - last_word_end <= .35:
+            return True
+        trimmed = Path(output_path).with_name(Path(output_path).stem + '.trim.mp3')
+        try:
+            result = subprocess.run(
+                ['ffmpeg', '-v', 'error', '-y', '-i', output_path,
+                 '-t', f'{last_word_end + .03:.3f}', '-c:a', 'libmp3lame',
+                 '-b:a', '128k', str(trimmed)],
+                capture_output=True, timeout=90)
+            if result.returncode or not trimmed.exists():
+                return False
+            cut_duration = cls._audio_duration(str(trimmed))
+            if not 0 < cut_duration <= last_word_end + .15:
+                return False
+            trimmed.replace(output_path)
+            return True
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        finally:
+            trimmed.unlink(missing_ok=True)
 
     @staticmethod
     def _words_from_alignment(text: str, alignment: dict) -> List[Tuple[str, float, float]]:
