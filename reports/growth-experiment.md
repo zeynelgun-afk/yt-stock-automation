@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20261003` · Güncelleme: 2026-10-11T16:20:12.231943+00:00
+Deney: `growth-20261003` · Güncelleme: 2026-10-12T19:49:05.628730+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -9,13 +9,13 @@ Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 10 | 11.0 | 5.0 | 2 |
-| Yeni deney | 10 / 4 | 7.5 | 1.5 | 0 |
+| Yeni deney | 10 / 7 | 6 | 2 | 0 |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
 ## İzleyici yaş dağılımı
 
-Son 28 gün: 2026-09-12 – 2026-10-09; son 90 gün: 2026-07-12 – 2026-10-09 (Pasifik takvimi; sorgu 2026-10-11).
+Son 28 gün: 2026-09-13 – 2026-10-10; son 90 gün: 2026-07-13 – 2026-10-10 (Pasifik takvimi; sorgu 2026-10-12).
 
 | Yaş | Son 28 gün | Son 90 gün |
 |---|---:|---:|
@@ -49,9 +49,9 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [Devon Energy Sale Was Disclosed 28 Days Later](https://youtu.be/ZZbJq91n7CE) | experiment | 2026-10-06 – 2026-10-08 | available |
 | [Apple Stock: Tim Cook's $63.85M Insider Sale](https://youtu.be/THSiGBWVFuQ) | experiment | 2026-10-06 – 2026-10-08 | available |
 | [General Motors Gets a $9 Target Raise From Goldman](https://youtu.be/QHhK7dYEjGg) | experiment | 2026-10-06 – 2026-10-08 | available |
-| [ArriVent BioPharma Falls 50.1% Amid Trial Report](https://youtu.be/Kmq_fLvFCeI) | experiment | 2026-10-07 – 2026-10-09 | pending |
-| [Voyager Technologies Target Cut to $55 at Jefferies](https://youtu.be/oqxOh244vtc) | experiment | 2026-10-07 – 2026-10-09 | pending |
-| [GRRRW Reports 36-Cent Loss Per Share, Missing Estimates](https://youtu.be/eKERZfUsLt4) | experiment | 2026-10-07 – 2026-10-09 | pending |
+| [ArriVent BioPharma Falls 50.1% Amid Trial Report](https://youtu.be/Kmq_fLvFCeI) | experiment | 2026-10-07 – 2026-10-09 | available |
+| [Voyager Technologies Target Cut to $55 at Jefferies](https://youtu.be/oqxOh244vtc) | experiment | 2026-10-07 – 2026-10-09 | available |
+| [GRRRW Reports 36-Cent Loss Per Share, Missing Estimates](https://youtu.be/eKERZfUsLt4) | experiment | 2026-10-07 – 2026-10-09 | available |
 | [Vir Biotechnology: H.C. Wainwright Lifts Target to $22](https://youtu.be/NIIMV_lhSZ4) | experiment | 2026-10-08 – 2026-10-10 | pending |
 | [Core & Main’s Price Target Lowered by RBC to $57](https://youtu.be/bc9zhXuX1bM) | experiment | 2026-10-08 – 2026-10-10 | pending |
 | [Tony Wied’s ServiceNow Sale Disclosed 20 Days Later](https://youtu.be/11SsE_xJDD8) | experiment | 2026-10-08 – 2026-10-10 | pending |
