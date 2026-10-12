@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 from humanaize_style import HUMANAIZE_NARRATION
+from narrative_scenes import scene_prompt, validate_scene_plan
 import llm_transport
 
 logging.basicConfig(level=logging.INFO)
@@ -107,11 +108,12 @@ class ScriptGenerator:
         and YouTube stops distributing. The same 22 seconds inside a 35-second
         Short reads as ~63% and earns the feed.
 
-        The 78-92 word initial range is provisional from the new Deniz voice
-        sample. Weekly calibration uses only published videos carrying this
+        A complete 83-word conversational Deniz sample took 41.3 seconds.
+        The 66-76 word initial range preserves its pauses within the target.
+        Weekly calibration uses only published videos carrying this
         voice's identity tag; the older Chris pace cannot override it.
         """
-        lo, hi = _word_range("shorts_word_range", default=(78, 92), sane=(45, 110))
+        lo, hi = _word_range("shorts_word_range", default=(66, 76), sane=(45, 78))
         franchise_block = f"\n{franchise_style}\n" if franchise_style else ""
         angle_block = f"Editorial angle (follow it): {angle}\n" if angle else ""
         prompt = f"""You are an elite Wall Street financial analyst and viral YouTube creator for the channel "US Stock Market Daily".
@@ -180,13 +182,15 @@ RULES:
    - "hero_label": 2-4 words naming that figure, e.g. "CEO SOLD", "IN ONE DAY",
      "MENTIONS SURGE", "INSIDER BOUGHT"
    - "full_script": Spoken text only
+   - "scenes": Ordered scene plan described below
    - "ticker": Primary stock symbol (e.g. "NVDA")
    - "change_pct": Numeric percent change string (e.g. "+6.85")
    - "tags": Array of 6 relevant tags
    - "visual_keywords": Array of 3-4 stock video search phrases (e.g. ["stock market trading", "nvidia microchip", "wall street traders"])
+{scene_prompt(True)}
 """
         return self._call_llm(prompt, default_title=topic,
-                              min_words=lo, max_words=hi)
+                              min_words=lo, max_words=hi, scene_bounds=(4, 7))
 
     def generate_long_script(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
         """A 150-210 second, single-story recap experiment.
@@ -232,6 +236,7 @@ RULES:
    - "title": Lead with the main company/event and the verified consequence; use at most one supported numeric quantity and omit generic recap/date suffixes. Keep under 85 characters. Do not bury the actual story behind a generic date prefix.
    - "description": First line summarizes the selected company event. Include only sources actually present in the supplied facts, and relevant hashtags.
    - "full_script": Spoken text only
+   - "scenes": Ordered scene plan described below
    - "ticker": Main ticker discussed
    - "change_pct": Percent change string
    - "tags": Array of tags
@@ -247,9 +252,10 @@ RULES:
      not five phrasings of "stock market chart". Concrete places and objects beat abstract
      concepts: ["wall street trading floor", "semiconductor factory robot arm", "oil refinery
      at night", "electric vehicle assembly line", "us capitol building exterior"]
+{scene_prompt(False)}
 """
         return self._call_llm(prompt, default_title="US Stock Market Daily Recap",
-                              min_words=lo, max_words=hi)
+                              min_words=lo, max_words=hi, scene_bounds=(8, 32))
 
     SYSTEM_MSG = "You are a professional financial AI writer. Always respond with valid JSON only."
 
@@ -269,7 +275,8 @@ RULES:
             return None
 
     def _call_llm(self, prompt: str, default_title: str,
-                  min_words: int = 0, max_words: int = 0) -> Dict[str, Any]:
+                  min_words: int = 0, max_words: int = 0,
+                  scene_bounds=None) -> Dict[str, Any]:
         """Bounded correction requests on the same subscription model.
 
         Preserve script schema and length validation. Inference failures abort
@@ -335,12 +342,23 @@ RULES:
                             f"to make room for the body. Return the same JSON structure.\n\n"
                             f"PREVIOUS DRAFT:\n{parsed.get('full_script', '')}")
                     continue
+                if scene_bounds:
+                    try:
+                        validate_scene_plan(parsed, scene_bounds, max_words=28)
+                    except ValueError as exc:
+                        logger.warning('Scene plan rejected: %s', exc)
+                        retry_note = ('\nSCENE CORRECTION: ' + str(exc)
+                                      + '. Return the complete corrected JSON, preserving supplied facts. '
+                                      + 'Every scene must reproduce a consecutive part of full_script. '
+                                      + 'Keep the word budget.\nPREVIOUS JSON:\n'
+                                      + json.dumps(parsed, ensure_ascii=False))
+                        continue
                 logger.info(f"Successfully generated script via {provider}/{model_name} ({word_count} words)!")
                 return parsed
 
         raise ScriptGenerationError(
             "Local Hermes failed to generate validated JSON; publishing aborted. "
-            + (self.last_error or "Invalid schema or word budget")
+            + (self.last_error or "Invalid schema, word budget or scene plan")
         )
 
 if __name__ == "__main__":

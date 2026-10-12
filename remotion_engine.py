@@ -12,6 +12,7 @@ from pathlib import Path
 from config import OUTPUT_DIR, BASE_DIR
 from video_engine import VideoEngine
 from thumbnail_design import DENIZ_ART
+from narrative_scenes import validate_scene_plan, align_scenes
 
 logger = logging.getLogger(__name__)
 REMOTION_DIR = BASE_DIR / 'remotion'
@@ -46,7 +47,8 @@ class RemotionVideoEngine(VideoEngine):
 
     def render_video(self, audio_path, srt_path, output_filename, *, title, ticker,
                      change_pct, intraday, franchise='', franchise_name='',
-                     hero_number='', hero_label='', is_shorts=True, bg_video_path=None):
+                     hero_number='', hero_label='', is_shorts=True, bg_video_path=None,
+                     scenes=None, full_script=''):
         audio_duration = self._probe_duration(audio_path)
         if not 0 < audio_duration <= 900:
             raise RuntimeError('Voiceover duration is missing or exceeds 900 seconds')
@@ -60,6 +62,10 @@ class RemotionVideoEngine(VideoEngine):
         if not all(math.isfinite(value) and value > 0 for value in [session_open, *closes]):
             raise RuntimeError('Invalid intraday chart values')
         words = read_words(srt_path)
+        checked_scenes = validate_scene_plan({'full_script': full_script, 'scenes': scenes},
+                                            (4, 7) if is_shorts else (8, 32),
+                                            max_words=28)
+        timeline = align_scenes(checked_scenes, words, audio_duration)
         if not (REMOTION_DIR / 'node_modules' / '.bin' / 'remotion').exists():
             raise RuntimeError('Remotion dependencies missing; run npm ci --prefix remotion')
 
@@ -99,6 +105,7 @@ class RemotionVideoEngine(VideoEngine):
                 'isShorts': is_shorts, 'closes': closes, 'sessionOpen': session_open,
                 'sessionDate': str(intraday[-1].get('date', ''))[:10],
                 'words': words, 'audio': audio_name, 'backgrounds': backgrounds,
+                'scenes': timeline,
                 'host': host, 'music': 'music.wav' if music.is_file() else None,
                 'whoosh': 'whoosh.wav' if whoosh.is_file() else None,
             }
@@ -133,4 +140,8 @@ class RemotionVideoEngine(VideoEngine):
             if result.returncode != 0 or not out_path.is_file() or out_path.stat().st_size == 0:
                 out_path.unlink(missing_ok=True)
                 raise RuntimeError(f'Remotion render failed: {result.stderr[-1200:]}')
+        (OUTPUT_DIR / 'editorial_scene_timeline.json').write_text(json.dumps({
+            'video': out_path.name, 'audio_duration': audio_duration,
+            'timing_source': 'measured_voice_srt', 'scenes': timeline,
+        }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         return str(out_path)

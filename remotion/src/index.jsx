@@ -14,7 +14,7 @@ const Root = () => (
       title: '', ticker: 'TEST', changePct: '0', franchise: '', franchiseName: '',
       heroNumber: '', heroLabel: '', isShorts: true, closes: [100, 101],
       sessionOpen: 100, sessionDate: '', words: [], audio: '',
-      backgrounds: [], host: null, music: null, whoosh: null,
+      backgrounds: [], scenes: [], host: null, music: null, whoosh: null,
     }}
   />
 );

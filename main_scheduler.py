@@ -218,6 +218,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
             hero_number=checked_hero_number,
             hero_label=str(script_data.get("hero_label", "")).strip() if checked_hero_number else "",
             is_shorts=is_shorts, bg_video_path=bg_clips,
+            scenes=script_data.get('scenes'), full_script=script_data['full_script'],
         )
     except (RuntimeError, ValueError, OSError) as e:
         abort_pipeline(f"Remotion rendering failed: {e}")

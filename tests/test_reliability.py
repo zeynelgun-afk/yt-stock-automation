@@ -125,6 +125,8 @@ class PipelineTests(unittest.TestCase):
             mocked['StorySelector'].return_value.select.return_value = story
             mocked['ScriptGenerator'].return_value.generate_shorts_script.return_value = {
                 'title': 'Test', 'full_script': 'Test script', 'hero_number': '$1M'}
+            generated = mocked['ScriptGenerator'].return_value.generate_shorts_script.return_value
+            generated['scenes'] = [{'kind': 'event', 'narration': 'Test script', 'emphasis': 'Test'}]
             if rejected_drafts:
                 valid = {'title': 'Test', 'full_script': 'Test script', 'hero_number': '$1M'}
                 invalid = {'title': 'Test vs Nasdaq', 'full_script': 'Test script', 'hero_number': '$1M'}
@@ -156,6 +158,8 @@ class PipelineTests(unittest.TestCase):
                 rendered = mocked['VideoEngine'].return_value.render_video.call_args
                 self.assertEqual(rendered.args[1], 's.srt')
                 self.assertEqual(len(rendered.kwargs['intraday']), 2)
+                self.assertEqual(rendered.kwargs['full_script'], 'Test script')
+                self.assertIn('scenes', rendered.kwargs)
                 mocked['VideoEngine'].return_value.create_animated_chart.assert_not_called()
                 mocked['VideoEngine'].return_value.create_dashboard_overlay.assert_not_called()
             else:
