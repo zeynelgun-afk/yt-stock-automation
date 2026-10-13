@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-10-12T19:49:13.454113+00:00",
+  "generated_at": "2026-10-13T17:36:51.520945+00:00",
   "latest_analytics_date": "2026-10-10",
-  "requested_through": "2026-10-11",
+  "requested_through": "2026-10-12",
   "periods": {
     "current": {
       "start": "2026-10-04",
@@ -18,15 +18,15 @@
       "formats": {
         "shorts": {
           "creatorContentType": "shorts",
-          "views": 1412,
-          "engagedViews": 522,
-          "estimatedMinutesWatched": 284,
+          "views": 1404,
+          "engagedViews": 521,
+          "estimatedMinutesWatched": 283,
           "subscribersGained": 2,
           "subscribersLost": 0
         },
         "videoondemand": {
           "creatorContentType": "videoOnDemand",
-          "views": 172,
+          "views": 171,
           "engagedViews": 74,
           "estimatedMinutesWatched": 95,
           "subscribersGained": 0,

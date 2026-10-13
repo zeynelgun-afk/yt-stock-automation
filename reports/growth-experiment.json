@@ -1,12 +1,12 @@
 {
   "experiment_id": "growth-20261003",
   "started_at": "2026-10-03T20:00:00Z",
-  "generated_at": "2026-10-12T19:49:05.628730+00:00",
+  "generated_at": "2026-10-13T17:36:42.627527+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
   "unclassified_legacy_videos": 25,
-  "status": "collecting_insufficient_sample",
+  "status": "ready_for_comparison",
   "thin_sample": true,
   "cohorts": {
     "baseline": {
@@ -21,11 +21,11 @@
     },
     "experiment": {
       "selected": 10,
-      "available": 7,
-      "engaged_views": 19,
-      "median_views": 6,
-      "median_engaged_views": 2,
-      "median_average_view_seconds": 12,
+      "available": 10,
+      "engaged_views": 25,
+      "median_views": 7.0,
+      "median_engaged_views": 2.0,
+      "median_average_view_seconds": 17.0,
       "subscribers_gained": 0,
       "subscribers_per_1000_engaged": 0.0
     }
@@ -216,7 +216,7 @@
       "window_end": "2026-10-08",
       "status": "available",
       "metrics": {
-        "views": 3,
+        "views": 2,
         "engagedViews": 1,
         "averageViewDuration": 33,
         "averageViewPercentage": 98.24,
@@ -232,7 +232,7 @@
       "window_end": "2026-10-08",
       "status": "available",
       "metrics": {
-        "views": 12,
+        "views": 10,
         "engagedViews": 2,
         "averageViewDuration": 21,
         "averageViewPercentage": 64.3,
@@ -310,8 +310,14 @@
       "published_at": "2026-10-07T19:03:27Z",
       "window_start": "2026-10-08",
       "window_end": "2026-10-10",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 9,
+        "engagedViews": 3,
+        "averageViewDuration": 24,
+        "averageViewPercentage": 78.06,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -320,8 +326,14 @@
       "published_at": "2026-10-07T19:32:19Z",
       "window_start": "2026-10-08",
       "window_end": "2026-10-10",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 6,
+        "engagedViews": 2,
+        "averageViewDuration": 14,
+        "averageViewPercentage": 52.59,
+        "subscribersGained": 0
+      }
     },
     {
       "cohort": "experiment",
@@ -330,16 +342,22 @@
       "published_at": "2026-10-07T21:50:44Z",
       "window_start": "2026-10-08",
       "window_end": "2026-10-10",
-      "status": "pending",
-      "metrics": null
+      "status": "available",
+      "metrics": {
+        "views": 8,
+        "engagedViews": 1,
+        "averageViewDuration": 20,
+        "averageViewPercentage": 50.8,
+        "subscribersGained": 0
+      }
     }
   ],
   "age_demographics": {
-    "retrieved_on": "2026-10-12",
+    "retrieved_on": "2026-10-13",
     "periods": {
       "28": {
-        "start_date": "2026-09-13",
-        "end_date": "2026-10-10",
+        "start_date": "2026-09-14",
+        "end_date": "2026-10-11",
         "viewer_percentages": {
           "age13-17": null,
           "age18-24": null,
@@ -351,15 +369,15 @@
         }
       },
       "90": {
-        "start_date": "2026-07-13",
-        "end_date": "2026-10-10",
+        "start_date": "2026-07-14",
+        "end_date": "2026-10-11",
         "viewer_percentages": {
           "age13-17": null,
           "age18-24": null,
-          "age25-34": 35.3,
-          "age35-44": 39.8,
-          "age45-54": 17.8,
-          "age55-64": 7.1,
+          "age25-34": 26.2,
+          "age35-44": 45.4,
+          "age45-54": 20.3,
+          "age55-64": 8.1,
           "age65-": null
         }
       }

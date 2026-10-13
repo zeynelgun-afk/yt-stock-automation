@@ -1,6 +1,6 @@
 # Haftalık kanal durumu
 
-Güncelleme: 2026-10-12T19:49:13.454113+00:00
+Güncelleme: 2026-10-13T17:36:51.520945+00:00
 
 Son Analytics günü: **2026-10-10**. Tarihler Pasifik saat dilimindedir.
 API gecikmesi nedeniyle dönemler veri gelen son tarihe göre kaydırılır. Eksik günler sıfır sayılmaz.
@@ -19,8 +19,8 @@ API gecikmesi nedeniyle dönemler veri gelen son tarihe göre kaydırılır. Eks
 | Önceki / Shorts | 1929 | 783 | 422 | 5 / 0 |
 | Önceki / Uzun video | 200 | 112 | 139 | 0 / 0 |
 | Önceki / Formatı belirsiz | 0 | 0 | 0 | 2 / 1 |
-| Son / Shorts | 1412 | 522 | 284 | 2 / 0 |
-| Son / Uzun video | 172 | 74 | 95 | 0 / 0 |
+| Son / Shorts | 1404 | 521 | 283 | 2 / 0 |
+| Son / Uzun video | 171 | 74 | 95 | 0 / 0 |
 | Son / Formatı belirsiz | 0 | 0 | 0 | 1 / 1 |
 
 Format toplamları ile günlük toplamlar API revizyonları ve yuvarlama nedeniyle küçük farklar gösterebilir. Bu dönemler kanalın tüm videolarındaki etkinliği kapsar; eşit yaşlı video deneyi değildir. Engaged izlenme, tekil izleyici veya izlemeyi seçme/kaydırma oranı değildir.

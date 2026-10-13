@@ -1,30 +1,30 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20261003` · Güncelleme: 2026-10-12T19:49:05.628730+00:00
+Deney: `growth-20261003` · Güncelleme: 2026-10-13T17:36:42.627527+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
-Durum: Örneklem toplanıyor; başarı/başarısızlık sonucu çıkarılmadı.
+Durum: Betimsel karşılaştırma için 10 + 10 video verisi var; nedensellik veya başarı kanıtı değildir.
 
 | Grup | Seçilen / veri gelen | Medyan izlenme | Medyan engaged | Kazanılan abone |
 |---|---:|---:|---:|---:|
 | Önceki Shorts | 10 / 10 | 11.0 | 5.0 | 2 |
-| Yeni deney | 10 / 7 | 6 | 2 | 0 |
+| Yeni deney | 10 / 10 | 7.0 | 2.0 | 0 |
 
 **Düşük örneklem:** En az bir grupta toplam engaged izlenme 200 altında; sonuçlar güçlü bir çıkarım için yetersiz olabilir.
 
 ## İzleyici yaş dağılımı
 
-Son 28 gün: 2026-09-13 – 2026-10-10; son 90 gün: 2026-07-13 – 2026-10-10 (Pasifik takvimi; sorgu 2026-10-12).
+Son 28 gün: 2026-09-14 – 2026-10-11; son 90 gün: 2026-07-14 – 2026-10-11 (Pasifik takvimi; sorgu 2026-10-13).
 
 | Yaş | Son 28 gün | Son 90 gün |
 |---|---:|---:|
 | 13–17 | Raporlanmadı | Raporlanmadı |
 | 18–24 | Raporlanmadı | Raporlanmadı |
-| 25–34 | %26.2 | %35.3 |
-| 35–44 | %45.4 | %39.8 |
-| 45–54 | %20.3 | %17.8 |
-| 55–64 | %8.1 | %7.1 |
+| 25–34 | %26.2 | %26.2 |
+| 35–44 | %45.4 | %45.4 |
+| 45–54 | %20.3 | %20.3 |
+| 55–64 | %8.1 | %8.1 |
 | 65+ | Raporlanmadı | Raporlanmadı |
 
 Yüzdeler YouTube Analytics’in raporladığı oturum açmış izleyicilere dayanır. “Raporlanmadı” sıfır izleyici anlamına gelmez; düşük veri veya gizlilik sınırları nedeniyle yaş grubu gösterilmeyebilir.
@@ -52,8 +52,8 @@ Eski Shorts sınıflaması Analytics veya format etiketine dayanır; etiketsiz v
 | [ArriVent BioPharma Falls 50.1% Amid Trial Report](https://youtu.be/Kmq_fLvFCeI) | experiment | 2026-10-07 – 2026-10-09 | available |
 | [Voyager Technologies Target Cut to $55 at Jefferies](https://youtu.be/oqxOh244vtc) | experiment | 2026-10-07 – 2026-10-09 | available |
 | [GRRRW Reports 36-Cent Loss Per Share, Missing Estimates](https://youtu.be/eKERZfUsLt4) | experiment | 2026-10-07 – 2026-10-09 | available |
-| [Vir Biotechnology: H.C. Wainwright Lifts Target to $22](https://youtu.be/NIIMV_lhSZ4) | experiment | 2026-10-08 – 2026-10-10 | pending |
-| [Core & Main’s Price Target Lowered by RBC to $57](https://youtu.be/bc9zhXuX1bM) | experiment | 2026-10-08 – 2026-10-10 | pending |
-| [Tony Wied’s ServiceNow Sale Disclosed 20 Days Later](https://youtu.be/11SsE_xJDD8) | experiment | 2026-10-08 – 2026-10-10 | pending |
+| [Vir Biotechnology: H.C. Wainwright Lifts Target to $22](https://youtu.be/NIIMV_lhSZ4) | experiment | 2026-10-08 – 2026-10-10 | available |
+| [Core & Main’s Price Target Lowered by RBC to $57](https://youtu.be/bc9zhXuX1bM) | experiment | 2026-10-08 – 2026-10-10 | available |
+| [Tony Wied’s ServiceNow Sale Disclosed 20 Days Later](https://youtu.be/11SsE_xJDD8) | experiment | 2026-10-08 – 2026-10-10 | available |
 
 Kaynak: yetkili YouTube Data/Analytics API. [Takvim günü tanımı](https://developers.google.com/youtube/analytics/dimensions).
