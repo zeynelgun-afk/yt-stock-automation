@@ -1,34 +1,34 @@
 {
-  "generated_at": "2026-10-15T15:03:33.991811+00:00",
-  "latest_analytics_date": "2026-10-12",
-  "requested_through": "2026-10-14",
+  "generated_at": "2026-10-16T14:52:41.450594+00:00",
+  "latest_analytics_date": "2026-10-13",
+  "requested_through": "2026-10-15",
   "periods": {
     "current": {
-      "start": "2026-10-06",
-      "end": "2026-10-12",
+      "start": "2026-10-07",
+      "end": "2026-10-13",
       "missing_dates": [],
       "totals": {
-        "views": 1536,
-        "engagedViews": 555,
-        "estimatedMinutesWatched": 348,
-        "subscribersGained": 4,
+        "views": 1359,
+        "engagedViews": 475,
+        "estimatedMinutesWatched": 301,
+        "subscribersGained": 3,
         "subscribersLost": 1,
-        "netSubscribers": 3
+        "netSubscribers": 2
       },
       "formats": {
         "shorts": {
           "creatorContentType": "shorts",
-          "views": 1311,
-          "engagedViews": 465,
-          "estimatedMinutesWatched": 242,
-          "subscribersGained": 2,
+          "views": 1128,
+          "engagedViews": 391,
+          "estimatedMinutesWatched": 199,
+          "subscribersGained": 1,
           "subscribersLost": 0
         },
         "videoondemand": {
           "creatorContentType": "videoOnDemand",
-          "views": 230,
-          "engagedViews": 90,
-          "estimatedMinutesWatched": 108,
+          "views": 231,
+          "engagedViews": 84,
+          "estimatedMinutesWatched": 104,
           "subscribersGained": 0,
           "subscribersLost": 0
         },
@@ -43,31 +43,31 @@
       }
     },
     "previous": {
-      "start": "2026-09-29",
-      "end": "2026-10-05",
+      "start": "2026-09-30",
+      "end": "2026-10-06",
       "missing_dates": [],
       "totals": {
-        "views": 2457,
-        "engagedViews": 1028,
-        "estimatedMinutesWatched": 643,
-        "subscribersGained": 8,
+        "views": 2384,
+        "engagedViews": 1017,
+        "estimatedMinutesWatched": 631,
+        "subscribersGained": 7,
         "subscribersLost": 0,
-        "netSubscribers": 8
+        "netSubscribers": 7
       },
       "formats": {
         "shorts": {
           "creatorContentType": "shorts",
-          "views": 2231,
-          "engagedViews": 908,
-          "estimatedMinutesWatched": 492,
+          "views": 2150,
+          "engagedViews": 891,
+          "estimatedMinutesWatched": 478,
           "subscribersGained": 6,
           "subscribersLost": 0
         },
         "videoondemand": {
           "creatorContentType": "videoOnDemand",
-          "views": 225,
-          "engagedViews": 121,
-          "estimatedMinutesWatched": 153,
+          "views": 233,
+          "engagedViews": 127,
+          "estimatedMinutesWatched": 155,
           "subscribersGained": 0,
           "subscribersLost": 0
         },
@@ -76,7 +76,7 @@
           "views": 0,
           "engagedViews": 0,
           "estimatedMinutesWatched": 0,
-          "subscribersGained": 2,
+          "subscribersGained": 1,
           "subscribersLost": 0
         }
       }
