@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20261003` · Güncelleme: 2026-10-16T14:52:33.943106+00:00
+Deney: `growth-20261003` · Güncelleme: 2026-10-17T13:44:44.726707+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -15,16 +15,16 @@ Durum: Betimsel karşılaştırma için 10 + 10 video verisi var; nedensellik ve
 
 ## İzleyici yaş dağılımı
 
-Son 28 gün: 2026-09-17 – 2026-10-14; son 90 gün: 2026-07-17 – 2026-10-14 (Pasifik takvimi; sorgu 2026-10-16).
+Son 28 gün: 2026-09-18 – 2026-10-15; son 90 gün: 2026-07-18 – 2026-10-15 (Pasifik takvimi; sorgu 2026-10-17).
 
 | Yaş | Son 28 gün | Son 90 gün |
 |---|---:|---:|
 | 13–17 | Raporlanmadı | Raporlanmadı |
 | 18–24 | Raporlanmadı | Raporlanmadı |
-| 25–34 | %26.2 | %35.3 |
-| 35–44 | %45.4 | %39.8 |
-| 45–54 | %20.3 | %17.8 |
-| 55–64 | %8.1 | %7.1 |
+| 25–34 | %27.6 | %35.3 |
+| 35–44 | %42.6 | %39.8 |
+| 45–54 | %21.3 | %17.8 |
+| 55–64 | %8.5 | %7.1 |
 | 65+ | Raporlanmadı | Raporlanmadı |
 
 Yüzdeler YouTube Analytics’in raporladığı oturum açmış izleyicilere dayanır. “Raporlanmadı” sıfır izleyici anlamına gelmez; düşük veri veya gizlilik sınırları nedeniyle yaş grubu gösterilmeyebilir.
