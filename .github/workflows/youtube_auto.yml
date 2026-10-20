@@ -75,13 +75,20 @@ jobs:
           fi
           python pipeline_schedule.py
 
+      # No Actions npm cache here. This job runs on the self-hosted yt-hermes
+      # runner, whose npm cache already persists on local disk between jobs, so
+      # `npm ci` is fast (~12s) without it. The cache-save post-step, however,
+      # uploads the whole npm store to the Actions cache service and hung for
+      # 41.5 min on run 38310013499 (2026-10-12) until the 45-min job timeout
+      # killed it. GitHub reports a timed-out job as `cancelled`, and the runner
+      # guard quarantines any run that is not `completed/success` — so that one
+      # hung cleanup step took the whole channel down for 7 days until operator
+      # reconciliation. The cache bought nothing and could only ever re-wedge it.
       - name: Set up Node for Remotion
         if: steps.mode.outputs.mode == 'shorts' || steps.mode.outputs.mode == 'long' || steps.mode.outputs.mode == 'event-shorts'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: remotion/package-lock.json
 
       - name: Install Remotion renderer
         if: steps.mode.outputs.mode == 'shorts' || steps.mode.outputs.mode == 'long' || steps.mode.outputs.mode == 'event-shorts'
