@@ -42,6 +42,21 @@ class MigrationContractTests(unittest.TestCase):
         text = (ROOT/'.github/workflows/retry_on_infra_failure.yml').read_text()
         self.assertIn("vars.YT_EXECUTOR != 'local-hermes'",text)
 
+    def test_slot_loss_alert_stays_hosted_and_detects_unreached_pipeline(self):
+        text = (ROOT/'.github/workflows/alert_on_slot_loss.yml').read_text()
+        # Notification credentials must never reach the local runner.
+        self.assertIn('runs-on: ubuntu-latest',text)
+        self.assertNotIn('runs-on: [yt-hermes]',text)  # comments may name the runner; the selector may not
+        self.assertIn('workflows: ["US Stock Market Daily YouTube Automation"]',text)
+        for secret in ['TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID']: self.assertIn('secrets.'+secret,text)
+        # A pre-job hook rejection leaves "Run Pipeline" skipped, not null, so a
+        # `!= null` reachability test would misfile the one silent failure class
+        # this workflow exists to catch. Keep the explicit conclusion allowlist.
+        self.assertNotIn('.conclusion != null',text)
+        self.assertIn('not-reached',text)
+        for concluded in ['"success"','"failure"','"cancelled"']:
+            self.assertIn('.conclusion == '+concluded,text)
+
     def test_smoke_uses_only_synthetic_facts_and_both_real_writers(self):
         import smoke_llm
         from script_generator import ScriptGenerator

@@ -1,0 +1,91 @@
+name: Alert on lost pipeline slot
+
+# The pipeline's own Telegram abort alert lives inside main_scheduler.py, so it
+# can only fire once the "Run Pipeline" step is already executing. Two real
+# failure classes kill a slot before or after that window and reported nothing:
+#
+#  - A self-hosted pre-job hook rejection. local_runner_guard `start` refuses to
+#    begin a job while a stale `pending-confirmation` claim sits in active.json,
+#    and that happens BEFORE any workflow step, so no step can alert. On
+#    2026-10-12 one wedged claim silently killed the channel for 7 days.
+#  - A run whose pipeline SUCCEEDED but whose GitHub conclusion is not success
+#    (e.g. a post-step cache save hanging into `timeout-minutes`, which GitHub
+#    reports as `cancelled`). The guard then quarantines that run and every
+#    later slot fails closed — the single most urgent thing to be told about.
+#
+# retry_on_infra_failure.yml is deliberately inert under
+# YT_EXECUTOR=local-hermes, so nothing else covered either case.
+#
+# This companion is GitHub-hosted and must never run on [yt-hermes]: the local
+# runner stays free of notification credentials (see ops/LOCAL_HERMES.md).
+on:
+  workflow_run:
+    workflows: ["US Stock Market Daily YouTube Automation"]
+    types: [completed]
+
+permissions:
+  actions: read
+
+jobs:
+  alert:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'cancelled'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report the lost slot to Telegram
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -uo pipefail
+
+          # Whether the pipeline step was reached is what separates "the slot
+          # died around our code" from "our code ran and reported for itself".
+          # Only success/failure/cancelled mean reached: a pre-job hook rejection
+          # leaves "Run Pipeline" as **skipped**, not null (verified on run
+          # 39471745070), and the step carries no `if:` so skipped can only ever
+          # mean the job died before it. Testing `!= null` would misfile exactly
+          # the silent case this workflow exists to catch.
+          pipeline=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+            --jq '([.jobs[].steps[]? | select(.name == "Run Pipeline")
+                   | select(.conclusion == "success" or .conclusion == "failure" or .conclusion == "cancelled")
+                   | .conclusion] | first) // "not-reached"' \
+            2>/dev/null) || pipeline=unknown
+          [ -n "$pipeline" ] || pipeline=unknown
+
+          case "$pipeline" in
+            not-reached)
+              headline="🔴 Slot kaybedildi — pipeline hiç başlamadı (run: $CONCLUSION)"
+              detail="Job ilk workflow adımından önce öldü, bu yüzden pipeline kendi uyarısını gönderemedi. En olası neden: self-hosted pre-job hook reddi (local_runner_guard start), yani takılı bir pending-confirmation kaydı. KONTROL ET: ~/.local/state/yt-hermes-runner/jobs/active.json — doluysa sonraki TÜM slotlar da bloke ve operator reconcile gerekiyor."
+              ;;
+            success)
+              headline="🟠 Pipeline başarılı ama run '$CONCLUSION' — guard karantinada"
+              detail="Video muhtemelen yayınlandı, ancak GitHub bu run'ı success saymadığı için runner guard onu karantinaya alır ve BUNDAN SONRAKİ HER SLOT fail-closed olur. Tipik sebep: bir post-step (cache save/upload) timeout-minutes sınırına takılır. Yayını doğrula, sonra operator reconcile çalıştır."
+              ;;
+            unknown)
+              headline="🔴 Pipeline run '$CONCLUSION'"
+              detail="Adım durumu GitHub API'den okunamadı, bu yüzden sebep sınıflandırılamadı. Run'ı elle kontrol et."
+              ;;
+            *)
+              headline="🔴 Pipeline adımı '$pipeline' ile bitti (run: $CONCLUSION)"
+              detail="Pipeline çalıştı, yani main_scheduler kendi Telegram uyarısını göndermiş olabilir — bu mesaj teyit amaçlı, uyarı hiç gelmediyse alert yolu da bozuk demektir."
+              ;;
+          esac
+
+          # printf, not an inline multi-line string: a YAML block scalar would
+          # bake its own indentation into the delivered message body.
+          text=$(printf '%s\n\n%s\n\nRun: %s' "$headline" "$detail" "$RUN_URL")
+
+          # Never let a broken alert path be silent too: fail the job loudly.
+          curl -sS --fail --max-time 30 -X POST \
+            "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=$text" >/dev/null
