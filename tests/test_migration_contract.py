@@ -1,5 +1,6 @@
 import tests  # enforce the no-real-inference unit-test boundary
 from pathlib import Path
+import re
 import unittest
 from unittest.mock import patch
 import os
@@ -74,3 +75,59 @@ class MigrationContractTests(unittest.TestCase):
         with patch.dict(os.environ, {'YT_OFFLINE_TESTS':'1'}), patch('llm_transport.subprocess.run') as run:
             with self.assertRaises(llm_transport.InferenceError): llm_transport.complete([])
             run.assert_not_called()
+
+
+class CleanStopContractTests(unittest.TestCase):
+    """A slot that declines to publish must not wedge the guarded runner.
+
+    A missing intraday quote took the channel off air for eight slots on
+    2026-10-22: the abort exited 1, the workflow skipped mark-success, and the
+    runner claim stayed unresolved until an operator reconciled it by hand.
+    """
+
+    def test_abort_before_publishing_exits_distinctly_from_a_crash(self):
+        import main_scheduler
+        with patch('main_scheduler.TelegramApprovalBot') as bot:
+            bot.return_value.send_text.return_value = True
+            with self.assertRaises(SystemExit) as clean:
+                main_scheduler.abort_pipeline('no intraday data', clean=True)
+            with self.assertRaises(SystemExit) as crash:
+                main_scheduler.abort_pipeline('unexpected error')
+        self.assertEqual(clean.exception.code, main_scheduler.CLEAN_STOP_EXIT)
+        self.assertEqual(crash.exception.code, 1)
+        self.assertNotEqual(main_scheduler.CLEAN_STOP_EXIT, 1)
+        # The operator is told either way; only the runner claim differs.
+        self.assertEqual(bot.return_value.send_text.call_count, 2)
+
+    def test_every_abort_before_the_upload_step_is_a_clean_stop(self):
+        source = (ROOT/'main_scheduler.py').read_text()
+        upload_at = source.index('yp.upload_video(')
+        calls = [(m.start(), m.group()) for m in
+                 re.finditer(r'abort_pipeline\([^\n]*\)', source)]
+        self.assertTrue(calls)
+        for position, call in calls:
+            if source[max(0, position - 4):position] == 'def ':
+                continue   # the definition itself, not a call site
+            if position < upload_at:
+                self.assertIn('clean=True', call,
+                              f'abort before upload must close the job cleanly: {call}')
+            else:
+                # After an upload attempt a delivery may be ambiguous; the claim
+                # must stay unresolved for an operator rather than auto-close.
+                self.assertNotIn('clean=True', call,
+                                 f'abort after upload must not auto-close: {call}')
+
+    def test_workflow_lets_a_clean_stop_reach_the_success_marker(self):
+        text = (ROOT/'.github/workflows/youtube_auto.yml').read_text()
+        self.assertIn('run_pipeline()', text)
+        self.assertIn('"75"', text)
+        # Production modes route through the wrapper...
+        for mode in ('run_pipeline shorts', 'run_pipeline "$MODE"'):
+            self.assertIn(mode, text)
+        self.assertNotIn('python main_scheduler.py shorts\n', text)
+        # ...but event-check keeps its own 0/1/2 contract and must not be wrapped.
+        self.assertIn('python main_scheduler.py event-check', text)
+        self.assertNotIn('run_pipeline event-check', text)
+        # The marker step still gates on success and stays last.
+        self.assertIn('mark-success', text)
+        self.assertLess(text.index('run_pipeline()'), text.index('mark-success'))
