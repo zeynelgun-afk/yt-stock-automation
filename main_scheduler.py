@@ -38,17 +38,32 @@ def get_audio_duration(audio_path: str) -> float:
         return 0.0
 
 
-def abort_pipeline(reason: str):
+# Exit code for a slot that stopped on its own terms before anything could be
+# published. Distinct from 1 so the guarded runner can tell "decided not to
+# publish" from "crashed, possibly mid-delivery": the first must close the job
+# cleanly, the second must stay unresolved until an operator looks at it. A
+# routine data gap wedging the runner cost the channel eight slots on
+# 2026-10-22, the second outage of that shape.
+CLEAN_STOP_EXIT = 75
+
+
+def abort_pipeline(reason: str, *, clean: bool = False):
     """Stops the pipeline and alerts the operator. NEVER publish without live data.
 
-    Raises SystemExit(1): aborts used to return with exit code 0, so a failed
-    slot showed a green check in GitHub Actions — indistinguishable from
-    success in the run history."""
+    Raises SystemExit(1) by default: aborts used to return with exit code 0, so
+    a failed slot showed a green check in GitHub Actions — indistinguishable
+    from success in the run history.
+
+    clean=True raises SystemExit(CLEAN_STOP_EXIT) instead, and is only correct
+    BEFORE the upload step: nothing has been sent, so no delivery can be left
+    ambiguous. The operator is alerted either way; the difference is whether the
+    runner's job claim needs human reconciliation before the next slot may run.
+    """
     logger.error(f"PIPELINE ABORTED: {reason}")
     if not TelegramApprovalBot().send_text(
             f"🚨 Video pipeline DURDU — video üretilmedi.\n\nSebep: {reason}"):
         logger.error("Telegram abort alert could not be delivered either.")
-    raise SystemExit(1)
+    raise SystemExit(CLEAN_STOP_EXIT if clean else 1)
 
 
 def cleanup_temp(max_age_days: float = 3.0) -> None:
@@ -84,7 +99,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         fetcher = FMPDataFetcher()
         pool = StoryPoolCollector(fetcher).collect()
     except FMPDataError as e:
-        abort_pipeline(str(e))
+        abort_pipeline(str(e), clean=True)
     logger.info("Story pool collected:\n" + summarize_pool(pool))
 
     # 2. Story selection engine: score candidates, LLM picks the day's angle
@@ -133,13 +148,13 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
                     "editorial_correction": correction,
                 })
         except ScriptGenerationError as e:
-            abort_pipeline(str(e))
+            abort_pipeline(str(e), clean=True)
 
         editorial_errors = validate_editorial_script(script_data, story)
         if not editorial_errors:
             break
         if editorial_attempt == 1:
-            abort_pipeline('Editorial script check failed after correction: ' + '; '.join(editorial_errors))
+            abort_pipeline('Editorial script check failed after correction: ' + '; '.join(editorial_errors), clean=True)
         logger.warning('Regenerating script after editorial rejection: %s', '; '.join(editorial_errors))
         correction = ('\nEDITORIAL CORRECTION: The previous draft was rejected for: '
                       + '; '.join(editorial_errors)
@@ -158,7 +173,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
     try:
         intraday = fetcher.get_intraday_chart(ticker)
     except FMPDataError as e:
-        abort_pipeline(f"Intraday chart data unavailable for {ticker}: {e}")
+        abort_pipeline(f"Intraday chart data unavailable for {ticker}: {e}", clean=True)
 
     # Card change % is computed from the same candles as the chart — never from
     # the LLM, which can echo an index move instead of the ticker's own
@@ -173,7 +188,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         allow_fallback=False,
     )
     if not audio_path:
-        abort_pipeline("Audio generation failed.")
+        abort_pipeline("Audio generation failed.", clean=True)
     audio_dur = get_audio_duration(audio_path)
 
     # 6. Remotion receives measured SRT words and real candles directly.
@@ -221,9 +236,9 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
             scenes=script_data.get('scenes'), full_script=script_data['full_script'],
         )
     except (RuntimeError, ValueError, OSError) as e:
-        abort_pipeline(f"Remotion rendering failed: {e}")
+        abort_pipeline(f"Remotion rendering failed: {e}", clean=True)
     if not rendered_video_path:
-        abort_pipeline("Video rendering failed.")
+        abort_pipeline("Video rendering failed.", clean=True)
 
     if prepare_presenter:
         from presenter_workflow import prepare_package

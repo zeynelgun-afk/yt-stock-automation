@@ -124,6 +124,22 @@ jobs:
           reply_before_shorts() {
             timeout 240s python comment_responder.py --publish || echo "::warning::Comment pass failed or timed out; continuing video production."
           }
+          # Exit 75 (main_scheduler CLEAN_STOP_EXIT) means the slot stopped before
+          # publishing anything, so no delivery can be ambiguous. Failing the job
+          # here would skip "Mark guarded job successful", leave the runner claim
+          # unresolved and block every later slot until an operator reconciles it
+          # — which is exactly how a missing intraday quote cost eight slots on
+          # 2026-10-22. The operator is still alerted by Telegram and the run
+          # carries a warning; only the runner claim is allowed to close.
+          run_pipeline() {
+            local rc=0
+            python main_scheduler.py "$@" || rc=$?
+            if [ "$rc" = "75" ]; then
+              echo "::warning::Slot stopped before publishing (no live data or editorial rejection); operator alerted via Telegram."
+              return 0
+            fi
+            return "$rc"
+          }
           case "$MODE" in
             skip)
               echo "Off-DST duplicate recap firing — nothing to do."
@@ -160,7 +176,7 @@ jobs:
               ;;
             shorts)
               reply_before_shorts
-              python main_scheduler.py shorts
+              run_pipeline shorts
               ;;
             event-shorts)
               # exit 0 = event day, 1 = quiet day, 2 = check crashed (already alerted)
@@ -168,7 +184,7 @@ jobs:
               if [ "$rc" = "0" ]; then
                 echo "Event day — producing extra Shorts"
                 reply_before_shorts
-                python main_scheduler.py shorts
+                run_pipeline shorts
               elif [ "$rc" = "2" ]; then
                 echo "event-check failed — operator alerted via Telegram, skipping slot"
               else
@@ -176,7 +192,7 @@ jobs:
               fi
               ;;
             *)
-              python main_scheduler.py "$MODE"
+              run_pipeline "$MODE"
               ;;
           esac
 
