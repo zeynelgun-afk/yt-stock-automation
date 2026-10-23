@@ -50,16 +50,23 @@ def _pattern_text(item: Any) -> str:
 
 
 def _own_channel_block() -> str:
-    """Lessons distilled weekly from OUR OWN uploads' retention/APV data.
-    Own data outranks market-wide patterns — say so to the model."""
+    """Lessons distilled weekly from OUR OWN uploads' retention/APV and
+    comment/share rates. Own data outranks market-wide patterns — say so."""
     p = _learnings().get("own_patterns") or {}
     win = [_pattern_text(w) for w in p.get("winning_patterns", [])[:5]]
     lose = [_pattern_text(l) for l in p.get("losing_patterns", [])[:4]]
-    if not (win or lose):
+    # Watching, commenting and sharing are measured separately upstream, so
+    # they are offered separately here: a structure that held retention is not
+    # evidence about what earned a comment or a forward.
+    comment = [_pattern_text(c) for c in p.get("comment_drivers", [])[:3]]
+    share = [_pattern_text(s) for s in p.get("share_drivers", [])[:3]]
+    if not (win or lose or comment or share):
         return ""
     lines = ["OUR CHANNEL OBSERVATIONS (small unequal-age sample; hypotheses only, never override editorial rules):"]
     lines += [f"- Held OUR viewers: {w}" for w in win]
     lines += [f"- Lost OUR viewers (avoid): {l}" for l in lose]
+    lines += [f"- Earned comments: {c}" for c in comment]
+    lines += [f"- Earned shares: {s}" for s in share]
     return "\n" + "\n".join(lines) + "\n"
 
 
@@ -127,9 +134,13 @@ Our September 2026 audit found that search is the largest traffic source, with q
 such as company name + "stock". A bare dollar number gives a new viewer no subject.
 
 0-3s: name the company/actor AND the verified event in one short sentence.
-3-8s: deliver the most useful fact or explanation immediately. No withheld payoff.
-8-30s: explain ONE supported reason and ONE material limitation.
-30-35s: finish the explanation cleanly; a natural loop is optional, never padding.
+3-8s: deliver the most useful fact or explanation immediately.
+8-26s: explain ONE supported reason, then the TWO-SIDED MOMENT — state the strongest
+  reading of the event and the strongest competing reading of the SAME sourced facts.
+  Both sides must come from the supplied data; never invent a second side to create a fight.
+26-31s: speak to the viewer's own situation in one concrete sentence ("if you hold this",
+  "if you've been waiting for a dip") — their decision context, never advice on what to do.
+31-35s: land the memorable line and name the next checkpoint to watch.
 
 Make this episode identifiable without its ticker: explain one specific implication
 of THIS event and one specific uncertainty. Do not recycle a generic market
@@ -155,7 +166,8 @@ TITLE: put the identifiable company name or actor near the beginning, followed b
 one concrete verified event. Use at most ONE supported numeric quantity in the title.
 Do not append a generic recap/date suffix. Keep caveats in the narration while
 ensuring the title remains accurate; never remove a qualifier needed for accuracy. A clear factual headline is allowed.
-Do not force a question mark, tease a missing company name, or invent tension.
+A question, an open loop or a stated disagreement is welcome where the facts support one.
+Never tease a missing company name — the opening still names the subject outright.
 For disclosures, say "disclosed X days later", never "X days late", "overdue" or
 "hidden": transaction-to-disclosure lag alone does not establish a missed deadline.
 Vary the wording naturally across recent uploads, without sacrificing discoverability.
@@ -181,6 +193,17 @@ RULES:
      IS the story.
    - "hero_label": 2-4 words naming that figure, e.g. "CEO SOLD", "IN ONE DAY",
      "MENTIONS SURGE", "INSIDER BOUGHT"
+   - "memorable_line": the one line a viewer would quote when forwarding this video.
+     MUST be an exact consecutive excerpt of full_script, max 12 words. Make it
+     self-contained — it has to make sense to someone who sees only that line.
+     Not the opening sentence, and never a new claim.
+   - "next_checkpoint": the specific dated/sourced thing to watch next. MUST be an
+     exact consecutive excerpt of full_script, max 15 words. Only a checkpoint the
+     supplied facts actually establish; never invent a date or an expected outcome.
+   - "discussion_question": one question for the pinned comment that a viewer can
+     answer from their own experience or judgement. Max 30 words, must end in "?".
+     Ground it in this video's stated limitation or two-sided moment. Never ask
+     what someone should buy or sell, and never imply you want a prediction to trade on.
    - "full_script": Spoken text only
    - "scenes": Ordered scene plan described below
    - "ticker": Primary stock symbol (e.g. "NVDA")
@@ -212,7 +235,11 @@ STRUCTURE (total ~{mid} words; skip sections without substantive source facts):
 1. OPEN (~25 words): name the main company/event and immediately state what changed.
 2. MAIN STORY (~55% of the remaining words): explain the verified catalyst and its
    investor relevance. Separate reported facts from interpretation. Deliver value early.
-3. MARKET CONTEXT (~25%): only index/sector facts that help explain this story.
+3. TWO-SIDED MOMENT (~25%): put the strongest reading of the event against the
+   strongest competing reading of the SAME sourced facts, plus any index/sector fact
+   that helps explain it. Both sides come from the data; never invent an opponent.
+   Then one concrete sentence on the viewer's own decision context ("if you already
+   hold this", "if you've been waiting") — their situation, never advice on what to do.
 4. NEXT CHECKPOINT (~20%): a sourced upcoming event and one uncertainty to watch.
 Do not fill a daily checklist with unrelated congressional trades or earnings.
 Vary the narrative order when the event warrants it. Include one original,
@@ -246,6 +273,13 @@ RULES:
    - "hero_number": the day's single most striking figure for the on-screen card, written
      for the EYE and under 12 characters ("-23K JOBS", "$28.2M", "+2.4%")
    - "hero_label": 2-4 words naming it ("JULY PAYROLLS", "CEO SOLD")
+   - "memorable_line": the one quotable line a viewer would forward. MUST be an exact
+     consecutive excerpt of full_script, max 12 words, self-contained, never a new claim.
+   - "next_checkpoint": the dated/sourced thing to watch next. MUST be an exact
+     consecutive excerpt of full_script, max 15 words. Never invent a date or outcome.
+   - "discussion_question": one question for the pinned comment, answerable from the
+     viewer's own experience or judgement. Max 30 words, ends in "?". Ground it in the
+     stated limitation or the two-sided moment. Never ask what to buy or sell.
    - "visual_keywords": Array of 3-5 stock-video search phrases, matching the actual story sections in order. Each becomes a
      background scene that cross-fades in as that section is narrated, so they must be
      VISUALLY distinct from one another — different setting, subject and dominant colour,
@@ -310,7 +344,8 @@ RULES:
                                    or any(not isinstance(v, str) for v in parsed.get(k, []))
                                    for k in ("tags", "visual_keywords"))
                             or any(not isinstance(parsed[k], str) for k in
-                                   ("description", "ticker", "hero_number", "hero_label", "thumbnail_hook")
+                                   ("description", "ticker", "hero_number", "hero_label", "thumbnail_hook",
+                                    "memorable_line", "next_checkpoint", "discussion_question")
                                    if k in parsed)):
                         logger.warning("Invalid publication schema from %s; aborting", model_name)
                         break

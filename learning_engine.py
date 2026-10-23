@@ -140,6 +140,15 @@ def _fetch_hook_holds(stats: List[Dict[str, Any]], days: int) -> None:
             logger.warning(f"Retention fetch failed for {s['video_id']}: {e}")
 
 
+def _per_1k(count: Optional[int], views: int) -> Optional[float]:
+    """Engagement per 1000 views, or None when the metric is absent or the
+    denominator is too small to mean anything. None (not 0.0) keeps a missing
+    metric distinguishable from a real zero in the distillation prompt."""
+    if not isinstance(count, int) or not isinstance(views, int) or views < 100:
+        return None
+    return round(count * 1000 / views, 2)
+
+
 def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """LLM turns our own per-video numbers into structural lessons. Same
     structure-only boundary as the market scan: shapes, never verbatim titles."""
@@ -152,6 +161,12 @@ def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any
         "engaged_views": s.get("engaged_views", 0),
         "avg_view_pct": s["avg_view_pct"],
         "hook_hold_first30pct": s.get("hook_hold"),
+        # Raw counts scale with reach, so a big video always "wins" on comments.
+        # Per-1000-views rates are what make the comment/share levers comparable
+        # between a 300-view and a 30,000-view upload.
+        "comments_per_1k_views": _per_1k(s.get("comments"), s["views"]),
+        "shares_per_1k_views": _per_1k(s.get("shares"), s["views"]),
+        "likes_per_1k_views": _per_1k(s.get("likes"), s["views"]),
         "is_long": s.get("is_long", False),
     } for s in stats if s.get("engaged_views", 0) >= 20][:MAX_RETENTION_QUERIES]
     if not rows:
@@ -161,10 +176,12 @@ def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any
 
 Below is OUR OWN channel's per-video performance for the last two weeks.
 hook_hold_first30pct = average audience retention over the first 30% of the video (the hook window). avg_view_pct = how much of the video the average viewer watched.
+comments_per_1k_views / shares_per_1k_views / likes_per_1k_views are reach-normalised engagement rates; null means the metric was unavailable, which is NOT the same as zero.
 
 {json.dumps(rows, indent=1, ensure_ascii=False)}
 
 Extract structural lessons about what holds OUR viewers and what loses them: title shapes, hook framings, number usage, franchise observations. STRUCTURE ONLY — never quote a full title back as a pattern.
+Treat watching, commenting and sharing as THREE separate outcomes with different drivers: a video can hold attention and still give nobody a reason to comment or to forward it. Where the rates support it, say which structures earned comments (an open question, a genuine two-sided reading, a stated limitation) and which earned shares (one quotable line, a self-contained point, an obvious "send this to someone" use), separately from what merely held retention.
 If the sample is thin (few videos or low views), return fewer, conservative patterns rather than overfitting noise.
 Analyze Shorts and long videos separately. APV is not swipe-away or feed conversion.
 Do not treat replay-driven APV above 100% as proof of broad audience demand.
@@ -173,6 +190,8 @@ These are correlations, not causal evidence that a title shape increases distrib
 Return strictly valid JSON:
 - "winning_patterns": array of 2-5 structural patterns from our best-retaining videos
 - "losing_patterns": array of 2-4 structural patterns from our worst (things to avoid)
+- "comment_drivers": array of 0-3 structures that plausibly earned comments, or [] when the rates are too thin to tell
+- "share_drivers": array of 0-3 structures that plausibly earned shares, or [] when the rates are too thin to tell
 - "notes": array of 1-3 short observations (e.g. a franchise or duration insight)
 """
     return ScriptGenerator()._call_llm(prompt, default_title="own-channel lessons")

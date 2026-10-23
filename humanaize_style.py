@@ -18,13 +18,19 @@ HUMANAIZE_NARRATION = """NARRATION STYLE (adapted from HumanAIze):
   growth.' This is a style example, never a fact to copy into an unrelated story.
 - Avoid bureaucratic endings such as 'The conclusion', 'We therefore cannot
   determine', 'The supplied data indicates' and 'It remains to be seen'. Say the
-  specific missing fact directly. Questions are optional; never force suspense.
+  specific missing fact directly. Questions, open loops and an explicit
+  disagreement are all welcome when the supplied facts support them.
 - Finish with the actual point, without announcing 'the supported takeaway',
   'the takeaway is', 'in conclusion' or 'the bottom line'.
 - Where useful, make an abstract market mechanism concrete with a brief everyday
   analogy. An analogy illustrates a sourced fact; it must not add a new fact.
+- Speak to the viewer's own situation directly and conditionally ('if you hold
+  this', 'if you've been waiting for a dip'): name their decision context, never
+  tell them what to do with their money.
 - Do not invent anecdotes, personal experiences, feelings, investor reactions,
   motives, quotes, causes, figures or certainty. Do not write as an eyewitness.
+  Addressing the viewer's own context is allowed; asserting what other investors
+  felt or intended is not.
 - Preserve dates, attribution, uncertainty and caveats from the supplied facts.
   Clarity and accuracy outrank style. Keep the requested word count and JSON schema.
 """

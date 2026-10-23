@@ -5,6 +5,8 @@ import re
 from datetime import date, datetime
 from urllib.parse import urlsplit
 
+from narrative_scenes import tokens
+
 EXPERIMENT_ID = 'growth-20261003'
 
 
@@ -97,16 +99,80 @@ def repeated_event(candidate, upload):
     return bool(set(candidate.get('event_ids', [])) & set(upload.get('event_ids', [])))
 
 
+def _excerpt_error(script, field, max_words, label):
+    """Engagement fields are quotable in isolation, so they are held to the same
+    rule as scene emphasis: an exact consecutive run of the spoken script. A line
+    that travels on its own must not be able to carry a claim the video never made.
+    """
+    value = script.get(field)
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return ''  # optional field; absence is not a distortion
+    if not isinstance(value, str):
+        return f'{label} must be text'
+    if len(value.split()) > max_words:
+        return f'{label} exceeds {max_words} words'
+    phrase, spoken = tokens(value), tokens(script.get('full_script', ''))
+    if not phrase:
+        return f'{label} must contain spoken words'
+    if not any(spoken[i:i + len(phrase)] == phrase
+               for i in range(len(spoken) - len(phrase) + 1)):
+        return f'{label} must be an exact consecutive excerpt of the spoken script'
+    return ''
+
+
+def _discussion_question_error(script):
+    """An open question is the comment lever, but it must not become a request for
+    trading advice or a prediction the channel would be seen to act on."""
+    question = script.get('discussion_question')
+    if question is None or (isinstance(question, str) and not question.strip()):
+        return ''
+    if not isinstance(question, str):
+        return 'discussion_question must be text'
+    if not question.strip().endswith('?'):
+        return 'discussion_question must be a question'
+    if len(question.split()) > 30:
+        return 'discussion_question exceeds 30 words'
+    if re.search(r'\b(?:should (?:i|you|we) (?:buy|sell|hold)|buy or sell|price target for|'
+                 r'where (?:will|is) .*? (?:headed|going)|what should i do with)\b', question, re.I):
+        return 'discussion_question solicits trading advice or a price prediction'
+    # Every figure it quotes has to exist in the spoken script; a question is not
+    # a place to introduce a number the video never supported.
+    spoken = set(tokens(script.get('full_script', '')))
+    for figure in re.findall(r'\d[\d,]*(?:\.\d+)?', question):
+        if figure.lower() not in spoken and figure.replace(',', '') not in {t.replace(',', '') for t in spoken}:
+            return 'discussion_question introduces a figure absent from the script'
+    return ''
+
+
 def validate_editorial_script(script, story):
-    """Catch concrete known distortions before voice/render; not a full fact check."""
+    """Catch concrete known distortions before voice/render; not a full fact check.
+
+    Tone rules (suspense, open loops, a stated disagreement, addressing the
+    viewer's own situation) are deliberately NOT enforced here — those are
+    editorial choices. What stays enforced is the narrow set that protects
+    against false statements about real named people, implied returns, and
+    claims the supplied facts do not support.
+    """
     headline = f"{script.get('title', '')} {script.get('thumbnail_hook', '')}"
     text = f"{headline} {script.get('full_script', '')}"
     errors = []
     if story.get('ticker') and not story['ticker'].startswith('^') and re.search(
             r'\b(?:VIX|Nasdaq|Dow|S&P\s*500)\b', text, re.I):
         errors.append('unrelated index comparison in single-company experiment')
-    if re.search(r'\b(?:what (?:do|does) .* know that|secret knowledge|before anyone else|guaranteed return)\b', text, re.I):
-        errors.append('unsupported privileged-knowledge or return implication')
+    # Narrowed from the former blanket ban: suspense and open questions are now
+    # allowed, but insinuating that a named real person traded on undisclosed
+    # knowledge, or implying a guaranteed outcome, is a factual/legal claim.
+    if re.search(r'\b(?:secret knowledge|inside information|guaranteed returns?|'
+                 r"knows? something (?:you|we) don'?t|can'?t lose|risk[- ]free)\b", text, re.I):
+        errors.append('unsupported privileged-knowledge or guaranteed-return implication')
+    for field, limit, label in (('memorable_line', 12, 'memorable_line'),
+                                ('next_checkpoint', 15, 'next_checkpoint')):
+        problem = _excerpt_error(script, field, limit, label)
+        if problem:
+            errors.append(problem)
+    problem = _discussion_question_error(script)
+    if problem:
+        errors.append(problem)
     if story['franchise'] == 'congress_trade' and re.search(
             r'\b(?:\d+\s+days?\s+late|overdue|hid|hidden|concealed)\b', headline, re.I):
         errors.append('a disclosure lag does not establish a late filing or concealment')
