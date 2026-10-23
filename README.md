@@ -59,7 +59,7 @@ remotion/node_modules/.bin/remotion browser ensure
 ./venv/bin/python -m unittest discover -s tests -v
 ```
 
-`.env.example` değişkenlerini kendi `.env` dosyanıza ekleyin. FMP anahtarı, en az bir LLM sağlayıcısı ve geçerli YouTube OAuth yetkileri gerekir. Ücretli sağlayıcı kullanımı ve GitHub Actions maliyeti hesabınızın planına bağlıdır; sistem için koşulsuz ücretsiz çalışma garantisi yoktur.
+Kendi `.env` dosyanızı oluşturun; `config.py` hangi değişkenleri okuduğunun tek kaynağıdır. FMP ve ElevenLabs anahtarları ile geçerli YouTube OAuth yetkileri gerekir. Çıkarım için LLM anahtarı gerekmez — yerel Hermes aboneliği kullanılır. Ücretli sağlayıcı kullanımı ve GitHub Actions maliyeti hesabınızın planına bağlıdır; sistem için koşulsuz ücretsiz çalışma garantisi yoktur.
 
 Aşağıdaki komutlar **gerçek üretim ve otomatik yayın** başlatır:
 

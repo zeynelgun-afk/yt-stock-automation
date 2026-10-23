@@ -55,7 +55,7 @@ def load_learnings() -> Dict[str, Any]:
                            STALE_AFTER_DAYS)
             return {}
         # Refreshing one section must not make old patterns look newly measured.
-        for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
+        for section in ("franchise_weights", "narration", "own_patterns", "market_patterns", "reply_patterns"):
             stamp = data.get("section_updated_at", {}).get(section, data.get("updated_at"))
             try:
                 if (datetime.now() - datetime.fromisoformat(stamp)).days > STALE_AFTER_DAYS:
@@ -140,6 +140,15 @@ def _fetch_hook_holds(stats: List[Dict[str, Any]], days: int) -> None:
             logger.warning(f"Retention fetch failed for {s['video_id']}: {e}")
 
 
+def _per_1k(count: Optional[int], views: int) -> Optional[float]:
+    """Engagement per 1000 views, or None when the metric is absent or the
+    denominator is too small to mean anything. None (not 0.0) keeps a missing
+    metric distinguishable from a real zero in the distillation prompt."""
+    if not isinstance(count, int) or not isinstance(views, int) or views < 100:
+        return None
+    return round(count * 1000 / views, 2)
+
+
 def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """LLM turns our own per-video numbers into structural lessons. Same
     structure-only boundary as the market scan: shapes, never verbatim titles."""
@@ -152,6 +161,12 @@ def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any
         "engaged_views": s.get("engaged_views", 0),
         "avg_view_pct": s["avg_view_pct"],
         "hook_hold_first30pct": s.get("hook_hold"),
+        # Raw counts scale with reach, so a big video always "wins" on comments.
+        # Per-1000-views rates are what make the comment/share levers comparable
+        # between a 300-view and a 30,000-view upload.
+        "comments_per_1k_views": _per_1k(s.get("comments"), s["views"]),
+        "shares_per_1k_views": _per_1k(s.get("shares"), s["views"]),
+        "likes_per_1k_views": _per_1k(s.get("likes"), s["views"]),
         "is_long": s.get("is_long", False),
     } for s in stats if s.get("engaged_views", 0) >= 20][:MAX_RETENTION_QUERIES]
     if not rows:
@@ -161,10 +176,12 @@ def _distill_own_patterns(stats: List[Dict[str, Any]]) -> Optional[Dict[str, Any
 
 Below is OUR OWN channel's per-video performance for the last two weeks.
 hook_hold_first30pct = average audience retention over the first 30% of the video (the hook window). avg_view_pct = how much of the video the average viewer watched.
+comments_per_1k_views / shares_per_1k_views / likes_per_1k_views are reach-normalised engagement rates; null means the metric was unavailable, which is NOT the same as zero.
 
 {json.dumps(rows, indent=1, ensure_ascii=False)}
 
 Extract structural lessons about what holds OUR viewers and what loses them: title shapes, hook framings, number usage, franchise observations. STRUCTURE ONLY — never quote a full title back as a pattern.
+Treat watching, commenting and sharing as THREE separate outcomes with different drivers: a video can hold attention and still give nobody a reason to comment or to forward it. Where the rates support it, say which structures earned comments (an open question, a genuine two-sided reading, a stated limitation) and which earned shares (one quotable line, a self-contained point, an obvious "send this to someone" use), separately from what merely held retention.
 If the sample is thin (few videos or low views), return fewer, conservative patterns rather than overfitting noise.
 Analyze Shorts and long videos separately. APV is not swipe-away or feed conversion.
 Do not treat replay-driven APV above 100% as proof of broad audience demand.
@@ -173,9 +190,58 @@ These are correlations, not causal evidence that a title shape increases distrib
 Return strictly valid JSON:
 - "winning_patterns": array of 2-5 structural patterns from our best-retaining videos
 - "losing_patterns": array of 2-4 structural patterns from our worst (things to avoid)
+- "comment_drivers": array of 0-3 structures that plausibly earned comments, or [] when the rates are too thin to tell
+- "share_drivers": array of 0-3 structures that plausibly earned shares, or [] when the rates are too thin to tell
 - "notes": array of 1-3 short observations (e.g. a franchise or duration insight)
 """
     return ScriptGenerator()._call_llm(prompt, default_title="own-channel lessons")
+
+
+def distill_reply_patterns() -> Optional[Dict[str, Any]]:
+    """Turn our own reply outcomes into reply-writing lessons.
+
+    The outcome that matters is whether a viewer spoke again, not whether the
+    reply was pleasant. Returns None when the sample is too thin to say anything
+    — a driver list invented from four replies is worse than no driver list.
+    """
+    from googleapiclient.discovery import build
+    from analytics_reporter import _get_credentials
+    from comment_responder import reply_outcomes
+    from script_generator import ScriptGenerator
+
+    youtube = build("youtube", "v3", credentials=_get_credentials(), cache_discovery=False)
+    outcomes = reply_outcomes(youtube)
+    if outcomes["our_replies"] < 10:
+        logger.info("Reply sample too thin to distill (%s replies)", outcomes["our_replies"])
+        return None
+
+    prompt = f"""You are the community analyst for "US Stock Market Daily".
+
+Below are our own replies to viewer comments, each with what happened next.
+viewer_replied_after = a viewer posted again in that thread after our reply. That
+continuation — not politeness and not likes alone — is the outcome we care about.
+
+{json.dumps(outcomes["samples"], indent=1, ensure_ascii=False)}
+
+Totals: {outcomes["our_replies"]} replies, {outcomes["replies_answered_back"]} continued the
+conversation, {outcomes["likes_on_our_replies"]} likes, across {outcomes["measured_threads"]}
+fully measured threads ({outcomes["unmeasured_threads"]} threads were too long to measure).
+
+Extract STRUCTURAL lessons only — reply shapes, never a reply quoted back verbatim.
+Separate what earned a continuation from what merely earned a like. If the sample is
+thin or the rates are close, return fewer patterns rather than overfitting noise.
+These are correlations from one small channel, not proven causes.
+
+Return strictly valid JSON:
+- "reply_drivers": array of 1-4 reply structures that plausibly earned a continuation
+- "reply_duds": array of 0-3 reply structures that reliably ended the thread
+- "notes": array of 0-2 short observations
+"""
+    distilled = ScriptGenerator()._call_llm(prompt, default_title="reply lessons")
+    return {**distilled, "sample": {k: outcomes[k] for k in
+                                    ("our_replies", "replies_answered_back",
+                                     "likes_on_our_replies", "measured_threads",
+                                     "unmeasured_threads")}}
 
 
 # ---------- Orchestrator ----------
@@ -197,7 +263,7 @@ def run_weekly_learning(days: int = 14) -> bool:
     if (learnings.get("narration") or {}).get("engine") != VOICE_TAG:
         learnings.pop("narration", None)
         section_times.pop("narration", None)
-    for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
+    for section in ("franchise_weights", "narration", "own_patterns", "market_patterns", "reply_patterns"):
         if section in learnings:
             section_times.setdefault(section, previous.get("updated_at", "1970-01-01T00:00:00"))
     status: Dict[str, str] = {}
@@ -246,7 +312,21 @@ def run_weekly_learning(days: int = 14) -> bool:
             logger.error(f"Own-pattern distillation failed: {e}")
             status["own_patterns"] = f"failed: {e}"
 
-    # 4. Market patterns (external outlier scan)
+    # 4. Reply lessons (community outcomes, independent of video stats)
+    try:
+        replies = distill_reply_patterns()
+        if replies:
+            learnings["reply_patterns"] = replies
+            section_times["reply_patterns"] = datetime.now().isoformat(timespec="seconds")
+            status["reply_patterns"] = (f"ok ({replies['sample']['replies_answered_back']}"
+                                        f"/{replies['sample']['our_replies']} continued)")
+        else:
+            status["reply_patterns"] = "sample too thin"
+    except Exception as e:
+        logger.error(f"Reply distillation failed: {e}")
+        status["reply_patterns"] = f"failed: {e}"
+
+    # 5. Market patterns (external outlier scan)
     try:
         from outlier_scanner import scan_outliers, extract_patterns
         outliers = scan_outliers()

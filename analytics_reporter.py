@@ -106,8 +106,11 @@ def fetch_video_stats(days: int = 7):
         ids="channel==MINE",
         startDate=start.isoformat(),
         endDate=end.isoformat(),
+        # comments/shares/likes are the only feedback signal for the "why would
+        # they comment / why would they share" half of the funnel. Without them
+        # those levers are unmeasurable and the weekly learner cannot see them.
         metrics=("views,engagedViews,estimatedMinutesWatched,averageViewDuration,"
-                 "averageViewPercentage,subscribersGained"),
+                 "averageViewPercentage,subscribersGained,comments,shares,likes"),
         dimensions="video",
         sort="-views",
         # 25 truncated the tail: at 4-5 uploads/weekday a 14-day window has
@@ -171,6 +174,9 @@ def fetch_video_stats(days: int = 7):
             "avg_view_seconds": round(r["averageViewDuration"], 1),
             "avg_view_pct": round(r["averageViewPercentage"], 1),
             "subs_gained": int(r["subscribersGained"]),
+            "comments": int(r.get("comments", 0)),
+            "shares": int(r.get("shares", 0)),
+            "likes": int(r.get("likes", 0)),
             "duration_s": durations.get(vid, 0),
             "content_type": content_type,
             "is_long": content_type != "shorts",

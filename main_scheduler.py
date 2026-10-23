@@ -110,7 +110,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         return
 
 
-    # 3. Generate Script using DeepSeek V3 / Qwen 2.5 via OpenRouter
+    # 3. Generate Script on the fixed local Hermes subscription (llm_transport)
     correction = ""
     for editorial_attempt in range(2):
         try:
@@ -277,7 +277,7 @@ def run_pipeline(video_type: str = "shorts", *, prepare_presenter: bool = False,
         }, indent=2), encoding='utf-8')
         logger.info(f"Published to YouTube! Video ID: {video_id}")
         try:
-            creator_comment = publish_for_story(video_id, story)
+            creator_comment = publish_for_story(video_id, story, script_data)
             if creator_comment.get('status') == 'posted':
                 bot.send_text('💬 Videoya özel yorum paylaşıldı. Sabitleme arayüzden yapılmalı:\n'
                               + creator_comment['url'])

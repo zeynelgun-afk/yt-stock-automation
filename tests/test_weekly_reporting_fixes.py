@@ -70,3 +70,59 @@ class WeeklyReportingFixTests(unittest.TestCase):
         self.assertTrue(outside_stock_niche(video('Top Mutual Funds for SIP in 2026'), {}))
         self.assertFalse(outside_stock_niche(video('Nvidia Stock Earnings'), india))
         self.assertFalse(outside_stock_niche(video('Tesla Stock Valuation'), crypto))
+
+
+class EngagementSignalTests(unittest.TestCase):
+    """The watch / comment / share funnel needs three measured outcomes, not one."""
+
+    def test_video_stats_request_and_expose_comment_share_like_counts(self):
+        from analytics_reporter import fetch_video_stats
+        api, data = MagicMock(), MagicMock()
+        names = ['video', 'views', 'engagedViews', 'estimatedMinutesWatched',
+                 'averageViewDuration', 'averageViewPercentage', 'subscribersGained',
+                 'comments', 'shares', 'likes']
+
+        def query(**kw):
+            # The Shorts-classifier call asks only for views; the main call is the
+            # one that must carry the engagement metrics.
+            rows = ([['v1', 120, 60, 4.0, 20.0, 57.0, 2, 9, 4, 30]]
+                    if 'engagedViews' in kw.get('metrics', '') else [])
+            self.assertNotIn('dislikes', kw.get('metrics', ''))
+            return MagicMock(execute=MagicMock(return_value={
+                'columnHeaders': [{'name': n} for n in names], 'rows': rows}))
+
+        api.reports().query.side_effect = query
+        data.videos().list().execute.return_value = {'items': [{
+            'id': 'v1', 'snippet': {'title': 'T', 'publishedAt': '2026-10-20T12:00:00Z', 'tags': ['fr:insider_watch']},
+            'contentDetails': {'duration': 'PT35S'}}]}
+        with patch('googleapiclient.discovery.build', side_effect=[api, data]), \
+             patch('analytics_reporter._get_credentials'), \
+             patch('analytics_reporter.analytics_window',
+                   return_value={'start': '2026-10-01', 'end': '2026-10-07', 'missing_dates': []}):
+            stats = fetch_video_stats(7)
+        metrics = api.reports().query.call_args_list[0].kwargs['metrics']
+        for metric in ('comments', 'shares', 'likes'):
+            self.assertIn(metric, metrics)
+        self.assertEqual((stats[0]['comments'], stats[0]['shares'], stats[0]['likes']), (9, 4, 30))
+
+    def test_engagement_rates_normalise_by_reach_and_keep_missing_distinct_from_zero(self):
+        from learning_engine import _per_1k
+        self.assertEqual(_per_1k(9, 1000), 9.0)
+        # Same raw count, 10x the reach -> a tenth of the rate. Raw counts alone
+        # would always rank the widest-reaching video first.
+        self.assertEqual(_per_1k(9, 10000), 0.9)
+        self.assertEqual(_per_1k(0, 1000), 0.0)          # a real zero stays 0.0
+        self.assertIsNone(_per_1k(None, 1000))           # absent metric is not zero
+        self.assertIsNone(_per_1k(9, 99))                # denominator too thin to mean anything
+
+    def test_distilled_comment_and_share_drivers_reach_the_script_prompt(self):
+        import script_generator
+        learned = {'own_patterns': {'winning_patterns': ['named the company first'],
+                                    'comment_drivers': ['stated a real limitation'],
+                                    'share_drivers': ['one self-contained quotable line']}}
+        with patch.object(script_generator, '_learnings', return_value=learned):
+            block = script_generator._own_channel_block()
+        self.assertIn('Earned comments: stated a real limitation', block)
+        self.assertIn('Earned shares: one self-contained quotable line', block)
+        # Retention lessons must stay distinguishable from engagement lessons.
+        self.assertIn('Held OUR viewers: named the company first', block)

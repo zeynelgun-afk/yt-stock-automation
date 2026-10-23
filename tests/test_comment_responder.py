@@ -206,3 +206,96 @@ timeout() {{ shift; "$@"; }}
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def reply(author='viewer', **changes):
+    item = {'snippet': {'authorChannelId': {'value': author},
+                        'textOriginal': 'But what about the buyback?',
+                        'publishedAt': '2026-09-12T11:00:00Z', 'likeCount': 0}}
+    item['snippet'].update(changes)
+    return item
+
+
+class ConversationTests(unittest.TestCase):
+    """A reply is only worth sending where a viewer had the last word."""
+
+    def setUp(self):
+        from delivery_claims import DeliveryClaims
+        tmp = self.enterContext(TemporaryDirectory())
+        self.enterContext(patch('comment_responder.DeliveryClaims',
+                               return_value=DeliveryClaims(Path(tmp)/'claims.sqlite')))
+
+    def test_viewer_reply_under_our_pinned_question_is_answerable(self):
+        from comment_responder import pending_viewer_message
+        ours = {'authorChannelId': {'value': CHANNEL_ID}, 'textOriginal': 'Which matters more to you?'}
+        # Our own question alone is never a reply target...
+        self.assertEqual(pending_viewer_message(ours, [], CHANNEL_ID), (None, 0))
+        # ...but a viewer answering it is, which is the whole point of asking.
+        target, turns = pending_viewer_message(ours, [reply()], CHANNEL_ID)
+        self.assertEqual((target['textOriginal'], turns), ('But what about the buyback?', 0))
+
+    def test_conversation_continues_for_a_second_turn_then_stops(self):
+        from comment_responder import pending_viewer_message, MAX_TURNS_PER_THREAD
+        viewer_top = {'authorChannelId': {'value': 'viewer'}, 'textOriginal': 'Great explanation!'}
+        # We answered and nobody came back: silence is not an opening.
+        self.assertEqual(pending_viewer_message(viewer_top, [reply(CHANNEL_ID)], CHANNEL_ID)[0], None)
+        # The viewer answered back — previously this thread was dead forever.
+        chain = [reply(CHANNEL_ID), reply()]
+        self.assertIsNotNone(pending_viewer_message(viewer_top, chain, CHANNEL_ID)[0])
+        # And the turn cap stops it becoming an endless auto-exchange.
+        capped = [reply(CHANNEL_ID), reply(), reply(CHANNEL_ID), reply()]
+        self.assertEqual(len([r for r in capped if r['snippet']['authorChannelId']['value'] == CHANNEL_ID]),
+                         MAX_TURNS_PER_THREAD)
+        self.assertEqual(pending_viewer_message(viewer_top, capped, CHANNEL_ID)[0], None)
+
+    def test_budget_goes_to_the_hottest_thread_not_the_newest(self):
+        from comment_responder import thread_heat
+        quiet = thread('quiet')
+        hot = thread('hot', textOriginal='Why did the filing lag so long?', likeCount=12)
+        hot['snippet']['totalReplyCount'] = 4
+        self.assertGreater(thread_heat(hot), thread_heat(quiet))
+        yt, writer = service([quiet, hot]), MagicMock()
+        writer.draft.return_value = REPLY
+        respond(yt, writer, publish=True, now=NOW)
+        self.assertEqual(yt.comments().insert.call_args.kwargs['body']['snippet']['parentId'], 'hot')
+
+    def test_reply_writer_receives_the_question_the_video_opened(self):
+        ours = thread('pinned', authorChannelId={'value': CHANNEL_ID},
+                      textOriginal='Does that reporting lag make disclosures useful to you?')
+        yt, writer = service([ours, thread('other')]), MagicMock()
+        writer.draft.return_value = REPLY
+        respond(yt, writer, publish=True, now=NOW)
+        context = writer.draft.call_args.args[3]
+        self.assertEqual(context['our_pinned_question'],
+                         'Does that reporting lag make disclosures useful to you?')
+
+    def test_reply_outcomes_measure_continuation_and_admit_what_they_cannot_see(self):
+        from comment_responder import reply_outcomes
+        measurable = thread('a')
+        measurable['snippet']['totalReplyCount'] = 2
+        measurable['replies'] = {'comments': [reply(CHANNEL_ID, textOriginal='Fair point.'), reply()]}
+        dead = thread('b')
+        dead['snippet']['totalReplyCount'] = 1
+        dead['replies'] = {'comments': [reply(CHANNEL_ID, textOriginal='Thanks!', likeCount=3)]}
+        too_long = thread('c')
+        too_long['snippet']['totalReplyCount'] = 40
+        too_long['replies'] = {'comments': [reply(CHANNEL_ID)]}
+        yt = service([measurable, dead, too_long])
+        out = reply_outcomes(yt, channel_id=CHANNEL_ID)
+        self.assertEqual(out['our_replies'], 2)
+        self.assertEqual(out['replies_answered_back'], 1)   # only the thread a viewer returned to
+        self.assertEqual(out['likes_on_our_replies'], 3)
+        # A thread we cannot measure is reported, never folded into the denominator.
+        self.assertEqual((out['measured_threads'], out['unmeasured_threads']), (2, 1))
+
+    def test_learned_reply_lessons_reach_the_system_prompt_as_hypotheses(self):
+        import comment_responder as cr
+        learned = {'reply_patterns': {'reply_drivers': ['asked one concrete follow-up'],
+                                      'reply_duds': ['closed with thanks and nothing else']}}
+        with patch('learning_engine.load_learnings', return_value=learned):
+            message = cr.ReplyWriter().SYSTEM_MSG
+        self.assertIn('Kept the conversation going: asked one concrete follow-up', message)
+        self.assertIn('Ended the thread (avoid): closed with thanks and nothing else', message)
+        self.assertIn('never override the rules above', message)
+        with patch('learning_engine.load_learnings', return_value={}):
+            self.assertEqual(cr.ReplyWriter().SYSTEM_MSG, cr.SYSTEM)

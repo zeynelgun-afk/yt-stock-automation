@@ -28,14 +28,24 @@ def public_source(story):
     return None
 
 
-def build_comment(story):
-    """No generated facts, correction guesses, trading advice or generic CTA."""
+def build_comment(story, script=None):
+    """No generated facts, correction guesses, trading advice or generic CTA.
+
+    The script's own discussion_question is preferred when present: it is written
+    against this video's stated limitation and already passed the editorial guard,
+    and unlike the per-franchise fallbacks below it covers every franchise.
+    """
     ticker = story.get('ticker', '')
     if not isinstance(ticker, str) or not re.fullmatch(r'[A-Z][A-Z0-9.-]{0,9}', ticker):
         return None
     facts, kind = story.get('facts') or {}, story.get('franchise')
     question = None
-    if kind == 'congress_trade':
+    generated = (script or {}).get('discussion_question')
+    if isinstance(generated, str) and generated.strip().endswith('?') and len(generated.split()) <= 30:
+        question = generated.strip()
+    if question:
+        pass  # generated question wins; fallbacks below cover only 3 franchises
+    elif kind == 'congress_trade':
         try:
             trade = date.fromisoformat(facts['transactionDate'])
             disclosure = date.fromisoformat(facts['disclosureDate'])
@@ -94,8 +104,8 @@ def post_comment(youtube, video_id, text, *, claims=None):
     return {'status': 'posted', 'comment_id': comment_id, 'pin_status': 'manual'}
 
 
-def publish_for_story(video_id, story):
-    text = build_comment(story)
+def publish_for_story(video_id, story, script=None):
+    text = build_comment(story, script)
     if not text:
         return {'status': 'not_applicable'}
     from googleapiclient.discovery import build
@@ -114,8 +124,9 @@ def main():
     parser.add_argument('--publish', action='store_true')
     args = parser.parse_args()
     payload = json.loads(args.story_file.read_text())
-    story = payload.get('story', payload)
-    result = publish_for_story(args.video_id, story) if args.publish else {'text': build_comment(story)}
+    story, script = payload.get('story', payload), payload.get('script')
+    result = (publish_for_story(args.video_id, story, script) if args.publish
+              else {'text': build_comment(story, script)})
     print(json.dumps(result))
 
 

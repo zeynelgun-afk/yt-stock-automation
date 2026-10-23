@@ -321,3 +321,77 @@ class DisclosureRangeCardTests(unittest.TestCase):
         for hero in ('$500K-$2M', '$500B-$1M', '$1M-$500K', '$500K-1M', '$500K-$1M%'):
             self.assertEqual(validate_hero_number(hero, story, '', '-0.71'), '')
         self.assertEqual(validate_hero_number('$500K-$1M', {'facts': {}}, '$500K-$1M', '-0.71'), '')
+
+
+class EngagementLeverTests(unittest.TestCase):
+    """Watch / comment / share levers, and the guards that survived loosening."""
+
+    SCRIPT = ("Pfizer disclosed a twelve million dollar insider sale on Tuesday. "
+              "The filing shows the size, not the reason. "
+              "If you hold this, the next earnings call is the thing to watch.")
+
+    def _script(self, **over):
+        base = {'title': 'Pfizer insider sale disclosed', 'full_script': self.SCRIPT}
+        return {**base, **over}
+
+    @staticmethod
+    def _story():
+        return {'franchise': 'insider_watch', 'ticker': 'PFE', 'facts': {}}
+
+    def test_quotable_line_must_be_a_real_excerpt_so_it_cannot_travel_with_a_new_claim(self):
+        ok = self._script(memorable_line='The filing shows the size, not the reason.')
+        self.assertEqual(validate_editorial_script(ok, self._story()), [])
+        # Plausible, on-topic, and never actually said — exactly what a line that
+        # gets screenshotted and forwarded must not be able to do.
+        bad = self._script(memorable_line='Insiders always know before you do.')
+        self.assertIn('memorable_line must be an exact consecutive excerpt of the spoken script',
+                      validate_editorial_script(bad, self._story()))
+
+    def test_next_checkpoint_excerpt_and_length_are_enforced(self):
+        ok = self._script(next_checkpoint='the next earnings call is the thing to watch')
+        self.assertEqual(validate_editorial_script(ok, self._story()), [])
+        bad = self._script(next_checkpoint='Pfizer will beat estimates in November')
+        self.assertTrue(validate_editorial_script(bad, self._story()))
+        self.assertIn('next_checkpoint exceeds 15 words',
+                      validate_editorial_script(self._script(next_checkpoint=self.SCRIPT), self._story()))
+
+    def test_discussion_question_opens_debate_but_never_solicits_trading_advice(self):
+        ok = self._script(discussion_question=(
+            'The filing shows the size but not the reason. Does that make insider '
+            'disclosures useful to you, or just noise?'))
+        self.assertEqual(validate_editorial_script(ok, self._story()), [])
+        for bad in ('Should you buy PFE here?',
+                    'Where will PFE be headed next quarter?',
+                    'What should I do with my Pfizer shares?'):
+            self.assertIn('discussion_question solicits trading advice or a price prediction',
+                          validate_editorial_script(self._script(discussion_question=bad), self._story()), bad)
+        self.assertIn('discussion_question must be a question',
+                      validate_editorial_script(self._script(discussion_question='Tell me below.'), self._story()))
+        # A question is not a side door for an unsupported figure.
+        self.assertIn('discussion_question introduces a figure absent from the script',
+                      validate_editorial_script(
+                          self._script(discussion_question='Does a 47 percent drop change your view?'),
+                          self._story()))
+
+    def test_suspense_and_disagreement_are_allowed_but_insider_knowledge_claims_are_not(self):
+        # Loosened: an open loop, a question and an explicit two-sided framing pass.
+        allowed = self._script(full_script=(
+            'Pfizer disclosed a large insider sale. So which reading holds up? '
+            'One side says the size matters. The other says the filing shows no reason. '
+            'Here is what happens next.'))
+        self.assertEqual(validate_editorial_script(allowed, self._story()), [])
+        # Still blocked: claims about real named people and promised outcomes.
+        for banned in ('He knows something you don\'t.', 'This is a risk-free setup.',
+                       'Guaranteed returns from this trade.', 'They acted on inside information.'):
+            self.assertIn('unsupported privileged-knowledge or guaranteed-return implication',
+                          validate_editorial_script(self._script(full_script=banned), self._story()), banned)
+
+    def test_generated_question_covers_franchises_the_hardcoded_fallbacks_never_did(self):
+        from creator_comment import build_comment
+        # analyst_shock has no per-franchise fallback question at all.
+        story = {'ticker': 'LEU', 'franchise': 'analyst_shock', 'facts': {}}
+        self.assertIsNone(build_comment(story))
+        question = 'A target is one analyst opinion. How much weight do you give targets?'
+        self.assertIn(question, build_comment(story, {'discussion_question': question}))
+        # A malformed generated question must not silently become the comment.
+        self.assertIsNone(build_comment(story, {'discussion_question': 'not a question'}))
