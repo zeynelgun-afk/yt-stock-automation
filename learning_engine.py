@@ -55,7 +55,7 @@ def load_learnings() -> Dict[str, Any]:
                            STALE_AFTER_DAYS)
             return {}
         # Refreshing one section must not make old patterns look newly measured.
-        for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
+        for section in ("franchise_weights", "narration", "own_patterns", "market_patterns", "reply_patterns"):
             stamp = data.get("section_updated_at", {}).get(section, data.get("updated_at"))
             try:
                 if (datetime.now() - datetime.fromisoformat(stamp)).days > STALE_AFTER_DAYS:
@@ -197,6 +197,53 @@ Return strictly valid JSON:
     return ScriptGenerator()._call_llm(prompt, default_title="own-channel lessons")
 
 
+def distill_reply_patterns() -> Optional[Dict[str, Any]]:
+    """Turn our own reply outcomes into reply-writing lessons.
+
+    The outcome that matters is whether a viewer spoke again, not whether the
+    reply was pleasant. Returns None when the sample is too thin to say anything
+    — a driver list invented from four replies is worse than no driver list.
+    """
+    from googleapiclient.discovery import build
+    from analytics_reporter import _get_credentials
+    from comment_responder import reply_outcomes
+    from script_generator import ScriptGenerator
+
+    youtube = build("youtube", "v3", credentials=_get_credentials(), cache_discovery=False)
+    outcomes = reply_outcomes(youtube)
+    if outcomes["our_replies"] < 10:
+        logger.info("Reply sample too thin to distill (%s replies)", outcomes["our_replies"])
+        return None
+
+    prompt = f"""You are the community analyst for "US Stock Market Daily".
+
+Below are our own replies to viewer comments, each with what happened next.
+viewer_replied_after = a viewer posted again in that thread after our reply. That
+continuation — not politeness and not likes alone — is the outcome we care about.
+
+{json.dumps(outcomes["samples"], indent=1, ensure_ascii=False)}
+
+Totals: {outcomes["our_replies"]} replies, {outcomes["replies_answered_back"]} continued the
+conversation, {outcomes["likes_on_our_replies"]} likes, across {outcomes["measured_threads"]}
+fully measured threads ({outcomes["unmeasured_threads"]} threads were too long to measure).
+
+Extract STRUCTURAL lessons only — reply shapes, never a reply quoted back verbatim.
+Separate what earned a continuation from what merely earned a like. If the sample is
+thin or the rates are close, return fewer patterns rather than overfitting noise.
+These are correlations from one small channel, not proven causes.
+
+Return strictly valid JSON:
+- "reply_drivers": array of 1-4 reply structures that plausibly earned a continuation
+- "reply_duds": array of 0-3 reply structures that reliably ended the thread
+- "notes": array of 0-2 short observations
+"""
+    distilled = ScriptGenerator()._call_llm(prompt, default_title="reply lessons")
+    return {**distilled, "sample": {k: outcomes[k] for k in
+                                    ("our_replies", "replies_answered_back",
+                                     "likes_on_our_replies", "measured_threads",
+                                     "unmeasured_threads")}}
+
+
 # ---------- Orchestrator ----------
 
 def run_weekly_learning(days: int = 14) -> bool:
@@ -216,7 +263,7 @@ def run_weekly_learning(days: int = 14) -> bool:
     if (learnings.get("narration") or {}).get("engine") != VOICE_TAG:
         learnings.pop("narration", None)
         section_times.pop("narration", None)
-    for section in ("franchise_weights", "narration", "own_patterns", "market_patterns"):
+    for section in ("franchise_weights", "narration", "own_patterns", "market_patterns", "reply_patterns"):
         if section in learnings:
             section_times.setdefault(section, previous.get("updated_at", "1970-01-01T00:00:00"))
     status: Dict[str, str] = {}
@@ -265,7 +312,21 @@ def run_weekly_learning(days: int = 14) -> bool:
             logger.error(f"Own-pattern distillation failed: {e}")
             status["own_patterns"] = f"failed: {e}"
 
-    # 4. Market patterns (external outlier scan)
+    # 4. Reply lessons (community outcomes, independent of video stats)
+    try:
+        replies = distill_reply_patterns()
+        if replies:
+            learnings["reply_patterns"] = replies
+            section_times["reply_patterns"] = datetime.now().isoformat(timespec="seconds")
+            status["reply_patterns"] = (f"ok ({replies['sample']['replies_answered_back']}"
+                                        f"/{replies['sample']['our_replies']} continued)")
+        else:
+            status["reply_patterns"] = "sample too thin"
+    except Exception as e:
+        logger.error(f"Reply distillation failed: {e}")
+        status["reply_patterns"] = f"failed: {e}"
+
+    # 5. Market patterns (external outlier scan)
     try:
         from outlier_scanner import scan_outliers, extract_patterns
         outliers = scan_outliers()
