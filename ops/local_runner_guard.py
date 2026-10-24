@@ -23,6 +23,13 @@ WORKFLOWS = {
     'US Stock Market Daily YouTube Automation': ('youtube_auto.yml', 'build-and-generate', {'schedule','workflow_dispatch'}),
     'YouTube Local Hermes Smoke': ('local-hermes-smoke.yml', 'inference-smoke', {'workflow_dispatch'}),
 }
+# Consecutive automatic resolutions tolerated before an operator must look.
+# A transient abort should not cost a slot; a persistent one must not be able to
+# burn every slot unattended.
+AUTO_RECONCILE_LIMIT = 2
+AUTO_NOTE = ('Automatic resolution: finish() recorded status=unresolved, so the pipeline aborted before its '
+             'success marker. The delivery ledger holds no attempted row, which is what proves no upload or '
+             'comment was in flight. Archive and run receipt are preserved; replay of this run stays forbidden.')
 SAFE_ARTIFACTS = (
     'output/editorial_decision.json', 'output/editorial_story.json',
     'output/editorial_selection.json', 'output/editorial_publication.json',
@@ -88,6 +95,94 @@ def check_deliveries(root):
         raise RuntimeError('Cannot verify delivery ledger; fail closed') from None
 
 
+def delivery_snapshot(root):
+    """Read-only status census recorded as the evidence an auto-resolution used.
+
+    Same fixed sibling ledger as check_deliveries; never creates one, and a
+    read failure fails closed rather than recording an empty census as proof.
+    """
+    path = Path(root).parent/'delivery.sqlite'
+    if path.is_symlink(): raise RuntimeError('Unsafe delivery ledger')
+    if not path.exists(): return {}
+    try:
+        with sqlite3.connect(path.absolute().as_uri()+'?mode=ro',uri=True) as db:
+            rows = db.execute('SELECT status,count(*) FROM attempts GROUP BY status').fetchall()
+    except sqlite3.Error:
+        raise RuntimeError('Cannot verify delivery ledger; fail closed') from None
+    return {str(status):int(count) for status,count in rows}
+
+
+def valid_claim_identity(attempt):
+    rule = WORKFLOWS.get(attempt.get('workflow'))
+    return bool(rule and attempt.get('repository') == REPOSITORY
+                and attempt.get('workflow_path') == f'.github/workflows/{rule[0]}'
+                and attempt.get('job') == rule[1] and attempt.get('attempt') == '1'
+                and re.fullmatch(r'[0-9a-f]{40}',attempt.get('sha','')))
+
+
+def auto_streak(root):
+    """Automatic resolutions since the last confirmed success or operator reconcile.
+
+    Unreadable counter state fails closed; the operator reconcile that unblocks
+    it also clears the counter, so this cannot wedge permanently.
+    """
+    path = Path(root)/'auto-reconcile-streak.json'
+    if path.is_symlink(): raise RuntimeError('Unsafe auto-resolution counter')
+    if not path.exists(): return 0
+    try:
+        count = json.loads(path.read_text()).get('count')
+    except (OSError,ValueError,AttributeError):
+        raise RuntimeError('Cannot read auto-resolution counter; fail closed') from None
+    if type(count) is not int or count < 0:
+        raise RuntimeError('Cannot read auto-resolution counter; fail closed')
+    return count
+
+
+def clear_auto_streak(root):
+    path = Path(root)/'auto-reconcile-streak.json'
+    if path.is_symlink(): raise RuntimeError('Unsafe auto-resolution counter')
+    if path.exists(): path.unlink(); sync_directory(Path(root))
+
+
+def auto_reconcile_locked(root,prior):
+    """Caller holds journal lock. Resolve a failed job ONLY where the delivery
+    ledger itself proves nothing was in flight; never trust a pipeline marker.
+
+    Deliberately one status wide. `pending-confirmation` reached the success
+    marker and may well have published, so only a verified public run resolves
+    it. `attempted` never reached finish(), so its interrupted workspace was
+    never archived and the operator must preserve that evidence first.
+    """
+    run_id = prior.get('run_id')
+    if not isinstance(run_id,str) or not re.fullmatch(r'[1-9][0-9]*',run_id):
+        raise RuntimeError('Invalid confirmation run ID')
+    if prior.get('status') != 'unresolved':
+        raise RuntimeError('Job is not pending confirmation; reconciliation required')
+    if not valid_claim_identity(prior):
+        raise RuntimeError('Invalid unresolved job identity')
+    streak = auto_streak(root)
+    if streak >= AUTO_RECONCILE_LIMIT:
+        raise RuntimeError('Repeated automatic resolutions; operator reconciliation required')
+    archive = root/(run_id+'-artifacts.tar.gz')
+    if prior.get('archive') != archive.name or not archive.is_file() or archive.is_symlink():
+        raise RuntimeError('Missing/unsafe archived job evidence')
+    identity = ('run_id','attempt','repository','workflow_path','workflow','job','sha','started_at')
+    try:
+        preserved = json.loads((root/(run_id+'.json')).read_text())
+    except (OSError,ValueError):
+        raise RuntimeError('Conflicting run receipt; fail closed') from None
+    if not isinstance(preserved,dict) or any(preserved.get(k) != prior.get(k) for k in identity):
+        raise RuntimeError('Conflicting run receipt; fail closed')
+    check_deliveries(root)
+    ledger = delivery_snapshot(root)
+    # Counter before the clear: a crash in between may double-count, which only
+    # trips the breaker sooner. Under-counting would let this loop unbounded.
+    atomic_json(root/'auto-reconcile-streak.json',dict(count=streak+1,run_id=run_id))
+    atomic_json(root/(run_id+'-reconciliation.json'),dict(attempt=prior,auto=True,ledger=ledger,
+                note=AUTO_NOTE,recorded_at=datetime.now(timezone.utc).isoformat()))
+    (root/'active.json').unlink(); sync_directory(root)
+
+
 def start(root,env):
     validate_context(env,root)
     with locked(root) as root:
@@ -96,7 +191,12 @@ def start(root,env):
             prior = json.loads((root/'active.json').read_text())
             if prior.get('run_id') == env['GITHUB_RUN_ID']:
                 raise RuntimeError('Run already attempted; replay forbidden')
-            confirm_locked(root, prior.get('run_id'))
+            # A failed pipeline is resolved from local ledger evidence alone; a
+            # finished one still needs its public run verified.
+            if prior.get('status') == 'unresolved':
+                auto_reconcile_locked(root, prior)
+            else:
+                confirm_locked(root, prior.get('run_id'))
         receipt = root/(env['GITHUB_RUN_ID']+'.json')
         if receipt.exists(): raise RuntimeError('Run already attempted; replay forbidden')
         attempt = dict(run_id=env['GITHUB_RUN_ID'],attempt=env['GITHUB_RUN_ATTEMPT'],
@@ -187,12 +287,7 @@ def confirm_locked(root,run_id):
     attempt = json.loads(active.read_text())
     if attempt.get('run_id') != run_id or attempt.get('status') != 'pending-confirmation':
         raise RuntimeError('Job is not pending confirmation; reconciliation required')
-    rule = WORKFLOWS.get(attempt.get('workflow'))
-    if (not rule or attempt.get('repository') != REPOSITORY
-            or attempt.get('workflow_path') != f'.github/workflows/{rule[0]}'
-            or attempt.get('job') != rule[1] or attempt.get('attempt') != '1'
-            or not re.fullmatch(r'[0-9a-f]{40}',attempt.get('sha',''))):
-        raise RuntimeError('Invalid pending job identity')
+    if not valid_claim_identity(attempt): raise RuntimeError('Invalid pending job identity')
     marker = root/(run_id+'-success.json')
     # finish adds outcome metadata; marker must match the original start claim.
     original = {k:v for k,v in attempt.items() if k not in ('archive','finished_at')}
@@ -219,7 +314,7 @@ def confirm_locked(root,run_id):
     check_deliveries(root)
     attempt.update(status='success',confirmed_at=datetime.now(timezone.utc).isoformat())
     atomic_json(root/(run_id+'.json'),attempt)
-    active.unlink(); sync_directory(root)
+    active.unlink(); clear_auto_streak(root); sync_directory(root)
 
 
 def confirm(root,run_id):
@@ -268,7 +363,7 @@ def reconcile(root,run_id,note):
             atomic_json(receipt,attempt)
         atomic_json(root/(run_id+'-reconciliation.json'),dict(attempt=attempt,note=note.strip(),
                     recorded_at=datetime.now(timezone.utc).isoformat()))
-        active.unlink(); sync_directory(root)
+        active.unlink(); clear_auto_streak(root); sync_directory(root)
 
 
 def main():

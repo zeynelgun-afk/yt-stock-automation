@@ -79,9 +79,12 @@ class RunnerGuardTests(unittest.TestCase):
         guard.start(state, env)
         with self.assertRaises(RuntimeError): guard.finish(state, env)
         with patch.object(guard, 'fetch_run') as fetch:
+            # confirm() resolves only a claim that reached its success marker.
             with self.assertRaises(RuntimeError): guard.confirm(state, '123')
-            with self.assertRaises(RuntimeError): guard.start(state, {**env,'GITHUB_RUN_ID':'124'})
+            # The next slot resolves the failed claim from local ledger evidence.
+            guard.start(state, {**env,'GITHUB_RUN_ID':'124'})
             fetch.assert_not_called()
+        self.assertEqual(json.loads((state/'active.json').read_text())['run_id'], '124')
 
     def test_confirmation_requires_original_marker_and_no_ambiguous_delivery(self):
         from delivery_claims import DeliveryClaims
@@ -148,12 +151,13 @@ class RunnerGuardTests(unittest.TestCase):
         with self.assertRaises(RuntimeError): guard.start(state,env)
         with self.assertRaises(RuntimeError): guard.start(state,{**env,'GITHUB_RUN_ATTEMPT':'2'})
 
-    def test_failure_missing_mark_retains_claim_and_blocks_different_run(self):
+    def test_failure_missing_mark_retains_claim_and_forbids_same_run_replay(self):
         guard,state,workspace,env = self.fixture()
         guard.start(state,env)
         with self.assertRaises(RuntimeError): guard.finish(state,env)
         self.assertTrue((state/'active.json').exists())
-        with self.assertRaises(RuntimeError): guard.start(state,{**env,'GITHUB_RUN_ID':'124'})
+        self.assertEqual(json.loads((state/'active.json').read_text())['status'],'unresolved')
+        with self.assertRaisesRegex(RuntimeError,'replay forbidden'): guard.start(state,env)
 
     def test_missing_workspace_archive_failure_or_foreign_finish_remains_unresolved(self):
         for failure in ['missing','archive','foreign']:
@@ -352,6 +356,146 @@ class RunnerGuardTests(unittest.TestCase):
         guard.reconcile(state, '123', 'Operator inspected preserved interrupted workspace evidence')
         self.assertEqual((state/'123.json').read_bytes(), original)
         with self.assertRaises(RuntimeError): guard.start(state, env)
+
+    def failed_run(self, guard, state, env, run_id):
+        """Drive one slot to the `unresolved` state finish() records on abort."""
+        env = {**env, 'GITHUB_RUN_ID': run_id}
+        guard.start(state, env)
+        with self.assertRaises(RuntimeError): guard.finish(state, env)
+        self.assertEqual(json.loads((state/'active.json').read_text())['status'], 'unresolved')
+        return env
+
+    def test_failed_slot_auto_resolves_from_clean_ledger_and_records_evidence(self):
+        guard, state, workspace, env = self.fixture()
+        self.failed_run(guard, state, env, '123')
+        with patch.object(guard, 'fetch_run') as fetch:
+            guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+            fetch.assert_not_called()  # local evidence only; no public run involved
+        record = json.loads((state/'123-reconciliation.json').read_text())
+        self.assertIs(record['auto'], True)
+        self.assertEqual(record['ledger'], {})
+        self.assertEqual(record['attempt']['status'], 'unresolved')
+        self.assertIn('no attempted row', record['note'])
+        # Evidence and the replay tombstone both survive the clear. Prove the
+        # tombstone by retiring the claim 124 now holds, then replaying 123.
+        self.assertTrue((state/'123-artifacts.tar.gz').exists())
+        self.assertEqual(json.loads((state/'123.json').read_text())['status'], 'unresolved')
+        succeeded = {**env, 'GITHUB_RUN_ID': '124'}
+        guard.mark_success(state, succeeded); guard.finish(state, succeeded)
+        with patch.object(guard, 'fetch_run', return_value=self.completed_run(id=124)):
+            guard.confirm(state, '124')
+        with self.assertRaisesRegex(RuntimeError, 'replay forbidden'): guard.start(state, env)
+
+    def test_auto_resolution_records_the_ledger_census_it_relied_on(self):
+        from delivery_claims import DeliveryClaims
+        guard, state, workspace, env = self.fixture()
+        claims = DeliveryClaims(state.parent/'delivery.sqlite')
+        attempt, _ = claims.start('upload', ['channel:video'])
+        claims.complete(attempt, 'remote-id')
+        self.failed_run(guard, state, env, '123')
+        guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+        record = json.loads((state/'123-reconciliation.json').read_text())
+        self.assertEqual(record['ledger'], {'completed': 1})
+
+    def test_pending_delivery_blocks_auto_resolution_and_keeps_quarantine(self):
+        from delivery_claims import DeliveryClaims
+        guard, state, workspace, env = self.fixture()
+        self.failed_run(guard, state, env, '123')
+        DeliveryClaims(state.parent/'delivery.sqlite').start('comment', ['channel:parent'])
+        with patch.object(guard, 'fetch_run') as fetch:
+            with self.assertRaises(RuntimeError): guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+            fetch.assert_not_called()
+        self.assertTrue((state/'active.json').exists())
+        self.assertFalse((state/'123-reconciliation.json').exists())
+        self.assertFalse((state/'124.json').exists())
+
+    def test_attempted_and_pending_claims_are_never_auto_resolved(self):
+        # A job killed before finish() never archived its interrupted workspace;
+        # one that reached its success marker may already have published.
+        guard, state, workspace, env = self.fixture()
+        guard.start(state, env)
+        with patch.object(guard, 'fetch_run') as fetch:
+            with self.assertRaises(RuntimeError): guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+            fetch.assert_not_called()
+        self.assertEqual(json.loads((state/'active.json').read_text())['status'], 'attempted')
+        self.assertFalse((state/'123-reconciliation.json').exists())
+        guard, state, workspace, env = self.pending()
+        with patch.object(guard, 'fetch_run', return_value=self.completed_run(conclusion='cancelled')):
+            with self.assertRaises(RuntimeError): guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+        self.assertTrue((state/'active.json').exists())
+        self.assertFalse((state/'123-reconciliation.json').exists())
+
+    def test_auto_resolution_stops_after_consecutive_limit(self):
+        guard, state, workspace, env = self.fixture()
+        self.failed_run(guard, state, env, '123')
+        self.failed_run(guard, state, env, '124')  # resolves 123, then aborts itself
+        self.assertEqual(json.loads((state/'auto-reconcile-streak.json').read_text())['count'], 1)
+        self.failed_run(guard, state, env, '125')  # resolves 124, then aborts itself
+        self.assertEqual(json.loads((state/'auto-reconcile-streak.json').read_text())['count'], 2)
+        with self.assertRaisesRegex(RuntimeError, 'Repeated automatic resolutions'):
+            guard.start(state, {**env, 'GITHUB_RUN_ID': '126'})
+        self.assertTrue((state/'active.json').exists())
+        self.assertFalse((state/'126.json').exists())
+        # The operator reconcile that unblocks it also rearms the breaker.
+        guard.reconcile(state, '125', 'Operator inspected the repeated aborts and their preserved evidence')
+        self.assertFalse((state/'auto-reconcile-streak.json').exists())
+        guard.start(state, {**env, 'GITHUB_RUN_ID': '126'})
+
+    def test_confirmed_success_resets_the_auto_resolution_breaker(self):
+        guard, state, workspace, env = self.fixture()
+        self.failed_run(guard, state, env, '123')
+        success = {**env, 'GITHUB_RUN_ID': '124'}
+        guard.start(state, success)  # auto-resolves 123
+        self.assertEqual(json.loads((state/'auto-reconcile-streak.json').read_text())['count'], 1)
+        guard.mark_success(state, success); guard.finish(state, success)
+        with patch.object(guard, 'fetch_run', return_value=self.completed_run(id=124)):
+            guard.confirm(state, '124')
+        self.assertFalse((state/'auto-reconcile-streak.json').exists())
+
+    def test_auto_resolution_requires_preserved_archive_and_matching_receipt(self):
+        for tamper in ['archive-missing', 'archive-renamed', 'receipt-conflict', 'receipt-missing']:
+            with self.subTest(tamper=tamper):
+                guard, state, workspace, env = self.fixture()
+                self.failed_run(guard, state, env, '123')
+                if tamper == 'archive-missing': (state/'123-artifacts.tar.gz').unlink()
+                if tamper == 'archive-renamed':
+                    guard.atomic_json(state/'active.json',
+                                      json.loads((state/'active.json').read_text()) | {'archive': 'other.tar.gz'})
+                if tamper == 'receipt-conflict':
+                    guard.atomic_json(state/'123.json',
+                                      json.loads((state/'123.json').read_text()) | {'sha': 'b'*40})
+                if tamper == 'receipt-missing': (state/'123.json').unlink()
+                with self.assertRaises(RuntimeError): guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+                self.assertTrue((state/'active.json').exists())
+                self.assertFalse((state/'123-reconciliation.json').exists())
+
+    def test_malformed_auto_resolution_counter_fails_closed(self):
+        for payload in ['not json', '{}', '{"count": -1}', '{"count": "1"}', '[]']:
+            with self.subTest(payload=payload):
+                guard, state, workspace, env = self.fixture()
+                self.failed_run(guard, state, env, '123')
+                (state/'auto-reconcile-streak.json').write_text(payload)
+                with self.assertRaisesRegex(RuntimeError, 'auto-resolution counter'):
+                    guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+                self.assertTrue((state/'active.json').exists())
+                self.assertFalse((state/'123-reconciliation.json').exists())
+
+    def test_auto_resolution_partial_writes_retain_quarantine(self):
+        for target in ['auto-reconcile-streak.json', '123-reconciliation.json']:
+            for persisted in [False, True]:
+                with self.subTest(target=target, persisted=persisted):
+                    guard, state, workspace, env = self.fixture()
+                    self.failed_run(guard, state, env, '123')
+                    write = guard.atomic_json
+                    def interrupt(path, data):
+                        if path.name == target:
+                            if persisted: write(path, data)
+                            raise OSError('interrupted auto-resolution write')
+                        write(path, data)
+                    with patch.object(guard, 'atomic_json', side_effect=interrupt):
+                        with self.assertRaises(OSError): guard.start(state, {**env, 'GITHUB_RUN_ID': '124'})
+                    self.assertTrue((state/'active.json').exists())
+                    self.assertFalse((state/'124.json').exists())
 
     def test_parent_symlink_never_archives_credentials(self):
         guard,state,workspace,env = self.fixture()

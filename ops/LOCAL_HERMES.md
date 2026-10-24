@@ -97,8 +97,23 @@ service restarts, and must be backed up with the runner stopped:
   incomplete runs, failure and cancellation remain quarantined with sanitized
   errors; there is no automatic retry/polling loop. The sequential listener's
   next `start` can confirm the immediately prior pending job by the same checks
-  before accepting a new run. Failed pipelines require operator reconciliation.
-  Existing operator reconciliation remains respected; old run receipts forbid replay.
+  before accepting a new run. Existing operator reconciliation remains respected;
+  old run receipts forbid replay.
+- An **`unresolved`** claim — finish() ran but the pipeline never reached its
+  success marker — is resolved by the next `start` WITHOUT an operator, but only
+  on local evidence that nothing was sent: zero `attempted` rows in the delivery
+  ledger (the same gate `check_deliveries` enforces), the preserved archive named
+  by the claim, and a run receipt whose identity matches it. Rationale: all three
+  send paths write a durable `attempted` row before touching a remote API, so an
+  empty ledger is stronger proof than any pipeline marker. It records
+  `RUN_ID-reconciliation.json` with `auto: true` plus the ledger census it relied
+  on, keeps archive and receipt, and never enables replay. `AUTO_RECONCILE_LIMIT`
+  consecutive automatic resolutions (default 2) trip a breaker and demand an
+  operator; a confirmed success or an operator `reconcile` clears the counter in
+  `auto-reconcile-streak.json`. An unreadable counter fails closed.
+  `pending-confirmation` and `attempted` claims are NEVER auto-resolved: the
+  former reached its success marker and may have published, the latter never
+  archived its interrupted workspace. Both still require operator reconciliation.
 - No `.git`, `.env`, token/client files, directory-wide globs or general JSON/
   Markdown are archived. Symlinks, linked parents and hardlinked files are
   excluded. Delivery receipts remain separately durable outside checkout.
@@ -195,8 +210,12 @@ still fails. Only a NEW main job is eligible. Do not delete `active.json` manual
 
 At-most-once attempts sacrifice automatic recovery to avoid double publication;
 there is no distributed atomic transaction with YouTube. A crash between remote
-success and receipt requires human reconciliation. Local filesystem/disk durability
-is required; SQLite on unreliable/network storage is unsupported. Telegram previews
+success and receipt requires human reconciliation. The one exception is a job
+journal left `unresolved`, which the next `start` clears on ledger evidence of
+no send (see the guard section above); the delivery ledger itself is never
+auto-resolved, so an ambiguous send still stops the channel until a human rules.
+Local filesystem/disk durability is required; SQLite on unreliable/network
+storage is unsupported. Telegram previews
 and non-YouTube writes are not deduplicated by the delivery ledger.
 
 Trusted main code executes as the local user: hooks, labels, field allowlists and
