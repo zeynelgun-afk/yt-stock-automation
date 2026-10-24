@@ -63,7 +63,7 @@ jobs:
           case "$pipeline" in
             not-reached)
               headline="🔴 Slot kaybedildi — pipeline hiç başlamadı (run: $CONCLUSION)"
-              detail="Job ilk workflow adımından önce öldü, bu yüzden pipeline kendi uyarısını gönderemedi. En olası neden: self-hosted pre-job hook reddi (local_runner_guard start), yani takılı bir pending-confirmation kaydı. KONTROL ET: ~/.local/state/yt-hermes-runner/jobs/active.json — doluysa sonraki TÜM slotlar da bloke ve operator reconcile gerekiyor."
+              detail="Job ilk workflow adımından önce öldü, bu yüzden pipeline kendi uyarısını gönderemedi. En olası neden: self-hosted pre-job hook reddi (local_runner_guard start). KONTROL ET: ~/.local/state/yt-hermes-runner/jobs/active.json — doluysa sonraki TÜM slotlar da bloke. 'unresolved' kayıtlar temiz ledger ile kendiliğinden çözülür, yani buraya düştüyse ya ledger'da attempted satırı var, ya kayıt pending-confirmation/attempted durumda, ya da üst üste otomatik çözüm limiti doldu (auto-reconcile-streak.json). Operator reconcile gerekiyor."
               ;;
             success)
               headline="🟠 Pipeline başarılı ama run '$CONCLUSION' — guard karantinada"
@@ -75,7 +75,7 @@ jobs:
               ;;
             *)
               headline="🔴 Pipeline adımı '$pipeline' ile bitti (run: $CONCLUSION)"
-              detail="Pipeline çalıştı, yani main_scheduler kendi Telegram uyarısını göndermiş olabilir — bu mesaj teyit amaçlı, uyarı hiç gelmediyse alert yolu da bozuk demektir."
+              detail="Pipeline çalıştı, yani main_scheduler kendi Telegram uyarısını göndermiş olabilir — bu mesaj teyit amaçlı, uyarı hiç gelmediyse alert yolu da bozuk demektir. Bu slot kaybedildi ama kayıt 'unresolved' olduğu ve ledger temiz olduğu sürece guard kendini çözer, sonraki slotlar etkilenmez; üst üste 2 otomatik çözümden sonra operator istenir."
               ;;
           esac
 
