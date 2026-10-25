@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T15:43:53.645947+00:00",
+  "generated_at": "2026-10-25T18:09:15.088704+00:00",
   "max_subscribers": 50000,
   "min_views": 3000,
   "min_ratio": 3.0,
@@ -12,17 +12,17 @@
   },
   "diagnostics": {
     "search_requests": 20,
-    "discovered_videos": 851,
-    "above_subscribers": 421,
-    "baseline_pages": 134,
-    "below_ratio": 90,
-    "emerging": 23,
-    "below_views": 199,
-    "non_finance_channel": 27,
-    "livestream": 13,
-    "strong": 11,
-    "outside_us_stock_niche": 24,
-    "non_english": 35,
+    "discovered_videos": 844,
+    "above_subscribers": 420,
+    "baseline_pages": 127,
+    "below_ratio": 89,
+    "emerging": 22,
+    "below_views": 194,
+    "non_finance_channel": 28,
+    "livestream": 15,
+    "strong": 12,
+    "outside_us_stock_niche": 25,
+    "non_english": 31,
     "insufficient_baseline": 6,
     "non_finance_video": 2
   },
@@ -32,9 +32,9 @@
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=bjU7FCTRnXE",
       "title": "How to Legally Track Insider Stock Buys (OpenInsider) #shorts",
-      "views": 19877,
-      "subscribers": 211,
-      "views_per_subscriber": 94.2,
+      "views": 19878,
+      "subscribers": 212,
+      "views_per_subscriber": 93.76,
       "baseline_median_views": 83,
       "baseline_samples": 7,
       "baseline_video_ids": [
@@ -51,38 +51,16 @@
       "duration": "PT1M27S",
       "publishedAt": "2026-10-13T10:55:28Z",
       "channel": "CompoundDaily",
-      "views_per_hour": 67.9
-    },
-    {
-      "video_id": "12mYwW9LHH4",
-      "signal_tier": "emerging",
-      "url": "https://www.youtube.com/watch?v=12mYwW9LHH4",
-      "title": "NVIDIA Announces MASSIVE $150B Buyback — Why Is NVDA Still Lagging?",
-      "views": 1793,
-      "subscribers": 13,
-      "views_per_subscriber": 137.92,
-      "baseline_median_views": 35,
-      "baseline_samples": 3,
-      "baseline_video_ids": [
-        "A2K0Mi7ozxM",
-        "NfM2xRy0Fp0",
-        "RRefFyZl-5w"
-      ],
-      "duration_bucket": "over_180s",
-      "ratio": 51.2,
-      "duration": "PT6M12S",
-      "publishedAt": "2026-09-28T14:36:30Z",
-      "channel": "Domestic  Investors",
-      "views_per_hour": 2.8
+      "views_per_hour": 67.3
     },
     {
       "video_id": "Cxo_0G6UDfM",
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=Cxo_0G6UDfM",
       "title": "What Is the Stock Market & How Does It Work? 📈 #stokmarket #shorts #usa",
-      "views": 4559,
+      "views": 4688,
       "subscribers": 15,
-      "views_per_subscriber": 303.93,
+      "views_per_subscriber": 312.53,
       "baseline_median_views": 154.0,
       "baseline_samples": 14,
       "baseline_video_ids": [
@@ -102,18 +80,18 @@
         "8HzRFvPXYsU"
       ],
       "duration_bucket": "up_to_180s",
-      "ratio": 29.6,
+      "ratio": 30.4,
       "duration": "PT36S",
       "publishedAt": "2026-09-30T13:13:09Z",
       "channel": "Wealth Mints 🎬",
-      "views_per_hour": 7.6
+      "views_per_hour": 7.7
     },
     {
       "video_id": "tBEjnGqRH_4",
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=tBEjnGqRH_4",
       "title": "NVIDIA’S NEXT MOVE: Josh Brown Explains Why Everything Could Change",
-      "views": 16546,
+      "views": 16549,
       "subscribers": 770,
       "views_per_subscriber": 21.49,
       "baseline_median_views": 849.5,
@@ -145,17 +123,17 @@
       "duration": "PT13M15S",
       "publishedAt": "2026-10-14T22:30:19Z",
       "channel": "Nvidia Growth ",
-      "views_per_hour": 64.3
+      "views_per_hour": 63.7
     },
     {
       "video_id": "tGrMe2nie1U",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=tGrMe2nie1U",
       "title": "The TRUTH about Coreweave: Your Ultimate Guide to AI Debt",
-      "views": 458373,
-      "subscribers": 51600,
-      "views_per_subscriber": 8.88,
-      "baseline_median_views": 33072.0,
+      "views": 458539,
+      "subscribers": 51700,
+      "views_per_subscriber": 8.87,
+      "baseline_median_views": 33198.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "XpRPMgzsAL0",
@@ -180,18 +158,18 @@
         "f2amQKsRa1o"
       ],
       "duration_bucket": "up_to_180s",
-      "ratio": 13.9,
+      "ratio": 13.8,
       "duration": "PT2M45S",
       "publishedAt": "2026-10-15T15:10:09Z",
       "channel": "The Wall Street Skinny",
-      "views_per_hour": 1905.4
+      "views_per_hour": 1887.1
     },
     {
       "video_id": "xBTYCRGb7PY",
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=xBTYCRGb7PY",
       "title": "Wall Street Veteran: Historic BUY SIGNAL is flashing for stocks NOW!",
-      "views": 105582,
+      "views": 105596,
       "subscribers": 10600,
       "views_per_subscriber": 9.96,
       "baseline_median_views": 9541.5,
@@ -223,7 +201,7 @@
       "duration": "PT31M29S",
       "publishedAt": "2026-10-01T13:00:40Z",
       "channel": "Phil Rosen",
-      "views_per_hour": 182.4
+      "views_per_hour": 181.7
     },
     {
       "video_id": "jIgaJiilL9o",
@@ -259,9 +237,9 @@
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=A9TG7iZ9YA0",
       "title": "Why I think every investor could probably double what they own and still not have enough shares",
-      "views": 42409,
+      "views": 42516,
       "subscribers": 22200,
-      "views_per_subscriber": 1.91,
+      "views_per_subscriber": 1.92,
       "baseline_median_views": 6672.5,
       "baseline_samples": 20,
       "baseline_video_ids": [
@@ -291,17 +269,17 @@
       "duration": "PT3M55S",
       "publishedAt": "2026-10-19T13:57:07Z",
       "channel": "Keith Fitz-Gerald",
-      "views_per_hour": 290.9
+      "views_per_hour": 286.9
     },
     {
       "video_id": "DYqKaCZlR1E",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=DYqKaCZlR1E",
       "title": "The True Origin of the 1987 Stock Market Crash: What Historians Get Wrong",
-      "views": 215980,
-      "subscribers": 98600,
-      "views_per_subscriber": 2.19,
-      "baseline_median_views": 34267.0,
+      "views": 216828,
+      "subscribers": 98700,
+      "views_per_subscriber": 2.2,
+      "baseline_median_views": 34333.5,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "djdPmVe6x2Q",
@@ -330,14 +308,14 @@
       "duration": "PT23M32S",
       "publishedAt": "2026-10-15T23:46:22Z",
       "channel": "Markets of the Past",
-      "views_per_hour": 931.1
+      "views_per_hour": 925.1
     },
     {
       "video_id": "7D_G0m7wZV0",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=7D_G0m7wZV0",
       "title": "‼️CELSIUS CEO BUYS $500,000 OF STOCK!",
-      "views": 2127,
+      "views": 2130,
       "subscribers": 2780,
       "views_per_subscriber": 0.77,
       "baseline_median_views": 371.0,
@@ -376,10 +354,10 @@
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=tgeA8bHVywM",
       "title": "I'm Not Selling — I'm Buying These 4 Stocks After the Selloff",
-      "views": 173663,
+      "views": 174006,
       "subscribers": 34000,
-      "views_per_subscriber": 5.11,
-      "baseline_median_views": 30730.5,
+      "views_per_subscriber": 5.12,
+      "baseline_median_views": 30744.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "eeS-b32fNk8",
@@ -408,17 +386,17 @@
       "duration": "PT13M44S",
       "publishedAt": "2026-10-14T19:00:36Z",
       "channel": "Navellier Market Buzz",
-      "views_per_hour": 666.1
+      "views_per_hour": 661.3
     },
     {
       "video_id": "jzAWjATBQlQ",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=jzAWjATBQlQ",
       "title": "Beware BLACK MONDAY: Memory Stocks are CRASHING or Overreaction/Stock Market Opportunity?!",
-      "views": 26090,
+      "views": 26100,
       "subscribers": 65700,
       "views_per_subscriber": 0.4,
-      "baseline_median_views": 5012.5,
+      "baseline_median_views": 5013.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "D0hzk4TOVYY",
@@ -447,7 +425,7 @@
       "duration": "PT13M34S",
       "publishedAt": "2026-10-18T18:55:19Z",
       "channel": "Tyler Wilson Investing",
-      "views_per_hour": 158.3
+      "views_per_hour": 156.1
     },
     {
       "video_id": "b3-WAUtA90o",
@@ -483,17 +461,17 @@
       "duration": "PT6M55S",
       "publishedAt": "2026-10-03T18:28:34Z",
       "channel": "Unusual Whales",
-      "views_per_hour": 12.0
+      "views_per_hour": 11.9
     },
     {
       "video_id": "tlCx7dLtXl0",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=tlCx7dLtXl0",
       "title": "Goldman Sachs Confirms Hedge Funds Are Dumping AI Stocks at a Stunning Pace as Leverage Collapses",
-      "views": 154929,
+      "views": 154990,
       "subscribers": 50500,
       "views_per_subscriber": 3.07,
-      "baseline_median_views": 31183.5,
+      "baseline_median_views": 31185.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "Sg2uNTL9c-k",
@@ -522,7 +500,7 @@
       "duration": "PT8M24S",
       "publishedAt": "2026-10-15T22:30:12Z",
       "channel": "Ox Talks",
-      "views_per_hour": 664.3
+      "views_per_hour": 657.7
     },
     {
       "video_id": "UR28K_urjYM",
@@ -553,10 +531,10 @@
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=ISAtyvedo8k",
       "title": "NVDA Stock Surge: BUY NOW or WAIT? | Investing Tutorial | Nvidia Stock | STOCK MARKET",
-      "views": 5976,
+      "views": 6005,
       "subscribers": 24100,
       "views_per_subscriber": 0.25,
-      "baseline_median_views": 1330.0,
+      "baseline_median_views": 1330.5,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "g5GPerIusT8",
@@ -585,17 +563,17 @@
       "duration": "PT19M29S",
       "publishedAt": "2026-10-21T21:29:59Z",
       "channel": "Investing Tutorial",
-      "views_per_hour": 66.2
+      "views_per_hour": 64.8
     },
     {
       "video_id": "Dzbnr43RiFQ",
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=Dzbnr43RiFQ",
       "title": "CNBC On NVIDIA Stock, Micron Stock, SK Hynix Stock, Memory News - NVDA Update",
-      "views": 97922,
+      "views": 97925,
       "subscribers": 39300,
       "views_per_subscriber": 2.49,
-      "baseline_median_views": 21963.0,
+      "baseline_median_views": 21963.5,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "QauQl8teymA",
@@ -624,17 +602,17 @@
       "duration": "PT26M34S",
       "publishedAt": "2026-10-14T11:55:17Z",
       "channel": "FinVid",
-      "views_per_hour": 365.6
+      "views_per_hour": 362.4
     },
     {
       "video_id": "Jf7Y2fHEoE8",
       "signal_tier": "strong",
       "url": "https://www.youtube.com/watch?v=Jf7Y2fHEoE8",
       "title": "CNBC, Bloomberg & Schwab On NVIDIA Stock, Micron Stock, SK Hynix Stock, CoreWeave - NVDA Update",
-      "views": 115140,
+      "views": 115156,
       "subscribers": 39300,
       "views_per_subscriber": 2.93,
-      "baseline_median_views": 26142.5,
+      "baseline_median_views": 26143.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "TRoHjw_-Qe4",
@@ -663,14 +641,14 @@
       "duration": "PT35M50S",
       "publishedAt": "2026-10-17T23:55:34Z",
       "channel": "FinVid",
-      "views_per_hour": 626.4
+      "views_per_hour": 618.4
     },
     {
       "video_id": "1YFplCfbv4A",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=1YFplCfbv4A",
       "title": "Micron CRUSHED Earnings! Time To LOAD UP!?📈",
-      "views": 7023,
+      "views": 7025,
       "subscribers": 71700,
       "views_per_subscriber": 0.1,
       "baseline_median_views": 2018.0,
@@ -741,15 +719,15 @@
       "duration": "PT8M47S",
       "publishedAt": "2026-09-28T19:29:38Z",
       "channel": "Jo Bhakdi",
-      "views_per_hour": 64.0
+      "views_per_hour": 63.7
     },
     {
       "video_id": "Fk4LriCyhEc",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=Fk4LriCyhEc",
       "title": "What Happens After a Stock Hits a 52-Week High? | The Long & The Short Ep. 55",
-      "views": 54697,
-      "subscribers": 93800,
+      "views": 54731,
+      "subscribers": 93900,
       "views_per_subscriber": 0.58,
       "baseline_median_views": 19078.5,
       "baseline_samples": 20,
@@ -780,17 +758,17 @@
       "duration": "PT20M34S",
       "publishedAt": "2026-10-07T15:50:08Z",
       "channel": "In The Money by Zerodha",
-      "views_per_hour": 126.6
+      "views_per_hour": 126.0
     },
     {
       "video_id": "v7F16NqlFak",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=v7F16NqlFak",
       "title": "AI Stocks Are Falling… But Look at These Earnings",
-      "views": 22814,
+      "views": 22824,
       "subscribers": 34000,
       "views_per_subscriber": 0.67,
-      "baseline_median_views": 7760.5,
+      "baseline_median_views": 7764.5,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "s-9m846qTbg",
@@ -819,14 +797,53 @@
       "duration": "PT3M",
       "publishedAt": "2026-10-16T19:52:33Z",
       "channel": "Navellier Market Buzz",
-      "views_per_hour": 107.7
+      "views_per_hour": 106.5
+    },
+    {
+      "video_id": "R2McOcjOLtM",
+      "signal_tier": "emerging",
+      "url": "https://www.youtube.com/watch?v=R2McOcjOLtM",
+      "title": "Pressure Points: SpaceX Q3'26 Earnings",
+      "views": 43234,
+      "subscribers": 24500,
+      "views_per_subscriber": 1.76,
+      "baseline_median_views": 14705.0,
+      "baseline_samples": 20,
+      "baseline_video_ids": [
+        "c32AhJTj69I",
+        "6tcdkCaoFM4",
+        "CWROepENkOI",
+        "3Ko_siwY0xw",
+        "tkJ_kzSsnqk",
+        "wIYQF8PCa5k",
+        "elk_MC40j-0",
+        "O_1I-zL_PLk",
+        "EfEyYq1wwV8",
+        "XCozhruHouc",
+        "0jbRxumnWu4",
+        "heFE0Amww7o",
+        "tEGPc-cZgLM",
+        "mzpXLPlpHfo",
+        "hTXQXcjYicA",
+        "uSMBBU7r-Js",
+        "LsaL97jkPkE",
+        "Ogk2zlgsb3o",
+        "yIuZ4v85ukg",
+        "jDEKZpTdTKY"
+      ],
+      "duration_bucket": "over_180s",
+      "ratio": 2.9,
+      "duration": "PT8M27S",
+      "publishedAt": "2026-10-20T22:19:45Z",
+      "channel": "Deepwater Asset Management",
+      "views_per_hour": 373.3
     },
     {
       "video_id": "yULfAtdLwrQ",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=yULfAtdLwrQ",
       "title": "$1.5 MILLION SANDISK INSIDER BUY",
-      "views": 2304,
+      "views": 2310,
       "subscribers": 11800,
       "views_per_subscriber": 0.2,
       "baseline_median_views": 822.5,
@@ -865,7 +882,7 @@
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=KXySbnkoUqw",
       "title": "Paul Reacts to Netflix & SpaceX Stock Earnings | $NFLX $SPCX",
-      "views": 58895,
+      "views": 58938,
       "subscribers": 41900,
       "views_per_subscriber": 1.41,
       "baseline_median_views": 21471.0,
@@ -897,16 +914,16 @@
       "duration": "PT25M24S",
       "publishedAt": "2026-10-20T21:28:52Z",
       "channel": "Everything Money Plus",
-      "views_per_hour": 515.5
+      "views_per_hour": 505.2
     },
     {
       "video_id": "K6cYb5KX2nc",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=K6cYb5KX2nc",
       "title": "I Ranked 32 AI Stocks To See Which Survive",
-      "views": 21345,
+      "views": 21366,
       "subscribers": 13300,
-      "views_per_subscriber": 1.6,
+      "views_per_subscriber": 1.61,
       "baseline_median_views": 8573.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
@@ -936,14 +953,14 @@
       "duration": "PT29M25S",
       "publishedAt": "2026-10-12T15:33:58Z",
       "channel": "Brian Stoffel",
-      "views_per_hour": 68.4
+      "views_per_hour": 67.9
     },
     {
       "video_id": "r2UaiZ-zjH8",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=r2UaiZ-zjH8",
       "title": "Why AI Demand Will Drive Nvidia Stock Higher | Investing Tutorial | NVDA Stock | STOCK MARKET",
-      "views": 4525,
+      "views": 4604,
       "subscribers": 24100,
       "views_per_subscriber": 0.19,
       "baseline_median_views": 1811.5,
@@ -975,7 +992,7 @@
       "duration": "PT19M14S",
       "publishedAt": "2026-10-23T17:23:42Z",
       "channel": "Investing Tutorial",
-      "views_per_hour": 97.7
+      "views_per_hour": 94.4
     },
     {
       "video_id": "olKWYgGl7lU",
@@ -1014,17 +1031,17 @@
       "duration": "PT42S",
       "publishedAt": "2026-10-03T08:18:47Z",
       "channel": "Aidan. Invest",
-      "views_per_hour": 2.6
+      "views_per_hour": 2.5
     },
     {
       "video_id": "z0rklAU44m4",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=z0rklAU44m4",
       "title": "CNBC & Fox Today On NVIDIA Stock, Micron Stock, SK Hynix Stock, CoreWeave - NVDA Update",
-      "views": 62904,
+      "views": 62912,
       "subscribers": 39300,
       "views_per_subscriber": 1.6,
-      "baseline_median_views": 26363.0,
+      "baseline_median_views": 26364.0,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "Jf7Y2fHEoE8",
@@ -1053,17 +1070,17 @@
       "duration": "PT36M20S",
       "publishedAt": "2026-10-20T05:37:16Z",
       "channel": "FinVid",
-      "views_per_hour": 483.5
+      "views_per_hour": 474.7
     },
     {
       "video_id": "3d7rStMhn2M",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=3d7rStMhn2M",
       "title": "Tesla (TSLA) & SPCX Breakout? My Thoughts on PLTR and SOFI",
-      "views": 18730,
+      "views": 18733,
       "subscribers": 70300,
       "views_per_subscriber": 0.27,
-      "baseline_median_views": 7866.0,
+      "baseline_median_views": 7866.5,
       "baseline_samples": 20,
       "baseline_video_ids": [
         "egclgbSvsnU",
@@ -1092,14 +1109,14 @@
       "duration": "PT16M",
       "publishedAt": "2026-10-05T21:06:06Z",
       "channel": "Traders Helping Traders",
-      "views_per_hour": 39.5
+      "views_per_hour": 39.3
     },
     {
       "video_id": "yQ-3dwt0D88",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=yQ-3dwt0D88",
       "title": "EXCLUSIVE: Cybercab To SKYROCKET Tesla Stock Higher Than SpaceX (Short Term)",
-      "views": 26932,
+      "views": 26944,
       "subscribers": 37000,
       "views_per_subscriber": 0.73,
       "baseline_median_views": 11075.5,
@@ -1131,14 +1148,14 @@
       "duration": "PT42M57S",
       "publishedAt": "2026-10-17T15:30:16Z",
       "channel": "Curious Pejjy",
-      "views_per_hour": 140.1
+      "views_per_hour": 138.4
     },
     {
       "video_id": "SmJFkH6JvVQ",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=SmJFkH6JvVQ",
       "title": "Next Week Will Be HISTORIC For The STOCK MARKET (MARKET CRASH INCOMING??)",
-      "views": 12711,
+      "views": 12717,
       "subscribers": 14500,
       "views_per_subscriber": 0.88,
       "baseline_median_views": 5471.0,
@@ -1170,53 +1187,14 @@
       "duration": "PT19M21S",
       "publishedAt": "2026-10-17T17:14:29Z",
       "channel": "Jack Trades",
-      "views_per_hour": 66.7
-    },
-    {
-      "video_id": "NmSntucJqgs",
-      "signal_tier": "emerging",
-      "url": "https://www.youtube.com/watch?v=NmSntucJqgs",
-      "title": "It Appears $TSLA is Set for Lift Off. And the Stock Market Appears to Agree!",
-      "views": 21087,
-      "subscribers": 16500,
-      "views_per_subscriber": 1.28,
-      "baseline_median_views": 9104.5,
-      "baseline_samples": 20,
-      "baseline_video_ids": [
-        "Xkb84sOjV-k",
-        "ohTzLrg9t0s",
-        "s7HYZbLVuRo",
-        "C-mNyd_9jgI",
-        "pz79n9eIXfc",
-        "kZPdN23ufIY",
-        "IH7yItRc7fQ",
-        "OP-iRcgWGhw",
-        "GyDAOpeSvrE",
-        "lVrxVOwu0Rg",
-        "j8OaG2w4bDA",
-        "AALChQ_rHIA",
-        "bZMXz2_GSBM",
-        "BUJK1FUPCfw",
-        "1LVfW5xCx-8",
-        "TiyqCo6Hlnk",
-        "Vv-s8XAMml0",
-        "iWb1j-Jntzk",
-        "2l7hJ2wl3WM",
-        "Ec-DMpATEko"
-      ],
-      "duration_bucket": "over_180s",
-      "ratio": 2.3,
-      "duration": "PT56M36S",
-      "publishedAt": "2026-10-05T02:15:41Z",
-      "channel": "Investing Against the Grain",
-      "views_per_hour": 42.7
+      "views_per_hour": 65.9
     },
     {
       "video_id": "XulFFim97ic",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=XulFFim97ic",
       "title": "EM Reacts to Nike Stock Earnings $NKE",
-      "views": 46249,
+      "views": 46252,
       "subscribers": 41900,
       "views_per_subscriber": 1.1,
       "baseline_median_views": 21224.0,
@@ -1248,14 +1226,14 @@
       "duration": "PT14M26S",
       "publishedAt": "2026-10-01T21:16:49Z",
       "channel": "Everything Money Plus",
-      "views_per_hour": 81.1
+      "views_per_hour": 80.7
     },
     {
       "video_id": "yhPlV1QCcuQ",
       "signal_tier": "emerging",
       "url": "https://www.youtube.com/watch?v=yhPlV1QCcuQ",
       "title": "Stocks CRASHED Today (What Just Broke?)",
-      "views": 46129,
+      "views": 46132,
       "subscribers": 41900,
       "views_per_subscriber": 1.1,
       "baseline_median_views": 21471.0,
@@ -1287,7 +1265,7 @@
       "duration": "PT17M26S",
       "publishedAt": "2026-10-14T21:06:53Z",
       "channel": "Everything Money Plus",
-      "views_per_hour": 178.4
+      "views_per_hour": 176.7
     }
   ]
 }
