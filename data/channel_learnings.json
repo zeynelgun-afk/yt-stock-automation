@@ -1,60 +1,73 @@
 {
  "market_patterns": {
   "title_patterns": [
-   "[AI SECTOR] entry timing — which measurable conditions would justify buying?",
-   "[NUMBER] [SECTOR] companies — compare valuation with business growth",
-   "[NAMED ANALYST]'s [COMPANY OR SECTOR] thesis — assumptions, evidence and countercase",
-   "[COMPANY] revenue scenario — what would need to happen to support [VALUATION]?",
-   "[COMPANY] insider purchases: [DOLLAR AMOUNT] over [TIME WINDOW] — how material is that?",
-   "[COMPANY] + [SPECIFIC CATALYST] — confirmed milestones versus expectations",
-   "[COMPANY] after [EARNINGS OR PRICE MOVE] — what changed in the numbers?"
+   "[PUBLIC-DATA TOOL]: how to check [specific stock transaction]",
+   "[COMPANY] announces [capital-allocation action]: what changes per share?",
+   "[TICKER] after [specific event]: which numbers support buying versus waiting?",
+   "[NUMBER] companies after [selloff]: comparing [valuation measure] with [business measure]",
+   "[COMPANY] insider purchases: how large are they relative to [ownership or compensation]?",
+   "[AI COMPANY] financing explained through [debt, cash flow or repayment measure]",
+   "[MARKET MILESTONE]: what happened next, and how often?"
   ],
   "hook_patterns": [
-   "Hypothesis: Open with one verified event or figure, then ask which valuation assumption it changes.",
-   "Hypothesis: Present two competing explanations for a company-specific move, then name the metric that could distinguish them.",
-   "Hypothesis: Translate a headline dollar amount into a relevant denominator before discussing its significance.",
-   "Hypothesis: Use a brief original analogy: 'A lower price is the sale sticker; valuation is the receipt.' Then introduce the comparison."
+   "Hypothesis: Open with a reported transaction amount, then ask which denominator makes it meaningful.",
+   "Hypothesis: Contrast a share-price move with one business metric, then explain what evidence would resolve the apparent mismatch.",
+   "Hypothesis: Start with a public-data lookup and one narrowly defined question the viewer can investigate alongside you.",
+   "Hypothesis: Introduce a financing question with an original everyday analogy: 'A bigger credit limit is not a bigger paycheck.' Then identify the cash-flow measure to examine."
   ],
   "packaging_notes": [
-   "AI entry timing has recent strong-tier support: the October 4 candidate has 78,047 views and an 8.9x baseline ratio. Earlier strong-tier AI examples support numbered comparisons and expert framing, but are not all from this week.",
-   "Keep tiers separate: the October 10 NVIDIA target-level video is emerging at 2.9x, while the October 4 JPMorgan strategist video is emerging at 5.1x because its channel exceeds the strong-tier subscriber limit. Neither establishes a strong-tier weekly pattern.",
-   "Observed strong-tier runtimes span 54 seconds to 31:29; AI timing examples run 54–60 seconds, while expert-led examples span 5:41–31:29. These are format references, not proven duration sweet spots; the <=180-second bucket does not establish Shorts status.",
-   "Counts, dollar amounts, time windows and explicit scenarios offer concrete framing. Financial numbers in source titles are unverified claims, not established facts; verify them before reuse and preserve distinctions such as bull case versus base case.",
-   "Reject crash, explosion, accusation and urgent-buy language; retain the underlying company-specific question. View-to-baseline ratios are not equal-age comparisons, and metadata cannot establish title causality, retention, effective opening lines or comedy use."
+   "The clearest utility-led strong signal is the 87-second insider-tracking tutorial: 19,877 views versus an 83-view median across seven prior uploads, or 239.5x. Its tiny baseline makes the ratio especially sensitive; this supports testing a concrete task, not claiming the framing caused performance.",
+   "Company-specific decision questions recur among strong NVIDIA candidates. The 13:15 example reached 19.5x its baseline and the 19:29 example reached 4.5x. Repeated uploads from the same channels are not independent validation; replace urgency and authority cues with explicit comparison criteria.",
+   "Numbers can define scope or scale: a strong four-stock selloff video reached 5.7x baseline, while a strong insider-purchase video reached 5.2x. Transaction amounts in titles are unverified claims here; check them before publication and add a meaningful denominator rather than manufacturing precision.",
+   "Strong examples range from 36 seconds to 35:50, so no duration sweet spot is established. The <=180-second bucket does not establish Shorts status. Compare formats separately; these baselines are not equal-age measurements and no retention data is supplied.",
+   "AI-debt explanation at 13.9x and the 52-week-high question at 2.9x remain emerging evidence, not strong signals. Candidates span September 28–October 23, so they do not isolate what worked this week. Exclude crash alarmism, imminent-collapse framing and unsupported buy-now urgency."
   ],
   "title": "outlier pattern extraction"
  },
- "updated_at": "2026-10-11T22:22:42",
+ "updated_at": "2026-10-25T18:44:26",
  "franchise_weights": {
-  "market_close": 1.3,
-  "insider_watch": 0.7
+  "market_close": 1.0
  },
  "own_patterns": {
   "winning_patterns": [
-   "For Shorts, a compact company-or-ticker → price move → named catalyst structure appears among several strong retainers. Explicit move percentages accompany 82.8–97.3% average viewing, but this small sample does not establish an optimal number size.",
-   "For insider Shorts, company → executive role → buy/sell action → dollar amount is a promising compact structure: two examples retain 93.3–94.0% on average. Lead with the transaction rather than filing mechanics; actual opening scripts were not supplied."
+   "Among the three Shorts, a company-led headline pairing a striking percentage move with a corporate-event explanation coincided with the highest average view percentage, 90.6%. Treat this as a candidate structure, not a proven formula.",
+   "A compact company + analyst action + explicit price-target structure also held viewers: that Short recorded 74.0% average viewed. Concrete news and a clear numeric anchor appear worth testing further."
   ],
   "losing_patterns": [
-   "The two long videos use transaction headlines extended with filing-process detail. Their average viewing is 38.1–46.5%, with hook-window retention of 0.633–0.678. Treat paperwork-heavy framing as a tentative concern, not a proven cause; duration and format are confounded.",
-   "Do not rely on a dramatic action verb or large transaction amount to carry a Short. The weakest Shorts average 66.3–69.0% viewing despite those elements; neither excitement nor numerical scale consistently predicts retention."
+   "Do not assume a large dollar amount makes a long-form hook compelling: the sole long video led with an $80.8 million insider sale but recorded 37.1% average viewed and 64.4% hook-window retention.",
+   "Avoid relying on executive-role and regulatory-filing terminology as the main framing without testing a clearer viewer-relevance explanation. Those elements appeared in the lowest-retaining video, but this sample cannot isolate their contribution."
   ],
   "notes": [
-   "The sample contains 10 Shorts and only two long videos, with 45–826 views each. Shorts and long-video results should remain separate; these are correlations, not evidence that title structure increases distribution.",
-   "Market-close Shorts include several strong retainers, while insider Shorts span 69.0–156.1% average viewing. Neither franchise is uniformly stronger. The 156.1% result on 92 views is replay-compatible, not proof of broad demand.",
-   "Average viewing is not swipe-away or feed conversion. Hook-window values above 1 should not be interpreted as unique-viewer survival rates; titles and aggregate retention alone cannot identify which spoken hook framing worked."
+   "The sample is only four videos with 89–239 views each. These are tentative correlations, not evidence that any title structure causes retention or distribution.",
+   "Analyze formats separately: the three Shorts recorded 66.8–90.6% average viewed; the single long video recorded 37.1%. There is no within-long comparison, and franchise effects cannot be separated from topic or format.",
+   "Shorts hook-window retention exceeded 100%, potentially reflecting repeat viewing; average view percentage did not. Neither metric establishes swipe-away performance, feed conversion, or broad audience demand."
   ],
   "title": "own-channel lessons"
  },
  "section_status": {
-  "weights": "ok (2 franchise)",
-  "narration": "no tagged samples yet",
+  "weights": "ok (1 franchise)",
+  "narration": "ok (2.091 w/s, 5 video)",
   "own_patterns": "ok",
-  "market_patterns": "ok (36 outlier)"
+  "market_patterns": "ok (34 outlier)"
  },
  "weights_version": 2,
  "section_updated_at": {
-  "franchise_weights": "2026-10-11T22:22:42",
-  "own_patterns": "2026-10-11T22:22:42",
-  "market_patterns": "2026-10-11T22:22:42"
+  "franchise_weights": "2026-10-25T18:44:26",
+  "own_patterns": "2026-10-25T18:44:26",
+  "market_patterns": "2026-10-25T18:44:26",
+  "narration": "2026-10-25T18:44:26"
+ },
+ "narration": {
+  "wps": 2.091,
+  "engine": "el-4m8bONaoZ6iN",
+  "samples": 5,
+  "shorts_word_range": [
+   67,
+   79
+  ],
+  "long_word_range": [
+   314,
+   439
+  ]
  }
 }
