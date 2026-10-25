@@ -22,5 +22,7 @@ jobs:
           sudo apt-get install -y ffmpeg fonts-dejavu-core
       - run: pip install -r requirements.txt
       - name: Compile Python sources
-        run: python -m py_compile *.py tests/*.py
+        # ops/ holds the runner guard, which production installs from a reviewed
+        # main copy — it must not be the one tree that never gets compile-checked.
+        run: python -m py_compile *.py tests/*.py ops/*.py assets/*.py
       - run: python -m unittest discover -s tests -v
