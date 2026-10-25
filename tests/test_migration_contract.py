@@ -57,6 +57,23 @@ class MigrationContractTests(unittest.TestCase):
         for concluded in ['"success"','"failure"','"cancelled"']:
             self.assertIn('.conclusion == '+concluded,text)
 
+    def test_stale_learning_alert_stays_hosted_and_fails_loud_on_unreadable(self):
+        text = (ROOT/'.github/workflows/alert_on_stale_learnings.yml').read_text()
+        # Notification credentials must never reach the local runner.
+        self.assertIn('runs-on: ubuntu-latest',text)
+        self.assertNotIn('runs-on: [yt-hermes]',text)  # comments may name the runner; the selector may not
+        for secret in ['TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID']: self.assertIn('secrets.'+secret,text)
+        # A slot that is never dispatched produces no workflow_run event, so only
+        # a clock-driven check can see the absence. Keep the cron.
+        self.assertIn("cron: '0 12 * * 1'",text)
+        self.assertIn('data/channel_learnings.json',text)
+        # The artifact the pipeline actually reads is the one being watched, and
+        # an unreadable artifact must alert rather than silently pass.
+        self.assertIn("emit(True, 'bilinmiyor'",text)
+        self.assertIn("steps.check.outputs.stale == 'true'",text)
+        # Alerting is the product here: only a broken send may fail the job.
+        self.assertIn('--fail',text)
+
     def test_smoke_uses_only_synthetic_facts_and_both_real_writers(self):
         import smoke_llm
         from script_generator import ScriptGenerator

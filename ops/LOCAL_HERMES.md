@@ -114,6 +114,14 @@ service restarts, and must be backed up with the runner stopped:
   `pending-confirmation` and `attempted` claims are NEVER auto-resolved: the
   former reached its success marker and may have published, the latter never
   archived its interrupted workspace. Both still require operator reconciliation.
+- Two GitHub-hosted companions watch for losses the pipeline cannot report on
+  itself, and neither may run on `[yt-hermes]`: `alert_on_slot_loss.yml` fires on
+  a failed/cancelled run, and `alert_on_stale_learnings.yml` runs a Monday cron
+  because a slot that is never dispatched emits no `workflow_run` event at all —
+  only a clock can see an absence. The latter alerts when
+  `data/channel_learnings.json` is older than `MAX_AGE_DAYS` (8), which is what
+  a single missed Sunday looks like on the next Monday, and alerts rather than
+  passing when that artifact is unreadable.
 - No `.git`, `.env`, token/client files, directory-wide globs or general JSON/
   Markdown are archived. Symlinks, linked parents and hardlinked files are
   excluded. Delivery receipts remain separately durable outside checkout.
