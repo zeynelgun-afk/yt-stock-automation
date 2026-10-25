@@ -1,6 +1,6 @@
 # Kanal büyüme deneyi
 
-Deney: `growth-20261003` · Güncelleme: 2026-10-24T14:01:47.015423+00:00
+Deney: `growth-20261003` · Güncelleme: 2026-10-25T14:23:40.086344+00:00
 
 İlk 10 yeni Shorts izleniyor. Ölçüm: yayın gününü hariç tutan ilk üç tam Pasifik takvim günü; tam ilk 72 saat değildir. Sonrasında veri gecikmesi için iki tam gün daha beklenir.
 
@@ -15,7 +15,7 @@ Durum: Betimsel karşılaştırma için 10 + 10 video verisi var; nedensellik ve
 
 ## İzleyici yaş dağılımı
 
-Son 28 gün: 2026-09-25 – 2026-10-22; son 90 gün: 2026-07-25 – 2026-10-22 (Pasifik takvimi; sorgu 2026-10-24).
+Son 28 gün: 2026-09-26 – 2026-10-23; son 90 gün: 2026-07-26 – 2026-10-23 (Pasifik takvimi; sorgu 2026-10-25).
 
 | Yaş | Son 28 gün | Son 90 gün |
 |---|---:|---:|
