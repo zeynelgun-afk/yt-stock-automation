@@ -1,0 +1,89 @@
+name: Alert on stale weekly learnings
+
+# data/channel_learnings.json is refreshed by exactly one thing: the weekly
+# Sunday analytics slot of the production pipeline. Nothing else writes it, and
+# nothing noticed when that slot was lost — on 2026-10-25 the file was found
+# sitting at 2026-10-11 because the 10-18 slot died in the pre-job hook during
+# the guard wedge and no run was red afterwards to hint at it. Every video in
+# between kept reading two-week-old franchise weights and word budgets: a
+# silent quality regression with no failure anywhere to trace it to.
+#
+# alert_on_slot_loss.yml cannot cover this. It triggers on workflow_run
+# completion, so a slot that is never dispatched at all produces no event.
+# Only a clock-driven check can see an absence.
+#
+# This companion is GitHub-hosted and must never run on [yt-hermes]: the local
+# runner stays free of notification credentials (see ops/LOCAL_HERMES.md).
+on:
+  schedule:
+    - cron: '0 12 * * 1'   # Monday 12:00 UTC, after Sunday's slot window closes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+
+    env:
+      # One missed Sunday puts the artifact at 8 days on the next Monday check.
+      # Below that, a merely delayed refresh (this repo's crons routinely fire
+      # 2-7h late, and a Sunday slot has landed as late as 22:22) stays quiet.
+      MAX_AGE_DAYS: '8'
+      ARTIFACT: data/channel_learnings.json
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check how old the weekly learning artifact is
+        id: check
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import datetime, json, os, pathlib
+
+          path = pathlib.Path(os.environ['ARTIFACT'])
+          limit = int(os.environ['MAX_AGE_DAYS'])
+          now = datetime.datetime.now(datetime.timezone.utc)
+
+          def emit(stale, age, reason):
+              print(f'stale={"true" if stale else "false"}')
+              print(f'age={age}')
+              print(f'reason={reason}')
+
+          # An unreadable artifact is worse than a stale one: alert, never pass.
+          try:
+              stamp = json.loads(path.read_text())['updated_at']
+              seen = datetime.datetime.fromisoformat(stamp)
+          except (OSError, ValueError, KeyError, TypeError) as error:
+              emit(True, 'bilinmiyor', f'{type(error).__name__}: okunamadi')
+              raise SystemExit
+          if seen.tzinfo is None:
+              seen = seen.replace(tzinfo=datetime.timezone.utc)
+          age = (now - seen).days
+          emit(age > limit, f'{age} gun', stamp)
+          PY
+
+      - name: Report stale learnings to Telegram
+        if: steps.check.outputs.stale == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          AGE: ${{ steps.check.outputs.age }}
+          REASON: ${{ steps.check.outputs.reason }}
+        run: |
+          set -uo pipefail
+
+          headline="🟠 Haftalık öğrenme verisi tazelenmedi — $AGE eski"
+          detail="data/channel_learnings.json yalnızca haftalık Pazar analytics slotundan tazelenir ve o slot kaybedilmiş görünüyor (dosyadaki kayıt: $REASON). Pipeline bu dosyadan franchise ağırlıklarını ve kelime bütçelerini okuduğu için her yeni video eski kalibrasyonla üretiliyor — hiçbir koşu kırmızı olmadan. KONTROL ET: ~/.local/state/yt-hermes-runner/jobs/active.json takılı bir kayıt tutuyor olabilir. ELLE TAZELE: gh workflow run youtube_auto.yml --ref main -f mode=analytics (video yayınlamaz; sonra guard kaydını confirm etmeyi unutma)."
+
+          # printf, not an inline multi-line string: a YAML block scalar would
+          # bake its own indentation into the delivered message body.
+          text=$(printf '%s\n\n%s' "$headline" "$detail")
+
+          # Never let a broken alert path be silent too: fail the job loudly.
+          curl -sS --fail --max-time 30 -X POST \
+            "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=$text" >/dev/null
