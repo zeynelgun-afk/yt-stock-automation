@@ -1,7 +1,7 @@
 {
   "experiment_id": "growth-20261003",
   "started_at": "2026-10-03T20:00:00Z",
-  "generated_at": "2026-10-28T16:39:05.640771+00:00",
+  "generated_at": "2026-10-29T16:56:24.238162+00:00",
   "window_definition": "First three complete Pacific calendar days after publication; not exact first 72 hours.",
   "metric_status": "Provisional API values; missing rows are unknown, never zero. No swipe-rate or CTR inference.",
   "baseline_selection": "Latest ten pre-experiment public Shorts identified by upload tags or Analytics activity; zero-activity untagged videos cannot be classified.",
@@ -353,11 +353,11 @@
     }
   ],
   "age_demographics": {
-    "retrieved_on": "2026-10-28",
+    "retrieved_on": "2026-10-29",
     "periods": {
       "28": {
-        "start_date": "2026-09-29",
-        "end_date": "2026-10-26",
+        "start_date": "2026-09-30",
+        "end_date": "2026-10-27",
         "viewer_percentages": {
           "age13-17": null,
           "age18-24": null,
@@ -369,8 +369,8 @@
         }
       },
       "90": {
-        "start_date": "2026-07-29",
-        "end_date": "2026-10-26",
+        "start_date": "2026-07-30",
+        "end_date": "2026-10-27",
         "viewer_percentages": {
           "age13-17": null,
           "age18-24": null,
